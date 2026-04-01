@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { getChatModel, getOpenAI } from "@/lib/openai";
+import {
+  createTracedOpenAI,
+  scheduleLangfuseFlush,
+} from "@/lib/langfuse-server";
+import { createBaseOpenAI, getChatModel } from "@/lib/openai";
 import { buildRewriteUserPrompt, REWRITE_SYSTEM } from "@/lib/prompts";
 import { getSurroundingContext } from "@/lib/text";
 import {
@@ -41,8 +45,14 @@ export async function POST(req: Request) {
   const contextAfter =
     bodyAfter && bodyAfter.length > 0 ? bodyAfter : computed.contextAfter;
 
+  scheduleLangfuseFlush();
+
   try {
-    const openai = getOpenAI();
+    const openai = createTracedOpenAI(createBaseOpenAI(), {
+      traceName: "LineRoom",
+      generationName: "lyric-rewrite",
+      tags: ["lineroom", "rewrite"],
+    });
     const completion = await openai.chat.completions.create({
       model: getChatModel(),
       messages: [

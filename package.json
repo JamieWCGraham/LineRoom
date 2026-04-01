@@ -2,6 +2,9 @@
   "name": "lineroom",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,6 +12,9 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@langfuse/openai": "^5.0.1",
+    "@langfuse/otel": "^5.0.1",
+    "@opentelemetry/sdk-node": "^0.214.0",
     "next": "^15.1.0",
     "openai": "^4.77.0",
     "react": "^19.0.0",
