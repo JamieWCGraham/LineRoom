@@ -57,4 +57,4 @@ Requires **Node.js 20+** (for `@langfuse/otel`). Set the same variables in Verce
 
 ## Non-goals (MVP)
 
-Auth, billing, cloud project storage, DAW integration, rhyme/scan engines, and full-song generation modes are out of scope for this version.
+Auth, billing, cloud project storage, DAW integration, rhyme/scan engines, and full-song generation modes are out of scope for this version but will be included later.
