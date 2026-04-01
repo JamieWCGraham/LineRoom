@@ -12,9 +12,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@langfuse/core": "^5.0.1",
     "@langfuse/openai": "^5.0.1",
     "@langfuse/otel": "^5.0.1",
-    "@opentelemetry/sdk-node": "^0.214.0",
+    "@langfuse/tracing": "^5.0.1",
+    "@opentelemetry/sdk-trace-node": "^2.6.1",
     "next": "^15.1.0",
     "openai": "^4.77.0",
     "react": "^19.0.0",

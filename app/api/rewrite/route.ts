@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import {
-  createTracedOpenAI,
+  runWithLangfuseTrace,
   scheduleLangfuseFlush,
 } from "@/lib/langfuse-server";
 import { createBaseOpenAI, getChatModel } from "@/lib/openai";
@@ -47,61 +47,77 @@ export async function POST(req: Request) {
 
   scheduleLangfuseFlush();
 
+  const messages = [
+    { role: "system" as const, content: REWRITE_SYSTEM },
+    {
+      role: "user" as const,
+      content: buildRewriteUserPrompt({
+        fullText,
+        selectedText,
+        contextBefore,
+        contextAfter,
+        voiceNotes: voiceNotes ?? "",
+        action,
+        customInstruction: customInstruction ?? "",
+        n: REWRITE_COUNT,
+      }),
+    },
+  ];
+
   try {
-    const openai = createTracedOpenAI(createBaseOpenAI(), {
-      traceName: "LineRoom",
-      generationName: "lyric-rewrite",
-      tags: ["lineroom", "rewrite"],
-    });
-    const completion = await openai.chat.completions.create({
-      model: getChatModel(),
-      messages: [
-        { role: "system", content: REWRITE_SYSTEM },
-        {
-          role: "user",
-          content: buildRewriteUserPrompt({
-            fullText,
-            selectedText,
-            contextBefore,
-            contextAfter,
-            voiceNotes: voiceNotes ?? "",
-            action,
-            customInstruction: customInstruction ?? "",
-            n: REWRITE_COUNT,
-          }),
+    return await runWithLangfuseTrace(
+      {
+        traceName: "LineRoom",
+        rootObservationName: "lineroom-rewrite",
+        tags: ["lineroom", "rewrite"],
+        langfuseConfig: {
+          traceName: "LineRoom",
+          generationName: "lyric-rewrite",
+          tags: ["lineroom", "rewrite"],
         },
-      ],
-      response_format: { type: "json_object" },
-    });
+      },
+      async ({ createTracedOpenAI, setTraceIO }) => {
+        const openai = createTracedOpenAI(createBaseOpenAI());
+        const completion = await openai.chat.completions.create({
+          model: getChatModel(),
+          messages,
+          response_format: { type: "json_object" },
+        });
 
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) {
-      return NextResponse.json(
-        { error: "Empty model response" },
-        { status: 502 },
-      );
-    }
+        const raw = completion.choices[0]?.message?.content;
+        if (!raw) {
+          return NextResponse.json(
+            { error: "Empty model response" },
+            { status: 502 },
+          );
+        }
 
-    let json: unknown;
-    try {
-      json = JSON.parse(raw);
-    } catch {
-      return NextResponse.json(
-        { error: "Model returned invalid JSON" },
-        { status: 502 },
-      );
-    }
+        let json: unknown;
+        try {
+          json = JSON.parse(raw);
+        } catch {
+          return NextResponse.json(
+            { error: "Model returned invalid JSON" },
+            { status: 502 },
+          );
+        }
 
-    const out = rewriteResponseSchema.safeParse(json);
-    if (!out.success) {
-      return NextResponse.json(
-        { error: "Response shape invalid", details: out.error.flatten() },
-        { status: 502 },
-      );
-    }
+        const out = rewriteResponseSchema.safeParse(json);
+        if (!out.success) {
+          return NextResponse.json(
+            { error: "Response shape invalid", details: out.error.flatten() },
+            { status: 502 },
+          );
+        }
 
-    const options = out.data.options.slice(0, 5);
-    return NextResponse.json({ options });
+        const options = out.data.options.slice(0, 5);
+        setTraceIO({
+          input: { messages },
+          output: { options },
+        });
+        return NextResponse.json({ options });
+      },
+    );
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";
     if (message === "OPENAI_API_KEY is not set") {

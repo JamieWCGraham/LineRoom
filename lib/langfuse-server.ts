@@ -1,10 +1,12 @@
+import { propagateAttributes } from "@langfuse/core";
 import { observeOpenAI, type LangfuseConfig } from "@langfuse/openai";
 import { LangfuseSpanProcessor } from "@langfuse/otel";
-import { NodeSDK } from "@opentelemetry/sdk-node";
+import { startActiveObservation } from "@langfuse/tracing";
+import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import OpenAI from "openai";
 import { after } from "next/server";
 
-let sdk: NodeSDK | null = null;
+let tracerProvider: NodeTracerProvider | null = null;
 let spanProcessor: LangfuseSpanProcessor | null = null;
 
 export function isLangfuseEnabled(): boolean {
@@ -19,16 +21,16 @@ export function isLangfuseEnabled(): boolean {
  * No-ops when Langfuse env vars are unset.
  */
 export function startLangfuseOtel(): void {
-  if (!isLangfuseEnabled() || sdk) {
+  if (!isLangfuseEnabled() || tracerProvider) {
     return;
   }
   spanProcessor = new LangfuseSpanProcessor({
     exportMode: "immediate",
   });
-  sdk = new NodeSDK({
+  tracerProvider = new NodeTracerProvider({
     spanProcessors: [spanProcessor],
   });
-  sdk.start();
+  tracerProvider.register();
 }
 
 export async function flushLangfuse(): Promise<void> {
@@ -55,4 +57,50 @@ export function createTracedOpenAI(
     return client;
   }
   return observeOpenAI(client, langfuseConfig) as OpenAI;
+}
+
+type TraceIO = { input: unknown; output: unknown };
+
+/**
+ * Runs work inside a root Langfuse span with propagated trace name/tags, and nests
+ * OpenAI generations under it via parentSpanContext. Call setTraceIO before returning
+ * so the Langfuse trace view shows Input/Output (the SDK generation alone often leaves
+ * trace-level I/O empty).
+ */
+export async function runWithLangfuseTrace<T>(
+  params: {
+    traceName: string;
+    rootObservationName: string;
+    tags?: string[];
+    langfuseConfig: Omit<LangfuseConfig, "parentSpanContext">;
+  },
+  fn: (ctx: {
+    createTracedOpenAI: (client: OpenAI) => OpenAI;
+    setTraceIO: (io: TraceIO) => void;
+  }) => Promise<T>,
+): Promise<T> {
+  if (!isLangfuseEnabled()) {
+    return fn({
+      setTraceIO: () => {},
+      createTracedOpenAI: (client) => createTracedOpenAI(client, params.langfuseConfig),
+    });
+  }
+
+  return propagateAttributes(
+    { traceName: params.traceName, tags: params.tags },
+    () =>
+      startActiveObservation(params.rootObservationName, async (root) => {
+        const parentSpanContext = root.otelSpan.spanContext();
+        return fn({
+          setTraceIO: ({ input, output }) => {
+            root.setTraceIO({ input, output });
+          },
+          createTracedOpenAI: (client) =>
+            createTracedOpenAI(client, {
+              ...params.langfuseConfig,
+              parentSpanContext,
+            }),
+        });
+      }),
+  );
 }

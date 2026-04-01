@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import {
-  createTracedOpenAI,
+  runWithLangfuseTrace,
   scheduleLangfuseFlush,
 } from "@/lib/langfuse-server";
 import { createBaseOpenAI, getChatModel } from "@/lib/openai";
@@ -43,57 +43,73 @@ export async function POST(req: Request) {
 
   scheduleLangfuseFlush();
 
+  const messages = [
+    { role: "system" as const, content: CRITIQUE_SYSTEM },
+    {
+      role: "user" as const,
+      content: buildCritiqueUserPrompt({
+        fullText,
+        selectedText,
+        contextBefore,
+        contextAfter,
+        voiceNotes: voiceNotes ?? "",
+      }),
+    },
+  ];
+
   try {
-    const openai = createTracedOpenAI(createBaseOpenAI(), {
-      traceName: "LineRoom",
-      generationName: "lyric-critique",
-      tags: ["lineroom", "critique"],
-    });
-    const completion = await openai.chat.completions.create({
-      model: getChatModel(),
-      messages: [
-        { role: "system", content: CRITIQUE_SYSTEM },
-        {
-          role: "user",
-          content: buildCritiqueUserPrompt({
-            fullText,
-            selectedText,
-            contextBefore,
-            contextAfter,
-            voiceNotes: voiceNotes ?? "",
-          }),
+    return await runWithLangfuseTrace(
+      {
+        traceName: "LineRoom",
+        rootObservationName: "lineroom-critique",
+        tags: ["lineroom", "critique"],
+        langfuseConfig: {
+          traceName: "LineRoom",
+          generationName: "lyric-critique",
+          tags: ["lineroom", "critique"],
         },
-      ],
-      response_format: { type: "json_object" },
-    });
+      },
+      async ({ createTracedOpenAI, setTraceIO }) => {
+        const openai = createTracedOpenAI(createBaseOpenAI());
+        const completion = await openai.chat.completions.create({
+          model: getChatModel(),
+          messages,
+          response_format: { type: "json_object" },
+        });
 
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) {
-      return NextResponse.json(
-        { error: "Empty model response" },
-        { status: 502 },
-      );
-    }
+        const raw = completion.choices[0]?.message?.content;
+        if (!raw) {
+          return NextResponse.json(
+            { error: "Empty model response" },
+            { status: 502 },
+          );
+        }
 
-    let json: unknown;
-    try {
-      json = JSON.parse(raw);
-    } catch {
-      return NextResponse.json(
-        { error: "Model returned invalid JSON" },
-        { status: 502 },
-      );
-    }
+        let json: unknown;
+        try {
+          json = JSON.parse(raw);
+        } catch {
+          return NextResponse.json(
+            { error: "Model returned invalid JSON" },
+            { status: 502 },
+          );
+        }
 
-    const out = critiqueResponseSchema.safeParse(json);
-    if (!out.success) {
-      return NextResponse.json(
-        { error: "Response shape invalid", details: out.error.flatten() },
-        { status: 502 },
-      );
-    }
+        const out = critiqueResponseSchema.safeParse(json);
+        if (!out.success) {
+          return NextResponse.json(
+            { error: "Response shape invalid", details: out.error.flatten() },
+            { status: 502 },
+          );
+        }
 
-    return NextResponse.json(out.data);
+        setTraceIO({
+          input: { messages },
+          output: out.data,
+        });
+        return NextResponse.json(out.data);
+      },
+    );
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";
     if (message === "OPENAI_API_KEY is not set") {
