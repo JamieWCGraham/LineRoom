@@ -19,7 +19,7 @@ export const critiqueResultSchema = z.object({
 });
 
 export const critiqueRequestSchema = z.object({
-  fullText: z.string().min(1, "Lyrics are required"),
+  fullText: z.string().min(1, "Lyrics or poetry are required"),
   title: z.string(),
   similarArtists: z.string(),
   genre: z.string(),
@@ -27,6 +27,7 @@ export const critiqueRequestSchema = z.object({
 
 export const chatRequestSchema = z.object({
   fullText: z.string(),
+  pieceTitle: z.string().optional(),
   messages: z.array(chatMessageSchema).max(80),
   critique: critiqueResultSchema.optional(),
   critiqueMeta: z
@@ -36,4 +37,17 @@ export const chatRequestSchema = z.object({
       genre: z.string(),
     })
     .optional(),
+});
+
+export const critiqueMetaSchema = z.object({
+  title: z.string(),
+  similarArtists: z.string(),
+  genre: z.string(),
+});
+
+export const saveSongVersionPayloadSchema = z.object({
+  draft_text: z.string(),
+  chat_messages: z.array(chatMessageSchema).max(120),
+  critique: critiqueResultSchema.nullable(),
+  meta: critiqueMetaSchema,
 });

@@ -35,12 +35,12 @@ export default async function AccountPage({ searchParams }: Props) {
     <div className="mx-auto max-w-lg px-4 py-12">
       <h1 className="text-2xl font-semibold text-zinc-100">Account</h1>
       <p className="mt-2 text-sm text-zinc-500">
-        <Link href="/dashboard" className="text-zinc-400 underline">
+        <Link href="/" className="text-zinc-400 underline">
           Dashboard
         </Link>
         {" · "}
-        <Link href="/" className="text-zinc-400 underline">
-          Home
+        <Link href="/lineroom" className="text-zinc-400 underline">
+          LineRoom
         </Link>
       </p>
       {q.saved === "1" ? (

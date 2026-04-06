@@ -116,7 +116,7 @@ export function DraftEditor({
           onMouseMove={(e) => updateTooltip(e.clientX, e.clientY)}
           onMouseLeave={() => setTooltip(null)}
           className={`relative z-10 min-h-0 flex-1 overflow-auto ${TEXTAREA_CLASSES}`}
-          placeholder="Paste or write your full lyric draft…"
+          placeholder="Paste or write your full lyrics/poetry draft…"
           spellCheck
         />
       </div>

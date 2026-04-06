@@ -3,7 +3,6 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { signup, type AuthFormState } from "@/lib/auth/actions";
-import { OAuthButtons } from "@/components/auth/oauth-buttons";
 
 export function SignupForm() {
   const [state, formAction, pending] = useActionState<
@@ -12,7 +11,7 @@ export function SignupForm() {
   >(signup, undefined);
 
   return (
-    <div className="mx-auto w-full max-w-sm space-y-6">
+    <div className="w-full space-y-4">
       <form action={formAction} className="space-y-4">
         <div>
           <label htmlFor="email" className="mb-1 block text-sm text-zinc-400">
@@ -62,17 +61,6 @@ export function SignupForm() {
           {pending ? "Creating account…" : "Sign up"}
         </button>
       </form>
-
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-zinc-700" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-zinc-950 px-2 text-zinc-500">Or</span>
-        </div>
-      </div>
-
-      <OAuthButtons providers={["google"]} />
 
       <p className="text-center text-sm text-zinc-500">
         Already have an account?{" "}
