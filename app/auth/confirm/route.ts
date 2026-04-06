@@ -28,7 +28,7 @@ export async function GET(request: Request) {
           /* continue to dashboard */
         }
       }
-      return NextResponse.redirect(new URL("/dashboard", site));
+      return NextResponse.redirect(new URL("/", site));
     }
   }
 
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
           /* continue */
         }
       }
-      return NextResponse.redirect(new URL("/dashboard", site));
+      return NextResponse.redirect(new URL("/", site));
     }
   }
 

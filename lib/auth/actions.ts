@@ -45,7 +45,7 @@ export async function login(
 
   const user = await getAuthUser(supabase);
   if (user) await ensureProfile(supabase, user);
-  redirect("/dashboard");
+  redirect("/");
 }
 
 export async function signup(
@@ -72,7 +72,7 @@ export async function signup(
 
   if (data.user && data.session) {
     await ensureProfile(supabase, data.user);
-    redirect("/dashboard");
+    redirect("/");
   }
 
   return {

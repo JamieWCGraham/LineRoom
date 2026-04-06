@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AppBrandHero } from "@/components/app-brand";
 import { LoginForm } from "@/components/auth/login-form";
 
 type Props = {
@@ -10,14 +10,8 @@ export default async function LoginPage({ searchParams }: Props) {
 
   return (
     <div className="w-full max-w-md">
-      <h1 className="mb-2 text-center text-2xl font-semibold text-zinc-100">
-        Sign in
-      </h1>
-      <p className="mb-8 text-center text-sm text-zinc-500">
-        <Link href="/" className="text-zinc-400 underline hover:text-zinc-300">
-          ← Back to LineRoom
-        </Link>
-      </p>
+      <AppBrandHero />
+
       {q.error === "oauth_callback" ? (
         <p className="mb-4 rounded-lg border border-red-900/50 bg-red-950/40 px-3 py-2 text-center text-sm text-red-300">
           Could not complete sign-in. Try again.
@@ -38,7 +32,16 @@ export default async function LoginPage({ searchParams }: Props) {
           Check your email or sign in to continue.
         </p>
       ) : null}
-      <LoginForm />
+
+      <div className="rounded-2xl border border-zinc-800/90 bg-zinc-900/40 p-6 shadow-xl shadow-black/30 backdrop-blur-sm">
+        <h2 className="text-center text-lg font-semibold text-zinc-100">
+          Sign in
+        </h2>
+        <p className="mb-6 mt-1 text-center text-xs text-zinc-500">
+          Access your saved pieces and the LineRoom editor.
+        </p>
+        <LoginForm />
+      </div>
     </div>
   );
 }

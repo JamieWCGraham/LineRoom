@@ -11,12 +11,15 @@ import { chatRequestSchema } from "@/lib/validators";
 function formatCritiqueForChat(
   critique: CritiqueResult | undefined,
   meta: CritiqueMeta | undefined,
+  pieceTitle?: string,
 ): string | undefined {
   if (!critique) return undefined;
+  const title =
+    pieceTitle?.trim() || meta?.title?.trim() || "(untitled)";
   const header =
     meta ?
-      `Title: ${meta.title || "(untitled)"}\nGenre: ${meta.genre || "—"}\nReference artists: ${meta.similarArtists || "—"}\n`
-    : "";
+      `Title: ${title}\nGenre: ${meta.genre || "—"}\nReference (writers/artists): ${meta.similarArtists || "—"}\n`
+    : `Title: ${title}\n`;
   const strengths = critique.overallStrengths.map((s) => `- ${s}`).join("\n");
   const weaknesses = critique.overallWeaknesses
     .map((s) => `- ${s}`)
@@ -56,7 +59,8 @@ export async function POST(req: Request) {
     );
   }
 
-  const { fullText, messages, critique, critiqueMeta } = parsed.data;
+  const { fullText, pieceTitle, messages, critique, critiqueMeta } =
+    parsed.data;
   if (messages.length === 0) {
     return NextResponse.json(
       { error: "At least one message is required" },
@@ -74,7 +78,11 @@ export async function POST(req: Request) {
 
   scheduleLangfuseFlush();
 
-  const critiqueBlock = formatCritiqueForChat(critique, critiqueMeta);
+  const critiqueBlock = formatCritiqueForChat(
+    critique,
+    critiqueMeta,
+    pieceTitle,
+  );
 
   const openaiMessages = [
     {
