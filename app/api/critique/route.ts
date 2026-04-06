@@ -4,12 +4,11 @@ import {
   scheduleLangfuseFlush,
 } from "@/lib/langfuse-server";
 import { createBaseOpenAI, getChatModel } from "@/lib/openai";
-import { buildCritiqueUserPrompt, CRITIQUE_SYSTEM } from "@/lib/prompts";
-import { getSurroundingContext } from "@/lib/text";
 import {
-  critiqueRequestSchema,
-  critiqueResponseSchema,
-} from "@/lib/validators";
+  buildCritiqueUserPayload,
+  CRITIQUE_JSON_INSTRUCTIONS,
+} from "@/lib/prompts";
+import { critiqueRequestSchema, critiqueResultSchema } from "@/lib/validators";
 
 export async function POST(req: Request) {
   let body: unknown;
@@ -27,35 +26,10 @@ export async function POST(req: Request) {
     );
   }
 
-  const {
-    fullText,
-    selectedText,
-    voiceNotes,
-    contextBefore: bodyBefore,
-    contextAfter: bodyAfter,
-  } = parsed.data;
-
-  const computed = getSurroundingContext(fullText, selectedText);
-  const contextBefore =
-    bodyBefore && bodyBefore.length > 0 ? bodyBefore : computed.contextBefore;
-  const contextAfter =
-    bodyAfter && bodyAfter.length > 0 ? bodyAfter : computed.contextAfter;
-
   scheduleLangfuseFlush();
 
-  const messages = [
-    { role: "system" as const, content: CRITIQUE_SYSTEM },
-    {
-      role: "user" as const,
-      content: buildCritiqueUserPrompt({
-        fullText,
-        selectedText,
-        contextBefore,
-        contextAfter,
-        voiceNotes: voiceNotes ?? "",
-      }),
-    },
-  ];
+  const payload = parsed.data;
+  const userContent = buildCritiqueUserPayload(payload);
 
   try {
     return await runWithLangfuseTrace(
@@ -73,11 +47,14 @@ export async function POST(req: Request) {
         const openai = createTracedOpenAI(createBaseOpenAI());
         const completion = await openai.chat.completions.create({
           model: getChatModel(),
-          messages,
           response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: CRITIQUE_JSON_INSTRUCTIONS },
+            { role: "user", content: userContent },
+          ],
         });
 
-        const raw = completion.choices[0]?.message?.content;
+        const raw = completion.choices[0]?.message?.content?.trim();
         if (!raw) {
           return NextResponse.json(
             { error: "Empty model response" },
@@ -87,7 +64,7 @@ export async function POST(req: Request) {
 
         let json: unknown;
         try {
-          json = JSON.parse(raw);
+          json = JSON.parse(raw) as unknown;
         } catch {
           return NextResponse.json(
             { error: "Model returned invalid JSON" },
@@ -95,19 +72,19 @@ export async function POST(req: Request) {
           );
         }
 
-        const out = critiqueResponseSchema.safeParse(json);
-        if (!out.success) {
+        const validated = critiqueResultSchema.safeParse(json);
+        if (!validated.success) {
           return NextResponse.json(
-            { error: "Response shape invalid", details: out.error.flatten() },
+            { error: "Critique shape validation failed" },
             { status: 502 },
           );
         }
 
         setTraceIO({
-          input: { messages },
-          output: out.data,
+          input: { messages: payload },
+          output: validated.data,
         });
-        return NextResponse.json(out.data);
+        return NextResponse.json({ critique: validated.data });
       },
     );
   } catch (e) {

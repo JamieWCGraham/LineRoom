@@ -6,7 +6,8 @@ export function Header() {
           LineRoom
         </h1>
         <p className="mt-0.5 text-xs text-zinc-500">
-          Focused editing partner — refine what you already have.
+          Draft lyrics, generate a structured critique, then chat with your song
+          in full context.
         </p>
       </div>
     </header>

@@ -1,104 +1,69 @@
-import type { RewriteAction } from "./types";
+export const LYRIC_CHAT_SYSTEM = `You are a thoughtful songwriting collaborator. The user is working on lyrics shown below under "Current draft".
 
-export const REWRITE_SYSTEM = `You are an elite lyric editor helping a songwriter refine existing lyrics.
+You are in a chat: they want to talk through ideas, doubts, imagery, structure, and feeling—not receive a wall of generic praise.
 
-Your job is not to generate generic AI poetry.
-Your job is to preserve the writer's voice, emotional intent, and singability while improving the selected lines according to the requested edit goal.
+Guidelines:
+- Ground answers in their actual lines; quote or paraphrase briefly when helpful.
+- Be conversational, concise, and specific. Ask a clarifying question when it would help.
+- Do not rewrite their whole song unless they clearly ask for alternatives; prefer discussion, options, or small suggested phrases.
+- Respect their voice; avoid overwriting their style with polished AI-speak.
+- If they ask for critique, be honest and craft-focused like a trusted co-writer.
 
-Priorities:
-1. Preserve core meaning unless the instruction says otherwise.
-2. Avoid cliché, abstraction, and bland polished language.
-3. Prefer specific, vivid, human phrasing.
-4. Preserve line breaks and lyrical shape where possible.
-5. Do not explain the lyric inside the rewrite.
-6. Return distinct options rather than near-duplicates.`;
+The draft may update between messages; always treat the latest "Current draft" as source of truth.`;
 
-export function buildRewriteUserPrompt(params: {
-  fullText: string;
-  selectedText: string;
-  contextBefore: string;
-  contextAfter: string;
-  voiceNotes: string;
-  action: RewriteAction;
-  customInstruction: string;
-  n: number;
-}): string {
-  const {
-    fullText,
-    selectedText,
-    contextBefore,
-    contextAfter,
-    voiceNotes,
-    action,
-    customInstruction,
-    n,
-  } = params;
-  return `Full draft:
+export function buildLyricChatSystemPrompt(
+  fullText: string,
+  critiqueBlock?: string,
+): string {
+  const critiqueSection =
+    critiqueBlock?.trim() ?
+      `
+
+They already have a structured critique (below). Use it as shared context: agree, nuance, or update your take if the draft changed. Do not repeat the whole critique unless they ask.
+
+${critiqueBlock.trim()}
+`
+    : "";
+
+  return `${LYRIC_CHAT_SYSTEM}
+${critiqueSection}
+
+Current draft:
+---
 ${fullText}
-
-Selected text:
-${selectedText}
-
-Context before:
-${contextBefore}
-
-Context after:
-${contextAfter}
-
-Voice notes:
-${voiceNotes}
-
-Edit action:
-${action}
-
-Custom instruction:
-${customInstruction}
-
-Return exactly ${n} rewrite options as JSON with this shape only (no markdown):
-{"options":[{"label":"string","rationale":"string","text":"string"},...]}
-
-Important:
-- rewrite only the selected text
-- preserve emotional meaning unless explicitly asked otherwise
-- keep roughly similar length unless the action implies compression/expansion
-- keep the language lyrical and singable
-- make each option meaningfully distinct`;
+---`;
 }
 
-export const CRITIQUE_SYSTEM = `You are a world-class lyric editor.
-
-Provide concise, high-signal editorial feedback on selected lyrics.
-Be honest, direct, and useful.
-Do not flatter.
-Do not give academic literary analysis.
-Respond like a trusted collaborator focused on craft.`;
-
-export function buildCritiqueUserPrompt(params: {
+export function buildCritiqueUserPayload(input: {
   fullText: string;
-  selectedText: string;
-  contextBefore: string;
-  contextAfter: string;
-  voiceNotes: string;
+  title: string;
+  similarArtists: string;
+  genre: string;
 }): string {
-  const { fullText, selectedText, contextBefore, contextAfter, voiceNotes } =
-    params;
-  return `Full draft:
-${fullText}
+  return `Analyze these lyrics and produce your JSON response.
 
-Selected text:
-${selectedText}
+Piece title (user-provided): ${input.title || "(untitled)"}
+Genre (user-provided): ${input.genre || "(unspecified)"}
+Similar artists / lyrical reference (user-provided): ${input.similarArtists || "(none)"}
 
-Context before:
-${contextBefore}
-
-Context after:
-${contextAfter}
-
-Voice notes:
-${voiceNotes}
-
-Provide JSON only (no markdown) with this exact shape:
-{"strengths":["string",...],"weaknesses":["string",...],"strongestLine":"string or omit","weakestLine":"string or omit","clicheRisk":"string or omit","emotionalClarity":"string or omit","nextMove":"string or omit"}
-
-Include 3 to 5 strengths and 3 to 5 weaknesses.`;
+Lyrics (preserve line breaks; your quotedLine values must copy lines exactly from this block):
+---
+${input.fullText}
+---`;
 }
+
+export const CRITIQUE_JSON_INSTRUCTIONS = `You are an expert lyricist and songwriting coach. Respond with a single JSON object only (no markdown fences), using this exact shape:
+{
+  "genrePrinciples": string,
+  "score": number,
+  "overallStrengths": string[],
+  "overallWeaknesses": string[],
+  "lineFeedback": { "quotedLine": string, "feedback": string }[]
+}
+
+Requirements:
+- "genrePrinciples": Several short paragraphs explaining what separates strong from weak lyrics in THIS genre (use the user-provided genre and reference points). Be specific and craft-focused, not generic.
+- "score": A number from 0 to 10 (decimals allowed) for how well the lyrics satisfy those principles overall.
+- "overallStrengths" / "overallWeaknesses": Each array has concise bullet-level strings about the whole piece (not single lines).
+- "lineFeedback": 6–20 items when the draft has enough lines; fewer if the draft is very short. Each "quotedLine" MUST be copied exactly from one line of the user lyrics (same characters, including leading/trailing spaces if any). One line may appear more than once if needed. Each "feedback" is detailed, constructive line-level critique.
+- Do not include any keys other than those five.`;

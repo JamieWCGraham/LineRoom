@@ -1,16 +1,15 @@
 # LineRoom
 
-Cursor-like lyric assistant: a focused AI editing partner (not a chatbot). This MVP is a **Next.js** app meant to deploy on **Vercel** with **serverless API routes**, **client-side state**, and **localStorage** autosave.
+Lyric workspace: **draft** and **chat about the full draft** (“talk to your lyrics”).
+
+This MVP is a **Next.js** app meant to deploy on **Vercel** with **serverless API routes**, **client-side state**, and **localStorage** autosave.
 
 ## Features
 
-- Three-panel layout on desktop (draft, actions, suggestions + critique); stacks on small screens.
-- Main draft editor plus a separate **Selected text** field (no dependency on native selection APIs).
-- `POST /api/rewrite` — 3–5 structured options (label, rationale, text) for the chosen edit action.
-- `POST /api/critique` — strengths, weaknesses, line callouts, cliché/emotional notes, next move.
-- Apply flows: **Replace selection** (first exact match), **Insert below**, **Copy**; warning if the selection does not appear verbatim in the draft.
-- **Regenerate** re-runs rewrite with the same inputs.
-- Autosave: draft, voice notes, and selected text in `localStorage`.
+- Two-column layout on desktop (draft, chat); stacks on small screens.
+- Main **draft** editor.
+- **Talk to your lyrics** — conversational panel backed by `POST /api/chat` (full draft injected each turn so edits stay in sync).
+- Autosave: draft and chat history in `localStorage`.
 
 ## Setup
 
@@ -36,7 +35,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ### Langfuse
 
-When both Langfuse keys are set, OpenAI calls from `/api/rewrite` and `/api/critique` are wrapped with [`observeOpenAI`](https://langfuse.com/docs/integrations/openai/js/get-started) and exported via OpenTelemetry (`LangfuseSpanProcessor`, `exportMode: "immediate"`). Each route schedules `after(() => forceFlush())` so traces flush on Vercel serverless. Without keys, behavior is unchanged and no Langfuse code paths run.
+When both Langfuse keys are set, OpenAI calls from `/api/chat` are wrapped with [`observeOpenAI`](https://langfuse.com/docs/integrations/openai/js/get-started) and exported via OpenTelemetry (`LangfuseSpanProcessor`, `exportMode: "immediate"`). Each route schedules `after(() => forceFlush())` so traces flush on Vercel serverless. Without keys, behavior is unchanged and no Langfuse code paths run.
 
 Requires **Node.js 20+** (for `@langfuse/otel`). Set the same variables in Vercel for production traces.
 
@@ -49,11 +48,11 @@ Requires **Node.js 20+** (for `@langfuse/otel`). Set the same variables in Verce
 ## Project layout
 
 - `app/page.tsx` — client UI and state.
-- `app/api/rewrite/route.ts`, `app/api/critique/route.ts` — route handlers.
+- `app/api/chat/route.ts` — chat route handler.
 - `instrumentation.ts` — registers Langfuse OpenTelemetry on the Node runtime when configured.
 - `lib/langfuse-server.ts` — Langfuse span processor, `observeOpenAI` wrapper, `after` flush for serverless.
-- `components/` — `DraftEditor`, `ActionPanel`, `SuggestionCard`, `CritiquePanel`, `Header`.
-- `lib/` — types, Zod validators, prompts, OpenAI client, text helpers.
+- `components/` — `DraftEditor`, `LyricChatPanel`, `Header`.
+- `lib/` — types, Zod validators, prompts, OpenAI client.
 
 ## Non-goals (MVP)
 

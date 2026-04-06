@@ -10,7 +10,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "LineRoom — Lyric editor",
   description:
-    "A Cursor-like lyric assistant: targeted rewrites and critique, not generic generation.",
+    "Draft lyrics and chat through your song with the full draft in context.",
 };
 
 export default function RootLayout({
