@@ -5,6 +5,7 @@ import type { ChatMessage, CritiqueMeta, CritiqueResult } from "@/lib/types";
 
 type Props = {
   fullText: string;
+  pieceTitle: string;
   messages: ChatMessage[];
   onMessagesChange: (next: ChatMessage[]) => void;
   critique: CritiqueResult;
@@ -14,6 +15,7 @@ type Props = {
 
 export function LyricChatPanel({
   fullText,
+  pieceTitle,
   messages,
   onMessagesChange,
   critique,
@@ -46,6 +48,7 @@ export function LyricChatPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fullText,
+          pieceTitle,
           messages: nextHistory,
           critique,
           critiqueMeta,
@@ -82,7 +85,7 @@ export function LyricChatPanel({
     <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-zinc-800 bg-zinc-900/30">
       <div className="border-b border-zinc-800/80 px-3 py-2">
         <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-          Chat with your lyrics
+          Chat about your lyrics/poetry
         </h2>
         <p className="mt-0.5 text-[11px] leading-snug text-zinc-600">
           Ask follow-ups; replies use your latest draft and saved critique.
@@ -92,19 +95,10 @@ export function LyricChatPanel({
             Piece context (for regenerate)
           </summary>
           <div className="mt-2 space-y-2 pb-1">
-            <input
-              type="text"
-              value={critiqueMeta.title}
-              onChange={(e) =>
-                onCritiqueMetaChange({
-                  ...critiqueMeta,
-                  title: e.target.value,
-                })
-              }
-              disabled={loading}
-              className="w-full rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:opacity-50"
-              placeholder="Title"
-            />
+            <p className="text-[11px] text-zinc-500">
+              <span className="font-medium text-zinc-400">Title:</span>{" "}
+              {pieceTitle.trim() || "Untitled piece"}
+            </p>
             <input
               type="text"
               value={critiqueMeta.genre}
@@ -129,7 +123,7 @@ export function LyricChatPanel({
               disabled={loading}
               rows={2}
               className="w-full resize-y rounded border border-zinc-800 bg-zinc-900/60 p-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:opacity-50"
-              placeholder="Similar artists / lyrical style"
+              placeholder="Similar writers / voice (lyrics or poetry)"
             />
           </div>
         </details>

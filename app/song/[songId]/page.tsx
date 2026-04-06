@@ -1,0 +1,69 @@
+import { notFound } from "next/navigation";
+import { LineRoomEditor } from "@/components/LineRoomEditor";
+import { requireAuthUser } from "@/lib/auth/guards";
+import { versionStateFromRow } from "@/lib/songs/versionState";
+import { createClient } from "@/lib/supabase/server";
+import type { SongRow, SongVersionRow } from "@/types/database";
+
+type Props = {
+  params: Promise<{ songId: string }>;
+  searchParams: Promise<{ v?: string }>;
+};
+
+export default async function SongPage({ params, searchParams }: Props) {
+  const { songId } = await params;
+  const q = await searchParams;
+
+  const supabase = await createClient();
+  const user = await requireAuthUser(supabase);
+
+  const { data: song, error: songError } = await supabase
+    .from("songs")
+    .select("id, user_id, title, created_at, updated_at")
+    .eq("id", songId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (songError || !song) notFound();
+
+  const { data: versionRows, error: versionsError } = await supabase
+    .from("song_versions")
+    .select(
+      "id, song_id, version_number, draft_text, chat_messages, critique, meta, created_at",
+    )
+    .eq("song_id", songId)
+    .order("version_number", { ascending: true });
+
+  if (versionsError || !versionRows?.length) notFound();
+
+  const typedSong = song as SongRow;
+  const versions = versionRows as SongVersionRow[];
+
+  let activeRow = versions[versions.length - 1]!;
+  if (q.v) {
+    const found = versions.find((r) => r.id === q.v);
+    if (found) activeRow = found;
+  }
+
+  const vs = versionStateFromRow(activeRow);
+  const versionSummaries = versions.map((r) => ({
+    id: r.id,
+    versionNumber: r.version_number,
+    createdAt: r.created_at,
+  }));
+
+  return (
+    <LineRoomEditor
+      key={activeRow.id}
+      mode="song"
+      songId={typedSong.id}
+      songTitle={typedSong.title}
+      versions={versionSummaries}
+      activeVersionId={activeRow.id}
+      initialDraftText={vs.draftText}
+      initialChatMessages={vs.chatMessages}
+      initialCritique={vs.critique}
+      initialMeta={vs.meta}
+    />
+  );
+}

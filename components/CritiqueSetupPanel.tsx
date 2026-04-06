@@ -1,10 +1,8 @@
 "use client";
 
 type Props = {
-  title: string;
   similarArtists: string;
   genre: string;
-  onTitleChange: (v: string) => void;
   onSimilarArtistsChange: (v: string) => void;
   onGenreChange: (v: string) => void;
   onGenerate: () => void;
@@ -14,10 +12,8 @@ type Props = {
 };
 
 export function CritiqueSetupPanel({
-  title,
   similarArtists,
   genre,
-  onTitleChange,
   onSimilarArtistsChange,
   onGenreChange,
   onGenerate,
@@ -40,21 +36,7 @@ export function CritiqueSetupPanel({
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
         <label className="block">
           <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-            What is the title of the piece?
-          </span>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => onTitleChange(e.target.value)}
-            disabled={loading}
-            className="w-full rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:opacity-50"
-            placeholder="Working title…"
-          />
-        </label>
-
-        <label className="block">
-          <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-            What are some similar artists close to this lyrical style?
+            What writers or artists are close to this voice (lyrics/poetry)?
           </span>
           <textarea
             value={similarArtists}
@@ -76,7 +58,7 @@ export function CritiqueSetupPanel({
             onChange={(e) => onGenreChange(e.target.value)}
             disabled={loading}
             className="w-full rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:opacity-50"
-            placeholder="e.g. indie folk, UK drill, musical theatre…"
+            placeholder="e.g. indie folk, spoken word, sonnet, UK drill…"
           />
         </label>
       </div>
@@ -101,7 +83,7 @@ export function CritiqueSetupPanel({
         </button>
         {lyricsEmpty ? (
           <p className="mt-2 text-center text-[11px] text-zinc-600">
-            Paste lyrics in the draft to enable critique.
+            Add lyrics or poetry in the draft to enable critique.
           </p>
         ) : null}
       </div>

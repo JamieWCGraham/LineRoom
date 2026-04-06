@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { APP_TAGLINE } from "@/components/app-brand";
 import "./globals.css";
 
 const inter = Inter({
@@ -8,9 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "LineRoom — Lyric editor",
-  description:
-    "Draft lyrics and chat through your song with the full draft in context.",
+  title: "LineRoom — Lyrics & poetry workspace",
+  description: APP_TAGLINE,
 };
 
 export default function RootLayout({
