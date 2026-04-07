@@ -118,7 +118,6 @@ export async function POST(req: Request) {
           model: getChatModel(),
           messages: openaiMessages,
         });
-
         const reply = completion.choices[0]?.message?.content?.trim();
         if (!reply) {
           return NextResponse.json(
