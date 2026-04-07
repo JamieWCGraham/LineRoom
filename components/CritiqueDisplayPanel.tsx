@@ -1,6 +1,20 @@
 "use client";
 
+import { useState } from "react";
 import type { CritiqueResult } from "@/lib/types";
+
+const DIMENSION_LABELS: Array<{
+  key: keyof CritiqueResult["subscores"];
+  label: string;
+}> = [
+  { key: "emotional_impact", label: "emotional impact" },
+  { key: "imagery_specificity", label: "imagery specificity" },
+  { key: "originality_voice", label: "originality and voice" },
+  { key: "prosody_singability", label: "prosody and singability" },
+  { key: "structure_cohesion", label: "structure and cohesion" },
+  { key: "lyrical_economy", label: "lyrical economy" },
+  { key: "hook_strength", label: "hook strength" },
+];
 
 type Props = {
   critique: CritiqueResult | null;
@@ -15,6 +29,16 @@ export function CritiqueDisplayPanel({
   onRegenerate,
   lyricsEmpty,
 }: Props) {
+  const [showFullGenrePrinciples, setShowFullGenrePrinciples] = useState(false);
+  const genrePrinciplesText = critique?.genrePrinciples ?? "";
+  const genrePrinciplesMaxChars = 420;
+  const genrePrinciplesIsLong =
+    genrePrinciplesText.length > genrePrinciplesMaxChars;
+  const visibleGenrePrinciples =
+    !genrePrinciplesIsLong || showFullGenrePrinciples ?
+      genrePrinciplesText
+    : `${genrePrinciplesText.slice(0, genrePrinciplesMaxChars).trimEnd()}...`;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-zinc-800 bg-zinc-900/30">
       <div className="border-b border-zinc-800/80 px-3 py-2">
@@ -22,8 +46,8 @@ export function CritiqueDisplayPanel({
           Critique
         </h2>
         <p className="mt-0.5 text-[11px] leading-snug text-zinc-600">
-          Saved after generation. Line notes below match amber highlights in the
-          draft (hover there for the same detail).
+          Saved after generation. Line notes below match green/red highlights in
+          the draft (hover there for the same detail).
         </p>
       </div>
 
@@ -43,15 +67,34 @@ export function CritiqueDisplayPanel({
           <div className="space-y-5 text-sm">
             <div>
               <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-                Score
+                Overall rating
               </p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums text-amber-200/95">
-                {critique.score}
-                <span className="text-base font-normal text-zinc-500">
-                  {" "}
-                  / 10
-                </span>
+              <p className="mt-1 text-2xl font-semibold text-amber-200/95">
+                {critique.overallRatingBand}
               </p>
+              {critique.overallBandRationale ? (
+                <p className="mt-1 leading-relaxed text-zinc-400">
+                  {critique.overallBandRationale}
+                </p>
+              ) : null}
+            </div>
+
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+                Subscores
+              </p>
+              <ul className="mt-1 space-y-1.5 text-zinc-300">
+                {DIMENSION_LABELS.map(({ key, label }) => (
+                  <li key={key} className="flex items-center justify-between gap-3">
+                    <span className="text-zinc-400">
+                      {label}
+                    </span>
+                    <span className="font-medium tabular-nums text-amber-100/95">
+                      {critique.subscores[key]}/5
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
 
             <div>
@@ -59,8 +102,17 @@ export function CritiqueDisplayPanel({
                 Genre principles
               </p>
               <p className="mt-1 whitespace-pre-wrap leading-relaxed text-zinc-300">
-                {critique.genrePrinciples}
+                {visibleGenrePrinciples}
               </p>
+              {genrePrinciplesIsLong ? (
+                <button
+                  type="button"
+                  onClick={() => setShowFullGenrePrinciples((v) => !v)}
+                  className="mt-2 text-xs font-medium text-amber-300/90 hover:text-amber-200"
+                >
+                  {showFullGenrePrinciples ? "See less" : "See more"}
+                </button>
+              ) : null}
             </div>
 
             <div>
@@ -92,8 +144,23 @@ export function CritiqueDisplayPanel({
               <ul className="mt-2 space-y-3 border-t border-zinc-800/80 pt-3">
                 {critique.lineFeedback.map((item, i) => (
                   <li key={i} className="list-none">
-                    <p className="border-l-2 border-amber-800/60 pl-2 font-mono text-[13px] leading-snug text-amber-100/90">
+                    <p
+                      className={
+                        item.category === "praise" ?
+                          "border-l-2 border-green-800/70 pl-2 font-mono text-[13px] leading-snug text-green-100/90"
+                        : "border-l-2 border-red-800/70 pl-2 font-mono text-[13px] leading-snug text-red-100/90"
+                      }
+                    >
                       {item.quotedLine || "—"}
+                    </p>
+                    <p
+                      className={
+                        item.category === "praise" ?
+                          "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-green-300/80"
+                        : "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-red-300/80"
+                      }
+                    >
+                      {item.category === "praise" ? "Praise" : "Constructive"}
                     </p>
                     <p className="mt-1.5 pl-2 text-[13px] leading-relaxed text-zinc-400">
                       {item.feedback}

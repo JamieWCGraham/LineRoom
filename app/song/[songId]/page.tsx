@@ -17,22 +17,24 @@ export default async function SongPage({ params, searchParams }: Props) {
   const supabase = await createClient();
   const user = await requireAuthUser(supabase);
 
-  const { data: song, error: songError } = await supabase
-    .from("songs")
-    .select("id, user_id, title, created_at, updated_at")
-    .eq("id", songId)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const [{ data: song, error: songError }, { data: versionRows, error: versionsError }] =
+    await Promise.all([
+      supabase
+        .from("songs")
+        .select("id, user_id, title, created_at, updated_at")
+        .eq("id", songId)
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("song_versions")
+        .select(
+          "id, song_id, version_number, draft_text, chat_messages, critique, meta, created_at",
+        )
+        .eq("song_id", songId)
+        .order("version_number", { ascending: true }),
+    ]);
 
   if (songError || !song) notFound();
-
-  const { data: versionRows, error: versionsError } = await supabase
-    .from("song_versions")
-    .select(
-      "id, song_id, version_number, draft_text, chat_messages, critique, meta, created_at",
-    )
-    .eq("song_id", songId)
-    .order("version_number", { ascending: true });
 
   if (versionsError || !versionRows?.length) notFound();
 

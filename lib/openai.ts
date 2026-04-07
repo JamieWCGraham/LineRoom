@@ -9,5 +9,5 @@ export function createBaseOpenAI(): OpenAI {
 }
 
 export function getChatModel(): string {
-  return process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
+  return process.env.OPENAI_MODEL?.trim() || "gpt-5-mini";
 }

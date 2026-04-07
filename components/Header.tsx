@@ -1,7 +1,18 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { APP_TAGLINE } from "@/components/app-brand";
 
 export function Header(props: { showDashboardLink?: boolean }) {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!props.showDashboardLink) return;
+    router.prefetch("/");
+  }, [props.showDashboardLink, router]);
+
   return (
     <header className="shrink-0 border-b border-zinc-800/80 bg-zinc-950/90 px-4 py-3 backdrop-blur-sm">
       <div className="mx-auto flex max-w-[1920px] flex-wrap items-start justify-between gap-3">
@@ -14,6 +25,7 @@ export function Header(props: { showDashboardLink?: boolean }) {
         {props.showDashboardLink ?
           <Link
             href="/"
+            prefetch
             className="shrink-0 text-sm text-zinc-400 underline-offset-4 hover:text-zinc-200 hover:underline"
           >
             Dashboard
