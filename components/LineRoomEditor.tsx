@@ -405,7 +405,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
         </div>
       </div>
       <main className="mx-auto flex min-h-0 w-full max-w-[1920px] flex-1 flex-col overflow-hidden gap-6 p-4 pb-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(260px,360px)_minmax(260px,380px)] lg:gap-5 lg:p-6 lg:pb-6">
-        <section className={`${mobilePane === "draft" ? "flex" : "hidden"} min-h-0 min-w-0 flex-1 flex-col gap-2 lg:flex`}>
+        <section className={`${mobilePane === "draft" ? "flex" : "hidden"} min-h-[52dvh] min-w-0 flex-1 flex-col gap-2 lg:min-h-0 lg:flex`}>
           <DraftEditor
             value={fullText}
             onChange={setFullText}
@@ -413,7 +413,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           />
         </section>
 
-        <section className={`${mobilePane === "chat" ? "flex" : "hidden"} min-h-0 flex-col border-t border-zinc-800/80 pt-4 lg:flex lg:border-l lg:border-t-0 lg:border-zinc-800/80 lg:pl-5 lg:pt-0`}>
+        <section className={`${mobilePane === "chat" ? "flex" : "hidden"} min-h-[52dvh] flex-col border-t border-zinc-800/80 pt-4 lg:min-h-0 lg:flex lg:border-l lg:border-t-0 lg:border-zinc-800/80 lg:pl-5 lg:pt-0`}>
           {critique ?
             <LyricChatPanel
               fullText={fullText}
@@ -439,7 +439,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           }
         </section>
 
-        <section className={`${mobilePane === "critique" ? "flex" : "hidden"} min-h-0 flex-col border-t border-zinc-800/80 pt-4 lg:flex lg:border-l lg:border-t-0 lg:border-zinc-800/80 lg:pl-5 lg:pt-0`}>
+        <section className={`${mobilePane === "critique" ? "flex" : "hidden"} min-h-[52dvh] flex-col border-t border-zinc-800/80 pt-4 lg:min-h-0 lg:flex lg:border-l lg:border-t-0 lg:border-zinc-800/80 lg:pl-5 lg:pt-0`}>
           <CritiqueDisplayPanel
             critique={critique}
             loading={critiqueLoading}

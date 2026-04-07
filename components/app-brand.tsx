@@ -1,6 +1,6 @@
 /** Single source for product description (login, dashboard, editor header). */
 export const APP_TAGLINE =
-  "LineRoom is a modern Cursor-style workspace for songwriters and poets to write and refine songs and poems in real time.";
+  "LineRoom is a modern workspace for songwriters to draft, shape, and refine lyrics in real time.";
 
 export function AppBrandHero() {
   return (
