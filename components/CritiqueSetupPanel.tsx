@@ -22,8 +22,8 @@ export function CritiqueSetupPanel({
   lyricsEmpty,
 }: Props) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-zinc-800 bg-zinc-900/30">
-      <div className="border-b border-zinc-800/80 px-3 py-2">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/30">
+      <div className="shrink-0 border-b border-zinc-800/80 px-3 py-2">
         <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
           Before the critique
         </h2>
@@ -36,7 +36,7 @@ export function CritiqueSetupPanel({
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
         <label className="block">
           <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-            What writers or artists are close to this voice (lyrics/poetry)?
+           Who are the closest artists/influences for this piece?
           </span>
           <textarea
             value={similarArtists}
@@ -65,14 +65,14 @@ export function CritiqueSetupPanel({
 
       {error ? (
         <div
-          className="mx-3 mb-2 rounded-lg border border-rose-900/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200"
+          className="mx-3 mb-2 shrink-0 rounded-lg border border-rose-900/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200"
           role="alert"
         >
           {error}
         </div>
       ) : null}
 
-      <div className="border-t border-zinc-800/80 p-3">
+      <div className="shrink-0 border-t border-zinc-800/80 p-3">
         <button
           type="button"
           onClick={onGenerate}

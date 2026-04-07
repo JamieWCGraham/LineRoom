@@ -40,8 +40,8 @@ export function CritiqueDisplayPanel({
     : `${genrePrinciplesText.slice(0, genrePrinciplesMaxChars).trimEnd()}...`;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-zinc-800 bg-zinc-900/30">
-      <div className="border-b border-zinc-800/80 px-3 py-2">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/30">
+      <div className="shrink-0 border-b border-zinc-800/80 px-3 py-2">
         <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
           Critique
         </h2>
@@ -55,7 +55,7 @@ export function CritiqueDisplayPanel({
         {!critique && !loading ? (
           <p className="text-center text-sm leading-relaxed text-zinc-600">
             Your critique will appear here after you click{" "}
-            <span className="text-zinc-500">Generate Critique</span>.
+            <span className="text-zinc-500">Generate Critique</span> in the Chat panel.
           </p>
         ) : null}
 
@@ -177,7 +177,7 @@ export function CritiqueDisplayPanel({
         ) : null}
       </div>
 
-      <div className="border-t border-zinc-800/80 p-3">
+      <div className="shrink-0 border-t border-zinc-800/80 p-3">
         <button
           type="button"
           onClick={onRegenerate}
