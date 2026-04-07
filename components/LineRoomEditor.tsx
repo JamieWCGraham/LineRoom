@@ -1,7 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { CritiqueDisplayPanel } from "@/components/CritiqueDisplayPanel";
 import { CritiqueSetupPanel } from "@/components/CritiqueSetupPanel";
 import { DraftEditor } from "@/components/DraftEditor";
@@ -13,10 +20,16 @@ import {
   type LineAnnotation,
 } from "@/lib/lineAnnotations";
 import {
+  deleteSongVersion,
   saveNewSongVersion,
   updateSongVersionState,
 } from "@/lib/songs/actions";
-import type { ChatMessage, CritiqueMeta, CritiqueResult } from "@/lib/types";
+import type {
+  ChatMessage,
+  CritiqueMeta,
+  CritiqueResult,
+  PriorVersionContext,
+} from "@/lib/types";
 import { critiqueResultSchema } from "@/lib/validators";
 
 const LS_DRAFT = "lineroom_draft";
@@ -58,6 +71,8 @@ type SongProps = {
   songId: string;
   songTitle: string;
   versions: Array<{ id: string; versionNumber: number; createdAt: string }>;
+  priorVersionsContext: PriorVersionContext[];
+  activeVersionNumber: number;
   activeVersionId: string;
   initialDraftText: string;
   initialChatMessages: ChatMessage[];
@@ -78,6 +93,11 @@ function SongVersionBar(props: {
   onSaveVersion: () => void;
   savePending: boolean;
   saveError: string | null;
+  onDeleteVersion: () => void;
+  deleteVersionPending: boolean;
+  deleteVersionError: string | null;
+  canDeleteActiveVersion: boolean;
+  editorBusy: boolean;
 }) {
   const active = props.versions.find((v) => v.id === props.activeVersionId);
   return (
@@ -101,7 +121,12 @@ function SongVersionBar(props: {
             <select
               value={props.activeVersionId}
               onChange={(e) => props.onSelectVersion(e.target.value)}
-              className="rounded-md border border-zinc-800 bg-zinc-900/70 px-2 py-1 text-xs text-zinc-100 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25"
+              disabled={
+                props.deleteVersionPending ||
+                props.savePending ||
+                props.editorBusy
+              }
+              className="rounded-md border border-zinc-800 bg-zinc-900/70 px-2 py-1 text-xs text-zinc-100 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {props.versions
                 .slice()
@@ -116,16 +141,35 @@ function SongVersionBar(props: {
           <button
             type="button"
             onClick={props.onSaveVersion}
-            disabled={props.savePending}
+            disabled={props.savePending || props.deleteVersionPending || props.editorBusy}
+            title="Save draft, chat, and critique to the selected version. Does not create a new version."
             className="shrink-0 rounded-lg bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
           >
-            {props.savePending ? "Saving…" : "Save version"}
+            {props.savePending ? "Saving…" : "Save"}
+          </button>
+          <button
+            type="button"
+            onClick={props.onDeleteVersion}
+            disabled={
+              !props.canDeleteActiveVersion ||
+              props.deleteVersionPending ||
+              props.savePending ||
+              props.editorBusy
+            }
+            className="shrink-0 rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-1.5 text-xs font-medium text-red-200/95 transition hover:border-red-800/60 hover:bg-red-950/50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {props.deleteVersionPending ? "Deleting…" : "Delete version"}
           </button>
         </div>
       </div>
       {props.saveError ?
         <p className="mx-auto mt-2 max-w-[1920px] text-xs text-red-400">
           {props.saveError}
+        </p>
+      : null}
+      {props.deleteVersionError ?
+        <p className="mx-auto mt-2 max-w-[1920px] text-xs text-red-400">
+          {props.deleteVersionError}
         </p>
       : null}
     </div>
@@ -154,13 +198,47 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   const [critiqueLoading, setCritiqueLoading] = useState(false);
   const [critiqueError, setCritiqueError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [deleteVersionError, setDeleteVersionError] = useState<string | null>(
+    null,
+  );
   const [savePending, startSaveTransition] = useTransition();
+  const [deleteVersionPending, startDeleteVersionTransition] = useTransition();
   const [autosaveError, setAutosaveError] = useState<string | null>(null);
   const [mobilePane, setMobilePane] = useState<MobilePane>("draft");
 
   const songId = isSong ? props.songId : null;
   const songTitleFromProps = props.mode === "song" ? props.songTitle : null;
   const activeVersionId = props.mode === "song" ? props.activeVersionId : null;
+
+  /** Keeps latest row id for races with in-flight autosave. */
+  const activeVersionIdRef = useRef<string | null>(null);
+  /**
+   * When true, autosave must not UPDATE any version row (prevents clobbering the
+   * previous snapshot after saveNewSongVersion inserts a new row).
+   */
+  const versionRowPersistLockRef = useRef(false);
+
+  useEffect(() => {
+    activeVersionIdRef.current = activeVersionId;
+  }, [activeVersionId]);
+  const priorVersionsContext = useMemo(
+    () => (props.mode === "song" ? props.priorVersionsContext : []),
+    [props],
+  );
+
+  const songCritiqueSource = useMemo(
+    () =>
+      props.mode === "song" ?
+        {
+          activeVersionNumber: props.activeVersionNumber,
+          initialDraftText: props.initialDraftText,
+          initialCritique: props.initialCritique,
+        }
+      : null,
+    [
+      props,
+    ],
+  );
 
   useEffect(() => {
     if (songTitleFromProps === null) return;
@@ -275,20 +353,34 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   const persistSongState = useCallback(
     async (nextCritique?: CritiqueResult | null) => {
       if (!isSong) return;
-      const versionId = activeVersionId;
-      if (!songId || !versionId) return;
+      if (versionRowPersistLockRef.current) return;
+      const versionIdAtStart = activeVersionIdRef.current;
+      if (!songId || !versionIdAtStart) return;
       setAutosaveError(null);
-      const result = await updateSongVersionState(songId, versionId, {
+      const payload = {
         draft_text: fullText,
         chat_messages: chatMessages,
         critique: nextCritique === undefined ? critique : nextCritique,
         meta,
-      });
+      };
+      if (versionRowPersistLockRef.current) return;
+      if (activeVersionIdRef.current !== versionIdAtStart) return;
+      const result = await updateSongVersionState(
+        songId,
+        versionIdAtStart,
+        payload,
+      );
+      if (
+        versionRowPersistLockRef.current ||
+        activeVersionIdRef.current !== versionIdAtStart
+      ) {
+        return;
+      }
       if (!result.ok) {
         setAutosaveError(result.message);
       }
     },
-    [activeVersionId, chatMessages, critique, fullText, isSong, meta, songId],
+    [chatMessages, critique, fullText, isSong, meta, songId],
   );
 
   useEffect(() => {
@@ -301,49 +393,165 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     return () => clearTimeout(t);
   }, [autosavePayload, isSong, persistSongState]);
 
-  const runCritique = useCallback(async () => {
-    if (!fullText.trim()) return;
-    setCritiqueError(null);
-    setCritiqueLoading(true);
-    try {
-      const res = await fetch("/api/critique", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullText,
-          title: pieceTitle,
-          similarArtists: meta.similarArtists,
-          genre: meta.genre,
-        }),
-      });
-      const data = (await res.json().catch(() => ({}))) as {
-        error?: string;
-        critique?: CritiqueResult;
-      };
-      if (!res.ok) {
-        setCritiqueError(
-          typeof data.error === "string" ? data.error : "Critique failed.",
-        );
+  const runCritique = useCallback(
+    async (options?: { regenerate?: boolean }) => {
+      const regenerate = options?.regenerate ?? false;
+      if (!fullText.trim()) return;
+      const priorCritiqueForPayload =
+        regenerate && critique ? critique : undefined;
+
+      const priorVersionsPayload =
+        isSong && songCritiqueSource ?
+          priorVersionsContext.length > 0 ?
+            priorVersionsContext
+          : regenerate ?
+            [
+              {
+                versionNumber: songCritiqueSource.activeVersionNumber,
+                draftText: songCritiqueSource.initialDraftText,
+                critique: songCritiqueSource.initialCritique,
+              },
+            ]
+          : []
+        : [];
+
+      const analyzedSongVersion =
+        isSong && songCritiqueSource ?
+          songCritiqueSource.activeVersionNumber
+        : undefined;
+      const priorSongVersionCompared =
+        isSong ?
+          priorVersionsContext.length > 0 ?
+            priorVersionsContext[0]!.versionNumber
+          : null
+        : undefined;
+
+      setCritiqueError(null);
+      setSaveError(null);
+      setCritiqueLoading(true);
+      try {
+        const res = await fetch("/api/critique", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fullText,
+            title: pieceTitle,
+            similarArtists: meta.similarArtists,
+            genre: meta.genre,
+            priorVersions: priorVersionsPayload,
+            regenerate: regenerate || undefined,
+            priorCritique: priorCritiqueForPayload,
+            analyzedSongVersion,
+            priorSongVersionCompared,
+          }),
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          critique?: CritiqueResult;
+        };
+        if (!res.ok) {
+          setCritiqueError(
+            typeof data.error === "string" ? data.error : "Critique failed.",
+          );
+          return;
+        }
+        if (!data.critique) {
+          setCritiqueError("Missing critique in response.");
+          return;
+        }
+
+        const nextCritique = data.critique;
+        setCritique(nextCritique);
+
+        if (isSong && songId && activeVersionId) {
+          versionRowPersistLockRef.current = true;
+          const payload = {
+            draft_text: fullText,
+            chat_messages: chatMessages,
+            critique: nextCritique,
+            meta,
+          };
+          const saveCurrentResult = await updateSongVersionState(
+            songId,
+            activeVersionId,
+            payload,
+          );
+          if (!saveCurrentResult.ok) {
+            versionRowPersistLockRef.current = false;
+            setSaveError(saveCurrentResult.message);
+            return;
+          }
+          const bumpResult = await saveNewSongVersion(songId, payload);
+          if (!bumpResult.ok) {
+            versionRowPersistLockRef.current = false;
+            setSaveError(bumpResult.message);
+            return;
+          }
+          router.replace(`/song/${songId}?v=${bumpResult.versionId}`);
+          await router.refresh();
+        } else {
+          await persistSongState(nextCritique);
+        }
+      } catch {
+        setCritiqueError("Network error.");
+      } finally {
+        setCritiqueLoading(false);
+      }
+    },
+    [
+      activeVersionId,
+      chatMessages,
+      critique,
+      fullText,
+      isSong,
+      meta,
+      persistSongState,
+      pieceTitle,
+      priorVersionsContext,
+      router,
+      songCritiqueSource,
+      songId,
+    ],
+  );
+
+  const handleDeleteVersion = useCallback(() => {
+    if (!isSong || !songId || !activeVersionId) return;
+    if (props.mode !== "song" || props.versions.length <= 1) return;
+    const active = props.versions.find((v) => v.id === activeVersionId);
+    const label = active ? `Version ${active.versionNumber}` : "this version";
+    if (
+      !window.confirm(
+        `Delete ${label}? Its draft, chat, and critique will be removed. This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setDeleteVersionError(null);
+    versionRowPersistLockRef.current = true;
+    startDeleteVersionTransition(async () => {
+      const result = await deleteSongVersion(songId, activeVersionId);
+      if (!result.ok) {
+        versionRowPersistLockRef.current = false;
+        setDeleteVersionError(result.message);
         return;
       }
-      if (data.critique) {
-        setCritique(data.critique);
-        await persistSongState(data.critique);
-      } else {
-        setCritiqueError("Missing critique in response.");
-      }
-    } catch {
-      setCritiqueError("Network error.");
-    } finally {
-      setCritiqueLoading(false);
-    }
-  }, [fullText, meta.genre, meta.similarArtists, persistSongState, pieceTitle]);
+      router.replace(`/song/${songId}?v=${result.fallbackVersionId}`);
+      await router.refresh();
+    });
+  }, [
+    activeVersionId,
+    isSong,
+    props,
+    router,
+    songId,
+    startDeleteVersionTransition,
+  ]);
 
   const handleSaveVersion = useCallback(() => {
-    if (!songId) return;
+    if (!songId || !activeVersionId) return;
     setSaveError(null);
     startSaveTransition(async () => {
-      const result = await saveNewSongVersion(songId, {
+      const result = await updateSongVersionState(songId, activeVersionId, {
         draft_text: fullText,
         chat_messages: chatMessages,
         critique,
@@ -353,10 +561,17 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
         setSaveError(result.message);
         return;
       }
-      router.replace(`/song/${songId}?v=${result.versionId}`);
-      router.refresh();
+      await router.refresh();
     });
-  }, [chatMessages, critique, fullText, meta, router, songId]);
+  }, [
+    activeVersionId,
+    chatMessages,
+    critique,
+    fullText,
+    meta,
+    router,
+    songId,
+  ]);
 
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-zinc-950">
@@ -372,6 +587,11 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           onSaveVersion={handleSaveVersion}
           savePending={savePending}
           saveError={saveError}
+          onDeleteVersion={handleDeleteVersion}
+          deleteVersionPending={deleteVersionPending}
+          deleteVersionError={deleteVersionError}
+          canDeleteActiveVersion={props.versions.length > 1}
+          editorBusy={critiqueLoading}
         />
       : null}
       {isSong && autosaveError ? (
@@ -381,6 +601,13 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
       ) : null}
       <div className="mx-auto w-full max-w-[1920px] shrink-0 px-4 pt-3 lg:hidden">
         <div className="grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => setMobilePane("critique")}
+            className={mobilePane === "critique" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
+          >
+            Critique
+          </button>
           <button
             type="button"
             onClick={() => setMobilePane("draft")}
@@ -395,16 +622,18 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           >
             Chat
           </button>
-          <button
-            type="button"
-            onClick={() => setMobilePane("critique")}
-            className={mobilePane === "critique" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
-          >
-            Critique
-          </button>
         </div>
       </div>
-      <main className="mx-auto flex min-h-0 w-full max-w-[1920px] flex-1 flex-col overflow-hidden gap-6 p-4 pb-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(260px,360px)_minmax(260px,380px)] lg:gap-5 lg:p-6 lg:pb-6">
+      <main className="mx-auto flex min-h-0 w-full max-w-[1920px] flex-1 flex-col overflow-hidden gap-6 p-4 pb-4 lg:grid lg:grid-cols-[minmax(260px,320px)_minmax(0,1.35fr)_minmax(240px,320px)] lg:gap-6 lg:p-6 lg:pb-6">
+        <section className={`${mobilePane === "critique" ? "flex" : "hidden"} min-h-[52dvh] flex-col border-t border-zinc-800/80 pt-4 lg:min-h-0 lg:flex lg:border-r lg:border-t-0 lg:border-zinc-800/80 lg:pr-5 lg:pt-0`}>
+          <CritiqueDisplayPanel
+            critique={critique}
+            loading={critiqueLoading}
+            onRegenerate={() => void runCritique({ regenerate: true })}
+            lyricsEmpty={lyricsEmpty}
+          />
+        </section>
+
         <section className={`${mobilePane === "draft" ? "flex" : "hidden"} min-h-[52dvh] min-w-0 flex-1 flex-col gap-2 lg:min-h-0 lg:flex`}>
           <DraftEditor
             value={fullText}
@@ -413,7 +642,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           />
         </section>
 
-        <section className={`${mobilePane === "chat" ? "flex" : "hidden"} min-h-[52dvh] flex-col border-t border-zinc-800/80 pt-4 lg:min-h-0 lg:flex lg:border-l lg:border-t-0 lg:border-zinc-800/80 lg:pl-5 lg:pt-0`}>
+        <section className={`${mobilePane === "chat" ? "flex" : "hidden"} min-h-[52dvh] flex-col border-t border-zinc-800/80 pt-4 lg:min-h-0 lg:flex lg:border-l lg:border-t-0 lg:border-zinc-800/80 lg:pl-5 lg:pt-0 lg:opacity-95`}>
           {critique ?
             <LyricChatPanel
               fullText={fullText}
@@ -438,15 +667,6 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
               lyricsEmpty={lyricsEmpty}
             />
           }
-        </section>
-
-        <section className={`${mobilePane === "critique" ? "flex" : "hidden"} min-h-[52dvh] flex-col border-t border-zinc-800/80 pt-4 lg:min-h-0 lg:flex lg:border-l lg:border-t-0 lg:border-zinc-800/80 lg:pl-5 lg:pt-0`}>
-          <CritiqueDisplayPanel
-            critique={critique}
-            loading={critiqueLoading}
-            onRegenerate={() => void runCritique()}
-            lyricsEmpty={lyricsEmpty}
-          />
         </section>
       </main>
     </div>

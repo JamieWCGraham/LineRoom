@@ -41,10 +41,22 @@ export type CritiqueResult = {
   overallStrengths: string[];
   overallWeaknesses: string[];
   lineFeedback: LineFeedbackItem[];
+  /** Song version this critique was produced for (LineRoom song mode). */
+  analyzedSongVersion?: number;
+  /** Prior saved version whose draft/critique were used as comparison context, if any. */
+  priorSongVersionCompared?: number | null;
+  /** Short note on what the comparison baseline was (set by the server). */
+  comparedToSummary?: string;
 };
 
 export type CritiqueMeta = {
   title: string;
   similarArtists: string;
   genre: string;
+};
+
+export type PriorVersionContext = {
+  versionNumber: number;
+  draftText: string;
+  critique: CritiqueResult | null;
 };

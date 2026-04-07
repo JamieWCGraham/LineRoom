@@ -48,9 +48,21 @@ export default async function SongPage({ params, searchParams }: Props) {
   }
 
   const vs = versionStateFromRow(activeRow);
+  const priorVersionsContext = versions
+    .filter((r) => Number(r.version_number) < Number(activeRow.version_number))
+    .sort((a, b) => Number(b.version_number) - Number(a.version_number))
+    .slice(0, 5)
+    .map((r) => {
+      const prior = versionStateFromRow(r);
+      return {
+        versionNumber: Number(r.version_number),
+        draftText: prior.draftText,
+        critique: prior.critique,
+      };
+    });
   const versionSummaries = versions.map((r) => ({
     id: r.id,
-    versionNumber: r.version_number,
+    versionNumber: Number(r.version_number),
     createdAt: r.created_at,
   }));
 
@@ -61,6 +73,8 @@ export default async function SongPage({ params, searchParams }: Props) {
       songId={typedSong.id}
       songTitle={typedSong.title}
       versions={versionSummaries}
+      priorVersionsContext={priorVersionsContext}
+      activeVersionNumber={Number(activeRow.version_number)}
       activeVersionId={activeRow.id}
       initialDraftText={vs.draftText}
       initialChatMessages={vs.chatMessages}

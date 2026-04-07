@@ -20,6 +20,48 @@ Guidelines:
 
 The draft may update between messages; always treat the latest "Current draft" as source of truth.`;
 
+function formatCritiqueSnapshotForPrompt(critique: {
+  overallRatingBand: string;
+  subscores: {
+    emotional_impact: number;
+    imagery_specificity: number;
+    originality_voice: number;
+    prosody_singability: number;
+    structure_cohesion: number;
+    lyrical_economy: number;
+    hook_strength: number;
+  };
+  overallStrengths: string[];
+  overallWeaknesses: string[];
+  lineFeedback: Array<{
+    quotedLine: string;
+    feedback: string;
+    category: "praise" | "constructive";
+  }>;
+}): string {
+  return `Prior rating band: ${critique.overallRatingBand}
+Prior subscores:
+- emotional_impact: ${critique.subscores.emotional_impact}/5
+- imagery_specificity: ${critique.subscores.imagery_specificity}/5
+- originality_voice: ${critique.subscores.originality_voice}/5
+- prosody_singability: ${critique.subscores.prosody_singability}/5
+- structure_cohesion: ${critique.subscores.structure_cohesion}/5
+- lyrical_economy: ${critique.subscores.lyrical_economy}/5
+- hook_strength: ${critique.subscores.hook_strength}/5
+Prior overall strengths:
+${critique.overallStrengths.map((s) => `- ${s}`).join("\n") || "- (none)"}
+Prior overall weaknesses:
+${critique.overallWeaknesses.map((s) => `- ${s}`).join("\n") || "- (none)"}
+Prior line-level feedback samples:
+${critique.lineFeedback
+  .slice(0, 6)
+  .map(
+    (item) =>
+      `- [${item.category}] "${item.quotedLine}" -> ${item.feedback}`,
+  )
+  .join("\n") || "- (none)"}`;
+}
+
 export function buildLyricChatSystemPrompt(
   fullText: string,
   critiqueBlock?: string,
@@ -48,12 +90,137 @@ export function buildCritiqueUserPayload(input: {
   title: string;
   similarArtists: string;
   genre: string;
+  analyzedSongVersion?: number;
+  priorSongVersionCompared?: number | null;
+  regenerate?: boolean;
+  priorCritique?: {
+    overallRatingBand: string;
+    subscores: {
+      emotional_impact: 1 | 2 | 3 | 4 | 5;
+      imagery_specificity: 1 | 2 | 3 | 4 | 5;
+      originality_voice: 1 | 2 | 3 | 4 | 5;
+      prosody_singability: 1 | 2 | 3 | 4 | 5;
+      structure_cohesion: 1 | 2 | 3 | 4 | 5;
+      lyrical_economy: 1 | 2 | 3 | 4 | 5;
+      hook_strength: 1 | 2 | 3 | 4 | 5;
+    };
+    overallStrengths: string[];
+    overallWeaknesses: string[];
+    lineFeedback: Array<{
+      quotedLine: string;
+      feedback: string;
+      category: "praise" | "constructive";
+    }>;
+  };
+  priorVersions?: Array<{
+    versionNumber: number;
+    draftText: string;
+    critique: {
+      overallRatingBand: string;
+      subscores: {
+        emotional_impact: 1 | 2 | 3 | 4 | 5;
+        imagery_specificity: 1 | 2 | 3 | 4 | 5;
+        originality_voice: 1 | 2 | 3 | 4 | 5;
+        prosody_singability: 1 | 2 | 3 | 4 | 5;
+        structure_cohesion: 1 | 2 | 3 | 4 | 5;
+        lyrical_economy: 1 | 2 | 3 | 4 | 5;
+        hook_strength: 1 | 2 | 3 | 4 | 5;
+      };
+      overallStrengths: string[];
+      overallWeaknesses: string[];
+      lineFeedback: Array<{
+        quotedLine: string;
+        feedback: string;
+        category: "praise" | "constructive";
+      }>;
+    } | null;
+  }>;
 }): string {
-  return `Analyze this draft (lyrics and/or poetry) and produce your JSON response.
+  const versionContextSection =
+    typeof input.analyzedSongVersion === "number" ?
+      `\n\nSong version context:
+- Version being analyzed (current saved row): ${input.analyzedSongVersion}
+- Prior saved version used for draft/critique comparison: ${
+        input.priorSongVersionCompared != null ?
+          input.priorSongVersionCompared
+        : "none as a separate row; if a \"Prior versions\" block appears with the same version number, it is the saved snapshot from when this session loaded (use it to compare against the current draft below)."
+      }`
+    : "";
+
+  const summarizeDraftChanges = (): string => {
+    const latestPrior = input.priorVersions?.[0];
+    if (!latestPrior) return "";
+    const currentLines = input.fullText
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const priorLines = latestPrior.draftText
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    const currentSet = new Set(currentLines);
+    const priorSet = new Set(priorLines);
+    const retained = currentLines.filter((l) => priorSet.has(l)).length;
+    const added = currentLines.filter((l) => !priorSet.has(l)).length;
+    const removed = priorLines.filter((l) => !currentSet.has(l)).length;
+    const changedShare =
+      currentLines.length > 0 ? Math.round((added / currentLines.length) * 100) : 0;
+
+    return `\n\nDraft revision summary since version ${latestPrior.versionNumber}:
+- Approximate changes: ${added} added/rewritten lines, ${removed} removed lines, ${retained} retained lines (${changedShare}% of current lines are new or materially changed).
+- Interpretive guidance: briefly account for how these revisions affect coherence, emotional impact, and hook/structure strength; preserve continuity with prior critique where unchanged lines still serve the same function.`;
+  };
+
+  const changeSummarySection = summarizeDraftChanges();
+  const priorVersionsSection =
+    input.priorVersions?.length ?
+      `\n\nPrior versions context (for grounding):
+Each block includes the full saved lyrics draft for that version (possibly truncated) plus its saved critique summary.
+Use these only as historical context to maintain continuity and avoid random reversals in line-level feedback.
+The CURRENT draft below is still the source of truth for quoted lines and final judgments.
+${input.priorVersions
+  .map((v) => {
+    const truncatedDraft =
+      v.draftText.length > 1800 ?
+        `${v.draftText.slice(0, 1800).trimEnd()}\n...[truncated]`
+      : v.draftText;
+    const critiqueSummary =
+      v.critique ? formatCritiqueSnapshotForPrompt(v.critique) : "Prior critique: (none saved)";
+    return `Version ${v.versionNumber}
+Draft:
+---
+${truncatedDraft}
+---
+${critiqueSummary}`;
+  })
+  .join("\n\n")}`
+    : "";
+
+  const regenerationSection =
+    input.regenerate && input.priorCritique ?
+      `\n\nRegeneration mode:
+The writer is refreshing the critique. The previous critique (the one you are replacing) is below.
+overallBandRationale is REQUIRED. Write 4–6 concise sentences total: first cover what the current draft is doing and why it lands in the new band; then include exactly two sentences that explicitly compare overall craft to the previous critique—state clearly whether the lyric is better, worse, or largely unchanged, and name the main reason (e.g. stronger hook, new vagueness, tightened voice, structural regression). Ground the comparison in the current draft and the previous critique, not generic filler.
+
+Previous critique (replaced by this run):
+${formatCritiqueSnapshotForPrompt(input.priorCritique)}`
+    : "";
+
+  const regenPreamble =
+    input.regenerate ?
+      "Regeneration mode is active; follow the system instructions for overallBandRationale.\n\n"
+    : "";
+
+  return `${regenPreamble}Analyze this draft (lyrics and/or poetry) and produce your JSON response.
 
 Piece title: ${input.title || "(untitled)"}
 Genre (user-provided): ${input.genre || "(unspecified)"}
 Similar writers or artists / voice reference (user-provided): ${input.similarArtists || "(none)"}
+${versionContextSection}
+${changeSummarySection}
+${priorVersionsSection}
+${regenerationSection}
 
 Lyrics/poetry (preserve line breaks; your quotedLine values must copy lines exactly from this block):
 ---
@@ -215,10 +382,12 @@ Weigh overall effectiveness, concentration of strengths, severity of weaknesses,
   4 = strong  
   5 = exceptional  
 
-- "overallBandRationale" (optional but recommended): 2–5 concise sentences describing:
+- "overallBandRationale" (optional but recommended unless Regeneration mode is indicated in the user message): 2–5 concise sentences describing:
   - what the lyric is about at its core, and what it appears to be trying to do  
   - how well it achieves that aim  
   - why it lands in this band  
+
+- When the user message indicates Regeneration mode (previous critique included): "overallBandRationale" is REQUIRED and must follow the user-message instructions: include exactly two sentences that compare the new evaluation to the previous critique and state whether the piece is better, worse, or largely unchanged overall, with a concrete reason.
 
 - "overallStrengths" and "overallWeaknesses":
   concise observations about the piece as a whole (not single lines)
@@ -246,6 +415,9 @@ Weigh overall effectiveness, concentration of strengths, severity of weaknesses,
   When the draft contains enough workable material, at least 40% of lineFeedback items should be praise.
 
 - Do not rewrite lines unless necessary. Prefer explaining what the line is doing and why it works or fails.
+
+- If prior-version critique context is provided, use it to keep reasoning stable across iterations. Avoid arbitrary praise/critique polarity flips unless the wording or context genuinely changed.
+- If prior-version subscores are provided, treat them as a baseline. Only change a subscore when the new draft includes clear evidence of meaningful improvement or deterioration in that exact dimension. Keep the score unchanged when evidence is mixed, minor, or not directly related to that dimension.
 
 - Do not include any keys other than those specified.
 

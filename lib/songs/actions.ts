@@ -194,6 +194,81 @@ export async function saveNewSongVersion(
   return { ok: true, versionId: inserted.id };
 }
 
+export type DeleteSongVersionResult =
+  | { ok: true; fallbackVersionId: string }
+  | { ok: false; message: string };
+
+export async function deleteSongVersion(
+  songId: string,
+  versionId: string,
+): Promise<DeleteSongVersionResult> {
+  if (!songId.trim() || !versionId.trim()) {
+    return { ok: false, message: "Missing piece or version id." };
+  }
+
+  const supabase = await createClient();
+  const user = await requireAuthUser(supabase);
+
+  const { data: song, error: songError } = await supabase
+    .from("songs")
+    .select("id")
+    .eq("id", songId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (songError || !song) {
+    return { ok: false, message: "Piece not found." };
+  }
+
+  const { data: versionRows, error: listError } = await supabase
+    .from("song_versions")
+    .select("id, version_number")
+    .eq("song_id", songId)
+    .order("version_number", { ascending: true });
+
+  if (listError || !versionRows?.length) {
+    return { ok: false, message: "Could not load versions." };
+  }
+
+  if (versionRows.length <= 1) {
+    return {
+      ok: false,
+      message:
+        "You cannot delete the only version. Delete the whole piece from the dashboard instead.",
+    };
+  }
+
+  const exists = versionRows.some((r) => r.id === versionId);
+  if (!exists) {
+    return { ok: false, message: "Version not found." };
+  }
+
+  const { error: delError } = await supabase
+    .from("song_versions")
+    .delete()
+    .eq("id", versionId)
+    .eq("song_id", songId);
+
+  if (delError) {
+    return { ok: false, message: delError.message };
+  }
+
+  const remaining = versionRows.filter((r) => r.id !== versionId);
+  const fallback = remaining.reduce((best, r) =>
+    Number(r.version_number) > Number(best.version_number) ? r : best,
+  );
+
+  await supabase
+    .from("songs")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", songId);
+
+  revalidatePath("/");
+  revalidatePath(`/song/${songId}`);
+
+  return { ok: true, fallbackVersionId: fallback.id };
+}
+
 export async function updateSongVersionState(
   songId: string,
   versionId: string,

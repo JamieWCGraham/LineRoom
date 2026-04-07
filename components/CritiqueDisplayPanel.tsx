@@ -60,7 +60,13 @@ export function CritiqueDisplayPanel({
         ) : null}
 
         {loading && !critique ? (
-          <p className="text-sm text-zinc-500">Generating critique…</p>
+          <p className="inline-flex items-center gap-2 text-sm text-zinc-500">
+            <span
+              className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-500/40 border-t-zinc-400"
+              aria-hidden
+            />
+            Generating critique... this may take up to 1-2 minutes.
+          </p>
         ) : null}
 
         {critique ? (
@@ -72,6 +78,29 @@ export function CritiqueDisplayPanel({
               <p className="mt-1 text-2xl font-semibold text-amber-200/95">
                 {critique.overallRatingBand}
               </p>
+              {critique.analyzedSongVersion != null ? (
+                <p className="mt-2 text-[11px] leading-snug text-zinc-500">
+                  <span className="font-medium text-zinc-400">
+                    Version analyzed:
+                  </span>{" "}
+                  {critique.analyzedSongVersion}
+                  {critique.priorSongVersionCompared != null ?
+                    <>
+                      {" "}
+                      <span className="text-zinc-600">·</span>{" "}
+                      <span className="font-medium text-zinc-400">
+                        Compared to version:
+                      </span>{" "}
+                      {critique.priorSongVersionCompared}
+                    </>
+                  : null}
+                </p>
+              ) : null}
+              {critique.comparedToSummary ? (
+                <p className="mt-1 text-[11px] leading-snug text-zinc-500">
+                  {critique.comparedToSummary}
+                </p>
+              ) : null}
               {critique.overallBandRationale ? (
                 <p className="mt-1 leading-relaxed text-zinc-400">
                   {critique.overallBandRationale}
@@ -173,7 +202,13 @@ export function CritiqueDisplayPanel({
         ) : null}
 
         {loading && critique ? (
-          <p className="mt-4 text-xs text-zinc-500">Refreshing critique…</p>
+          <p className="mt-4 inline-flex items-center gap-2 text-xs text-zinc-500">
+            <span
+              className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-500/40 border-t-zinc-400"
+              aria-hidden
+            />
+            Refreshing critique... this may take up to 1-2 minutes.
+          </p>
         ) : null}
       </div>
 
@@ -184,8 +219,23 @@ export function CritiqueDisplayPanel({
           disabled={loading || !critique || lyricsEmpty}
           className="w-full rounded-lg border border-zinc-700 bg-zinc-900/50 px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:border-amber-800/50 hover:bg-zinc-800/50 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Regenerate Critique
+          {loading ? (
+            <span className="inline-flex items-center gap-2">
+              <span
+                className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-500/40 border-t-zinc-300"
+                aria-hidden
+              />
+              Regenerating critique...
+            </span>
+          ) : (
+            "Regenerate Critique"
+          )}
         </button>
+        {loading ? (
+          <p className="mt-2 text-center text-[11px] text-zinc-500">
+            Regenerating critique can take up to 1-2 minutes.
+          </p>
+        ) : null}
       </div>
     </div>
   );

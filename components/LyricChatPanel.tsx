@@ -159,20 +159,14 @@ export function LyricChatPanel({
             type="button"
             onClick={() => {
               if (!messages.length || loading) return;
-              if (
-                window.confirm(
-                  "Clear chat for this version? This removes current chat messages.",
-                )
-              ) {
-                onClearMessages();
-                setError(null);
-                setModeBanner(null);
-              }
+              onClearMessages();
+              setError(null);
+              setModeBanner(null);
             }}
             disabled={loading || messages.length === 0}
             className="rounded-md border border-zinc-700/80 bg-zinc-900/60 px-2.5 py-1 text-[11px] font-medium text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-800/70 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Clear chat
+            New Session
           </button>
         </div>
         <p className="mt-0.5 text-[11px] leading-snug text-zinc-600">

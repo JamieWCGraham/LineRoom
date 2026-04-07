@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { LineAnnotation } from "@/lib/lineAnnotations";
 
 type Props = {
@@ -39,6 +39,8 @@ export function DraftEditor({
   } | null>(null);
   const [uiFontSize, setUiFontSize] = useState(15);
   const [styleOps, setStyleOps] = useState<StyleOp[]>([]);
+  const [showHighlights, setShowHighlights] = useState(true);
+  const [copyLabel, setCopyLabel] = useState("Copy Draft");
 
   const lines = useMemo(() => value.split("\n"), [value]);
   const totalChars = value.length;
@@ -113,10 +115,16 @@ export function DraftEditor({
     if (el) syncBackdropScroll(el);
   }, [value, syncBackdropScroll]);
 
+  useEffect(() => {
+    if (lineFeedbackByIndex.size > 0) {
+      setShowHighlights(true);
+    }
+  }, [lineFeedbackByIndex]);
+
   const updateTooltip = useCallback(
     (clientX: number, clientY: number) => {
       const el = taRef.current;
-      if (!el || lineFeedbackByIndex.size === 0) {
+      if (!el || !showHighlights || lineFeedbackByIndex.size === 0) {
         setTooltip(null);
         return;
       }
@@ -157,8 +165,20 @@ export function DraftEditor({
         text: noteText,
       });
     },
-    [lineFeedbackByIndex, lines.length],
+    [lineFeedbackByIndex, lines.length, showHighlights],
   );
+
+  const handleCopyDraft = useCallback(async () => {
+    if (!value.length) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopyLabel("Copied");
+      window.setTimeout(() => setCopyLabel("Copy Draft"), 1500);
+    } catch {
+      setCopyLabel("Copy failed");
+      window.setTimeout(() => setCopyLabel("Copy Draft"), 1500);
+    }
+  }, [value]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
@@ -197,6 +217,26 @@ export function DraftEditor({
           aria-label="Toggle underline for selected draft text"
         >
           U
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setShowHighlights((prev) => !prev);
+            setTooltip(null);
+          }}
+          className="rounded-md border border-zinc-800 bg-zinc-900/70 px-2 py-1 text-xs text-zinc-300 hover:border-zinc-700 hover:text-zinc-100"
+          aria-label="Show or hide draft feedback highlights"
+        >
+          {showHighlights ? "Hide Feedback" : "Show Feedback"}
+        </button>
+        <button
+          type="button"
+          onClick={() => void handleCopyDraft()}
+          disabled={!value.length}
+          className="rounded-md border border-zinc-800 bg-zinc-900/70 px-2 py-1 text-xs text-zinc-300 hover:border-zinc-700 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="Copy full draft text to clipboard"
+        >
+          {copyLabel}
         </button>
       </div>
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/60 focus-within:border-amber-700/40 focus-within:ring-1 focus-within:ring-amber-600/25">
@@ -265,7 +305,9 @@ export function DraftEditor({
 
               return (
                 <span key={i}>
-                  {has ? <mark className={lineHighlightClass}>{renderedLine}</mark> : renderedLine}
+                  {showHighlights && has ?
+                    <mark className={lineHighlightClass}>{renderedLine}</mark>
+                  : renderedLine}
                   {i < lines.length - 1 ? "\n" : null}
                 </span>
               );
