@@ -8,7 +8,41 @@ import {
   buildCritiqueUserPayload,
   CRITIQUE_JSON_INSTRUCTIONS,
 } from "@/lib/prompts";
+import type { CritiqueResult } from "@/lib/types";
 import { critiqueRequestSchema, critiqueResultSchema } from "@/lib/validators";
+
+function attachSongVersionContext(
+  critique: CritiqueResult,
+  payload: {
+    analyzedSongVersion?: number;
+    priorSongVersionCompared?: number | null;
+    regenerate?: boolean;
+  },
+): CritiqueResult {
+  const out = { ...critique };
+  if (typeof payload.analyzedSongVersion === "number") {
+    out.analyzedSongVersion = payload.analyzedSongVersion;
+  } else {
+    delete out.analyzedSongVersion;
+    delete out.priorSongVersionCompared;
+    delete out.comparedToSummary;
+    return out;
+  }
+
+  if (payload.priorSongVersionCompared !== undefined) {
+    out.priorSongVersionCompared = payload.priorSongVersionCompared;
+  }
+
+  if (payload.priorSongVersionCompared != null) {
+    out.comparedToSummary = `Full saved lyrics draft and critique from version ${payload.priorSongVersionCompared} were included for comparison.`;
+  } else if (payload.regenerate) {
+    out.comparedToSummary = `Compared to the previous critique and the saved lyrics draft for version ${payload.analyzedSongVersion} from when this page was loaded (before your latest edits).`;
+  } else {
+    delete out.comparedToSummary;
+  }
+
+  return out;
+}
 
 export async function POST(req: Request) {
   let body: unknown;
@@ -80,11 +114,13 @@ export async function POST(req: Request) {
           );
         }
 
+        const critique = attachSongVersionContext(validated.data, payload);
+
         setTraceIO({
           input: { messages: payload },
-          output: validated.data,
+          output: critique,
         });
-        return NextResponse.json({ critique: validated.data });
+        return NextResponse.json({ critique });
       },
     );
   } catch (e) {

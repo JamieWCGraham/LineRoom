@@ -30,8 +30,15 @@ function formatCritiqueForChat(
   const subscores = Object.entries(critique.subscores)
     .map(([dimension, score]) => `- ${dimension}: ${score}/5`)
     .join("\n");
-  return `${header}
-Overall rating band: ${critique.overallRatingBand}
+  const versionBlock =
+    critique.analyzedSongVersion != null ?
+      `Version analyzed: ${critique.analyzedSongVersion}${
+        critique.priorSongVersionCompared != null ?
+          `\nCompared to version: ${critique.priorSongVersionCompared}`
+        : ""
+      }${critique.comparedToSummary ? `\n${critique.comparedToSummary}` : ""}\n\n`
+    : "";
+  return `${header}${versionBlock}Overall rating band: ${critique.overallRatingBand}
 ${critique.overallBandRationale ? `Band rationale: ${critique.overallBandRationale}\n` : ""}Subscores:
 ${subscores}
 

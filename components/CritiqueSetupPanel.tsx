@@ -79,8 +79,23 @@ export function CritiqueSetupPanel({
           disabled={loading || lyricsEmpty}
           className="w-full rounded-lg bg-amber-700/90 px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {loading ? "Generating…" : "Generate Critique"}
+          {loading ? (
+            <span className="inline-flex items-center gap-2">
+              <span
+                className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-950/40 border-t-zinc-950"
+                aria-hidden
+              />
+              Generating critique...
+            </span>
+          ) : (
+            "Generate Critique"
+          )}
         </button>
+        {loading ? (
+          <p className="mt-2 text-center text-[11px] text-zinc-500">
+            Generating a new critique can take up to 1-2 minutes.
+          </p>
+        ) : null}
         {lyricsEmpty ? (
           <p className="mt-2 text-center text-[11px] text-zinc-600">
             Add lyrics or poetry in the draft to enable critique.

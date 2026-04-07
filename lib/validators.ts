@@ -44,6 +44,9 @@ export const critiqueResultSchema = z.object({
   overallStrengths: z.array(z.string()),
   overallWeaknesses: z.array(z.string()),
   lineFeedback: z.array(lineFeedbackItemSchema),
+  analyzedSongVersion: z.number().int().positive().optional(),
+  priorSongVersionCompared: z.number().int().positive().nullable().optional(),
+  comparedToSummary: z.string().optional(),
 });
 
 export const critiqueRequestSchema = z.object({
@@ -51,6 +54,24 @@ export const critiqueRequestSchema = z.object({
   title: z.string(),
   similarArtists: z.string(),
   genre: z.string(),
+  /** True when replacing an existing critique (UI: Regenerate Critique). */
+  regenerate: z.boolean().optional(),
+  /** Critique in effect before regeneration; used for comparative rationale. */
+  priorCritique: critiqueResultSchema.optional(),
+  priorVersions: z
+    .array(
+      z.object({
+        versionNumber: z.number().int().positive(),
+        draftText: z.string(),
+        critique: critiqueResultSchema.nullable(),
+      }),
+    )
+    .max(8)
+    .optional(),
+  /** Song version row the current draft belongs to (LineRoom). */
+  analyzedSongVersion: z.number().int().positive().optional(),
+  /** Latest older saved version used as comparison context; null if none. */
+  priorSongVersionCompared: z.number().int().positive().nullable().optional(),
 });
 
 export const chatRequestSchema = z.object({
