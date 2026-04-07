@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
 } from "react";
@@ -77,8 +78,6 @@ type SongProps = {
   initialChatMessages: ChatMessage[];
   initialCritique: CritiqueResult | null;
   initialMeta: CritiqueMeta;
-  /** After save + navigate; client strips query and runs critique once. */
-  pendingRegenerateCritique?: boolean;
 };
 
 export type LineRoomEditorProps = LocalProps | SongProps;
@@ -143,9 +142,10 @@ function SongVersionBar(props: {
             type="button"
             onClick={props.onSaveVersion}
             disabled={props.savePending || props.deleteVersionPending || props.editorBusy}
+            title="Save draft, chat, and critique to the selected version. Does not create a new version."
             className="shrink-0 rounded-lg bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
           >
-            {props.savePending ? "Saving…" : "Save version"}
+            {props.savePending ? "Saving…" : "Save"}
           </button>
           <button
             type="button"
@@ -195,10 +195,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   const [pieceTitle, setPieceTitle] = useState(
     isSong ? props.songTitle : "Untitled piece",
   );
-  const [critiqueLoading, setCritiqueLoading] = useState(
-    () =>
-      props.mode === "song" && props.pendingRegenerateCritique === true,
-  );
+  const [critiqueLoading, setCritiqueLoading] = useState(false);
   const [critiqueError, setCritiqueError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deleteVersionError, setDeleteVersionError] = useState<string | null>(
@@ -206,14 +203,24 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   );
   const [savePending, startSaveTransition] = useTransition();
   const [deleteVersionPending, startDeleteVersionTransition] = useTransition();
-  const [, startCritiqueVersionBump] = useTransition();
   const [autosaveError, setAutosaveError] = useState<string | null>(null);
-  const [versionBumpPending, setVersionBumpPending] = useState(false);
   const [mobilePane, setMobilePane] = useState<MobilePane>("draft");
 
   const songId = isSong ? props.songId : null;
   const songTitleFromProps = props.mode === "song" ? props.songTitle : null;
   const activeVersionId = props.mode === "song" ? props.activeVersionId : null;
+
+  /** Keeps latest row id for races with in-flight autosave. */
+  const activeVersionIdRef = useRef<string | null>(null);
+  /**
+   * When true, autosave must not UPDATE any version row (prevents clobbering the
+   * previous snapshot after saveNewSongVersion inserts a new row).
+   */
+  const versionRowPersistLockRef = useRef(false);
+
+  useEffect(() => {
+    activeVersionIdRef.current = activeVersionId;
+  }, [activeVersionId]);
   const priorVersionsContext = useMemo(
     () => (props.mode === "song" ? props.priorVersionsContext : []),
     [props],
@@ -346,39 +353,50 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   const persistSongState = useCallback(
     async (nextCritique?: CritiqueResult | null) => {
       if (!isSong) return;
-      const versionId = activeVersionId;
-      if (!songId || !versionId) return;
+      if (versionRowPersistLockRef.current) return;
+      const versionIdAtStart = activeVersionIdRef.current;
+      if (!songId || !versionIdAtStart) return;
       setAutosaveError(null);
-      const result = await updateSongVersionState(songId, versionId, {
+      const payload = {
         draft_text: fullText,
         chat_messages: chatMessages,
         critique: nextCritique === undefined ? critique : nextCritique,
         meta,
-      });
+      };
+      if (versionRowPersistLockRef.current) return;
+      if (activeVersionIdRef.current !== versionIdAtStart) return;
+      const result = await updateSongVersionState(
+        songId,
+        versionIdAtStart,
+        payload,
+      );
+      if (
+        versionRowPersistLockRef.current ||
+        activeVersionIdRef.current !== versionIdAtStart
+      ) {
+        return;
+      }
       if (!result.ok) {
         setAutosaveError(result.message);
       }
     },
-    [activeVersionId, chatMessages, critique, fullText, isSong, meta, songId],
+    [chatMessages, critique, fullText, isSong, meta, songId],
   );
 
   useEffect(() => {
-    if (!isSong || versionBumpPending) return;
+    if (!isSong) return;
 
     const t = setTimeout(() => {
       void persistSongState();
     }, 1000);
 
     return () => clearTimeout(t);
-  }, [autosavePayload, isSong, persistSongState, versionBumpPending]);
+  }, [autosavePayload, isSong, persistSongState]);
 
   const runCritique = useCallback(
-    async (options?: { regenerate?: boolean; savedDraftText?: string }) => {
+    async (options?: { regenerate?: boolean }) => {
       const regenerate = options?.regenerate ?? false;
-      /** Lyrics sent to the model: explicit saved snapshot (post–new-version save) or current editor. */
-      const draftForApi =
-        options?.savedDraftText !== undefined ? options.savedDraftText : fullText;
-      if (!draftForApi.trim()) return;
+      if (!fullText.trim()) return;
       const priorCritiqueForPayload =
         regenerate && critique ? critique : undefined;
 
@@ -409,13 +427,14 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
         : undefined;
 
       setCritiqueError(null);
+      setSaveError(null);
       setCritiqueLoading(true);
       try {
         const res = await fetch("/api/critique", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            fullText: draftForApi,
+            fullText,
             title: pieceTitle,
             similarArtists: meta.similarArtists,
             genre: meta.genre,
@@ -443,7 +462,36 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
 
         const nextCritique = data.critique;
         setCritique(nextCritique);
-        await persistSongState(nextCritique);
+
+        if (isSong && songId && activeVersionId) {
+          versionRowPersistLockRef.current = true;
+          const payload = {
+            draft_text: fullText,
+            chat_messages: chatMessages,
+            critique: nextCritique,
+            meta,
+          };
+          const saveCurrentResult = await updateSongVersionState(
+            songId,
+            activeVersionId,
+            payload,
+          );
+          if (!saveCurrentResult.ok) {
+            versionRowPersistLockRef.current = false;
+            setSaveError(saveCurrentResult.message);
+            return;
+          }
+          const bumpResult = await saveNewSongVersion(songId, payload);
+          if (!bumpResult.ok) {
+            versionRowPersistLockRef.current = false;
+            setSaveError(bumpResult.message);
+            return;
+          }
+          router.replace(`/song/${songId}?v=${bumpResult.versionId}`);
+          await router.refresh();
+        } else {
+          await persistSongState(nextCritique);
+        }
       } catch {
         setCritiqueError("Network error.");
       } finally {
@@ -451,6 +499,8 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
       }
     },
     [
+      activeVersionId,
+      chatMessages,
       critique,
       fullText,
       isSong,
@@ -458,94 +508,11 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
       persistSongState,
       pieceTitle,
       priorVersionsContext,
+      router,
       songCritiqueSource,
+      songId,
     ],
   );
-
-  const pendingRegenerateCritique =
-    props.mode === "song" && props.pendingRegenerateCritique === true;
-
-  useEffect(() => {
-    if (!isSong || !pendingRegenerateCritique || !songId || !activeVersionId) {
-      return;
-    }
-    const gateKey = `lineroom_regen_${songId}_${activeVersionId}`;
-    const prev =
-      typeof sessionStorage !== "undefined" ?
-        sessionStorage.getItem(gateKey)
-      : null;
-
-    router.replace(`/song/${songId}?v=${activeVersionId}`);
-
-    if (prev === "1" || prev === "pending") {
-      return;
-    }
-    if (typeof sessionStorage !== "undefined") {
-      sessionStorage.setItem(gateKey, "pending");
-    }
-
-    void (async () => {
-      try {
-        if (!songCritiqueSource) return;
-        // New row is already in the DB; critique must use that saved draft, not stale editor state.
-        await runCritique({
-          regenerate: true,
-          savedDraftText: songCritiqueSource.initialDraftText,
-        });
-      } finally {
-        if (typeof sessionStorage !== "undefined") {
-          sessionStorage.setItem(gateKey, "1");
-        }
-      }
-    })();
-  }, [
-    activeVersionId,
-    isSong,
-    pendingRegenerateCritique,
-    router,
-    runCritique,
-    songCritiqueSource,
-    songId,
-  ]);
-
-  const handleRegenerateCritique = useCallback(() => {
-    if (!isSong || !songId || !activeVersionId) return;
-    if (!fullText.trim() || !critique) return;
-    setCritiqueError(null);
-    setSaveError(null);
-    setVersionBumpPending(true);
-    setCritiqueLoading(true);
-    startCritiqueVersionBump(async () => {
-      // 1) Persist a new version (current draft + chat + existing critique). No LLM yet.
-      const result = await saveNewSongVersion(songId, {
-        draft_text: fullText,
-        chat_messages: chatMessages,
-        critique,
-        meta,
-      });
-      if (!result.ok) {
-        setVersionBumpPending(false);
-        setCritiqueLoading(false);
-        setSaveError(result.message);
-        return;
-      }
-      // 2) Load that version from the server; 3) effect runs critique against saved draft vs prior.
-      router.replace(
-        `/song/${songId}?v=${result.versionId}&regenerateCritique=1`,
-      );
-      await router.refresh();
-    });
-  }, [
-    activeVersionId,
-    chatMessages,
-    critique,
-    fullText,
-    isSong,
-    meta,
-    router,
-    songId,
-    startCritiqueVersionBump,
-  ]);
 
   const handleDeleteVersion = useCallback(() => {
     if (!isSong || !songId || !activeVersionId) return;
@@ -560,9 +527,11 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
       return;
     }
     setDeleteVersionError(null);
+    versionRowPersistLockRef.current = true;
     startDeleteVersionTransition(async () => {
       const result = await deleteSongVersion(songId, activeVersionId);
       if (!result.ok) {
+        versionRowPersistLockRef.current = false;
         setDeleteVersionError(result.message);
         return;
       }
@@ -579,10 +548,10 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   ]);
 
   const handleSaveVersion = useCallback(() => {
-    if (!songId) return;
+    if (!songId || !activeVersionId) return;
     setSaveError(null);
     startSaveTransition(async () => {
-      const result = await saveNewSongVersion(songId, {
+      const result = await updateSongVersionState(songId, activeVersionId, {
         draft_text: fullText,
         chat_messages: chatMessages,
         critique,
@@ -592,10 +561,17 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
         setSaveError(result.message);
         return;
       }
-      router.replace(`/song/${songId}?v=${result.versionId}`);
-      router.refresh();
+      await router.refresh();
     });
-  }, [chatMessages, critique, fullText, meta, router, songId]);
+  }, [
+    activeVersionId,
+    chatMessages,
+    critique,
+    fullText,
+    meta,
+    router,
+    songId,
+  ]);
 
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-zinc-950">
@@ -615,7 +591,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           deleteVersionPending={deleteVersionPending}
           deleteVersionError={deleteVersionError}
           canDeleteActiveVersion={props.versions.length > 1}
-          editorBusy={critiqueLoading || versionBumpPending}
+          editorBusy={critiqueLoading}
         />
       : null}
       {isSong && autosaveError ? (
@@ -653,9 +629,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           <CritiqueDisplayPanel
             critique={critique}
             loading={critiqueLoading}
-            onRegenerate={() =>
-              isSong ? handleRegenerateCritique() : void runCritique({ regenerate: true })
-            }
+            onRegenerate={() => void runCritique({ regenerate: true })}
             lyricsEmpty={lyricsEmpty}
           />
         </section>

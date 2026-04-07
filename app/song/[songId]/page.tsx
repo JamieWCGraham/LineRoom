@@ -7,7 +7,7 @@ import type { SongRow, SongVersionRow } from "@/types/database";
 
 type Props = {
   params: Promise<{ songId: string }>;
-  searchParams: Promise<{ v?: string; regenerateCritique?: string }>;
+  searchParams: Promise<{ v?: string }>;
 };
 
 export default async function SongPage({ params, searchParams }: Props) {
@@ -80,7 +80,6 @@ export default async function SongPage({ params, searchParams }: Props) {
       initialChatMessages={vs.chatMessages}
       initialCritique={vs.critique}
       initialMeta={vs.meta}
-      pendingRegenerateCritique={q.regenerateCritique === "1"}
     />
   );
 }
