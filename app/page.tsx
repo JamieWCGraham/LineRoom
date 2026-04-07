@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { AppBrandDash } from "@/components/app-brand";
+import { NewPieceButton } from "@/components/dashboard/new-piece-button";
 import { PieceRow } from "@/components/dashboard/piece-row";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { normalizeAuthUserToProfile } from "@/lib/auth/profile";
 import { getAuthenticatedUser } from "@/lib/auth/session";
-import { createSong } from "@/lib/songs/actions";
 import { createClient } from "@/lib/supabase/server";
 import type { SongRow } from "@/types/database";
 
@@ -14,8 +14,7 @@ type Props = {
 
 export default async function HomePage({ searchParams }: Props) {
   const user = await getAuthenticatedUser();
-  const { email, auth_provider: authProvider } =
-    normalizeAuthUserToProfile(user);
+  const { email } = normalizeAuthUserToProfile(user);
 
   const supabase = await createClient();
   const { data: songsRaw } = await supabase
@@ -37,10 +36,6 @@ export default async function HomePage({ searchParams }: Props) {
           Signed in as{" "}
           <span className="font-medium text-zinc-200">{email}</span>
         </p>
-        <p className="mt-1 text-sm text-zinc-500">
-          Auth provider:{" "}
-          <span className="text-zinc-300">{authProvider}</span>
-        </p>
       </div>
 
       {q.createError === "1" ?
@@ -54,14 +49,7 @@ export default async function HomePage({ searchParams }: Props) {
           <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
             Your pieces
           </h2>
-          <form action={createSong}>
-            <button
-              type="submit"
-              className="rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white"
-            >
-              New piece
-            </button>
-          </form>
+          <NewPieceButton />
         </div>
 
         {songs.length === 0 ?
@@ -89,12 +77,6 @@ export default async function HomePage({ searchParams }: Props) {
           className="rounded-lg border border-zinc-600 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-900"
         >
           Account
-        </Link>
-        <Link
-          href="/lineroom"
-          className="rounded-lg border border-zinc-600 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-900"
-        >
-          Test
         </Link>
         <SignOutButton />
       </div>
