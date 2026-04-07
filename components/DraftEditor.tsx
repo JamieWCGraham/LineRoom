@@ -10,7 +10,7 @@ type Props = {
 };
 
 const TEXTAREA_CLASSES =
-  "box-border w-full flex-1 resize-y rounded-lg border-0 bg-transparent p-3 text-[15px] font-sans leading-relaxed text-transparent caret-zinc-100 outline-none whitespace-pre";
+  "box-border w-full flex-1 min-h-[68dvh] resize-y rounded-lg border-0 bg-transparent p-3 text-[15px] font-sans leading-relaxed text-transparent caret-zinc-100 outline-none whitespace-pre lg:min-h-0";
 
 export function DraftEditor({
   value,
@@ -86,8 +86,8 @@ export function DraftEditor({
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+      <label className="shrink-0 text-xs font-medium uppercase tracking-wide text-zinc-500">
         Draft
       </label>
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/60 focus-within:border-amber-700/40 focus-within:ring-1 focus-within:ring-amber-600/25">
@@ -145,7 +145,7 @@ export function DraftEditor({
         </div>
       ) : null}
       {lineFeedbackByIndex.size > 0 ? (
-        <p className="text-[11px] text-zinc-600">
+        <p className="shrink-0 text-[11px] text-zinc-600">
           Green lines are praise-only and red lines include actionable critique.
           Hover a line in the draft to read notes; full line notes also appear in
           the Critique panel.

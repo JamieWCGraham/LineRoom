@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { CritiqueDisplayPanel } from "@/components/CritiqueDisplayPanel";
@@ -67,6 +66,7 @@ type SongProps = {
 };
 
 export type LineRoomEditorProps = LocalProps | SongProps;
+type MobilePane = "draft" | "chat" | "critique";
 
 function SongVersionBar(props: {
   songId: string;
@@ -74,6 +74,7 @@ function SongVersionBar(props: {
   onPieceTitleSaved: (title: string) => void;
   versions: SongProps["versions"];
   activeVersionId: string;
+  onSelectVersion: (versionId: string) => void;
   onSaveVersion: () => void;
   savePending: boolean;
   saveError: string | null;
@@ -95,25 +96,23 @@ function SongVersionBar(props: {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex max-w-full gap-1 overflow-x-auto pb-1 sm:pb-0">
-            {props.versions.map((v) => {
-              const selected = v.id === props.activeVersionId;
-              return (
-                <Link
-                  key={v.id}
-                  href={`/song/${props.songId}?v=${v.id}`}
-                  className={
-                    selected ?
-                      "shrink-0 rounded-md bg-zinc-800 px-2.5 py-1 text-xs font-medium text-zinc-100"
-                    : "shrink-0 rounded-md border border-zinc-800 px-2.5 py-1 text-xs text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"
-                  }
-                  title={new Date(v.createdAt).toLocaleString()}
-                >
-                  v{v.versionNumber}
-                </Link>
-              );
-            })}
-          </div>
+          <label className="flex shrink-0 items-center gap-2 text-xs text-zinc-400">
+            <span>Version</span>
+            <select
+              value={props.activeVersionId}
+              onChange={(e) => props.onSelectVersion(e.target.value)}
+              className="rounded-md border border-zinc-800 bg-zinc-900/70 px-2 py-1 text-xs text-zinc-100 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25"
+            >
+              {props.versions
+                .slice()
+                .sort((a, b) => b.versionNumber - a.versionNumber)
+                .map((v) => (
+                  <option key={v.id} value={v.id}>
+                    v{v.versionNumber}
+                  </option>
+                ))}
+            </select>
+          </label>
           <button
             type="button"
             onClick={props.onSaveVersion}
@@ -157,6 +156,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savePending, startSaveTransition] = useTransition();
   const [autosaveError, setAutosaveError] = useState<string | null>(null);
+  const [mobilePane, setMobilePane] = useState<MobilePane>("draft");
 
   const songId = isSong ? props.songId : null;
   const songTitleFromProps = props.mode === "song" ? props.songTitle : null;
@@ -272,24 +272,34 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     [chatMessages, critique, fullText, meta],
   );
 
+  const persistSongState = useCallback(
+    async (nextCritique?: CritiqueResult | null) => {
+      if (!isSong) return;
+      const versionId = activeVersionId;
+      if (!songId || !versionId) return;
+      setAutosaveError(null);
+      const result = await updateSongVersionState(songId, versionId, {
+        draft_text: fullText,
+        chat_messages: chatMessages,
+        critique: nextCritique === undefined ? critique : nextCritique,
+        meta,
+      });
+      if (!result.ok) {
+        setAutosaveError(result.message);
+      }
+    },
+    [activeVersionId, chatMessages, critique, fullText, isSong, meta, songId],
+  );
+
   useEffect(() => {
     if (!isSong) return;
-    const versionId = activeVersionId;
-    if (!songId || !versionId) return;
 
     const t = setTimeout(() => {
-      setAutosaveError(null);
-      void (async () => {
-        const payload = JSON.parse(autosavePayload) as unknown;
-        const result = await updateSongVersionState(songId, versionId, payload);
-        if (!result.ok) {
-          setAutosaveError(result.message);
-        }
-      })();
+      void persistSongState();
     }, 1000);
 
     return () => clearTimeout(t);
-  }, [activeVersionId, autosavePayload, isSong, songId]);
+  }, [autosavePayload, isSong, persistSongState]);
 
   const runCritique = useCallback(async () => {
     if (!fullText.trim()) return;
@@ -318,6 +328,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
       }
       if (data.critique) {
         setCritique(data.critique);
+        await persistSongState(data.critique);
       } else {
         setCritiqueError("Missing critique in response.");
       }
@@ -326,7 +337,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     } finally {
       setCritiqueLoading(false);
     }
-  }, [fullText, meta.genre, meta.similarArtists, pieceTitle]);
+  }, [fullText, meta.genre, meta.similarArtists, persistSongState, pieceTitle]);
 
   const handleSaveVersion = useCallback(() => {
     if (!songId) return;
@@ -348,7 +359,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   }, [chatMessages, critique, fullText, meta, router, songId]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-950">
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-zinc-950">
       <Header showDashboardLink={isSong} />
       {isSong ?
         <SongVersionBar
@@ -357,6 +368,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           onPieceTitleSaved={setPieceTitle}
           versions={props.versions}
           activeVersionId={props.activeVersionId}
+          onSelectVersion={(versionId) => router.push(`/song/${props.songId}?v=${versionId}`)}
           onSaveVersion={handleSaveVersion}
           savePending={savePending}
           saveError={saveError}
@@ -367,8 +379,33 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           Autosave failed: {autosaveError}
         </div>
       ) : null}
-      <main className="mx-auto flex w-full max-w-[1920px] flex-1 flex-col gap-6 p-4 pb-10 lg:grid lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(260px,360px)_minmax(260px,380px)] lg:gap-5 lg:p-6 lg:pb-8">
-        <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 lg:min-h-[calc(100vh-5.5rem)]">
+      <div className="mx-auto w-full max-w-[1920px] shrink-0 px-4 pt-3 lg:hidden">
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => setMobilePane("draft")}
+            className={mobilePane === "draft" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
+          >
+            Draft
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobilePane("chat")}
+            className={mobilePane === "chat" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
+          >
+            Chat
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobilePane("critique")}
+            className={mobilePane === "critique" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
+          >
+            Critique
+          </button>
+        </div>
+      </div>
+      <main className="mx-auto flex min-h-0 w-full max-w-[1920px] flex-1 flex-col overflow-hidden gap-6 p-4 pb-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(260px,360px)_minmax(260px,380px)] lg:gap-5 lg:p-6 lg:pb-6">
+        <section className={`${mobilePane === "draft" ? "flex" : "hidden"} min-h-0 min-w-0 flex-1 flex-col gap-2 lg:flex`}>
           <DraftEditor
             value={fullText}
             onChange={setFullText}
@@ -376,7 +413,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           />
         </section>
 
-        <section className="flex min-h-[420px] flex-col border-t border-zinc-800/80 pt-6 lg:min-h-[calc(100vh-5.5rem)] lg:border-l lg:border-t-0 lg:border-zinc-800/80 lg:pl-5 lg:pt-0">
+        <section className={`${mobilePane === "chat" ? "flex" : "hidden"} min-h-0 flex-col border-t border-zinc-800/80 pt-4 lg:flex lg:border-l lg:border-t-0 lg:border-zinc-800/80 lg:pl-5 lg:pt-0`}>
           {critique ?
             <LyricChatPanel
               fullText={fullText}
@@ -402,7 +439,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           }
         </section>
 
-        <section className="flex min-h-[360px] flex-col border-t border-zinc-800/80 pt-6 lg:min-h-[calc(100vh-5.5rem)] lg:border-l lg:border-t-0 lg:border-zinc-800/80 lg:pl-5 lg:pt-0">
+        <section className={`${mobilePane === "critique" ? "flex" : "hidden"} min-h-0 flex-col border-t border-zinc-800/80 pt-4 lg:flex lg:border-l lg:border-t-0 lg:border-zinc-800/80 lg:pl-5 lg:pt-0`}>
           <CritiqueDisplayPanel
             critique={critique}
             loading={critiqueLoading}
