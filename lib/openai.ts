@@ -16,7 +16,7 @@ export function getFastChatModel(): string {
   return (
     process.env.OPENAI_FAST_MODEL?.trim() ||
     process.env.OPENAI_MODEL?.trim() ||
-    "gpt-5-mini"
+    "gpt-4.1-mini"
   );
 }
 
