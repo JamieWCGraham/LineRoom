@@ -33,6 +33,10 @@ export function PieceRow({ songId, initialTitle, updatedAt }: Props) {
     setTitle(initialTitle);
   }, [initialTitle]);
 
+  useEffect(() => {
+    router.prefetch(`/song/${songId}`);
+  }, [router, songId]);
+
   const dirty = title.trim() !== initialTitle.trim();
 
   const beginEdit = () => {
@@ -127,6 +131,7 @@ export function PieceRow({ songId, initialTitle, updatedAt }: Props) {
           : <div className="flex min-w-0 flex-col gap-1">
               <Link
                 href={`/song/${songId}`}
+                prefetch
                 className="truncate text-sm font-medium text-zinc-100 underline-offset-2 hover:text-white hover:underline"
               >
                 {initialTitle}

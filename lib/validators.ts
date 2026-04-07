@@ -8,11 +8,39 @@ export const chatMessageSchema = z.object({
 export const lineFeedbackItemSchema = z.object({
   quotedLine: z.string(),
   feedback: z.string(),
+  category: z.enum(["praise", "constructive"]).default("constructive"),
+});
+
+export const overallRatingBandSchema = z.enum([
+  "Needs Work",
+  "Promising",
+  "Strong",
+  "Standout",
+]);
+
+export const dimensionScoreSchema = z.union([
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+]);
+
+export const lyricSubscoresSchema = z.object({
+  emotional_impact: dimensionScoreSchema,
+  imagery_specificity: dimensionScoreSchema,
+  originality_voice: dimensionScoreSchema,
+  prosody_singability: dimensionScoreSchema,
+  structure_cohesion: dimensionScoreSchema,
+  lyrical_economy: dimensionScoreSchema,
+  hook_strength: dimensionScoreSchema,
 });
 
 export const critiqueResultSchema = z.object({
   genrePrinciples: z.string(),
-  score: z.number().min(0).max(10),
+  overallRatingBand: overallRatingBandSchema,
+  overallBandRationale: z.string().optional(),
+  subscores: lyricSubscoresSchema,
   overallStrengths: z.array(z.string()),
   overallWeaknesses: z.array(z.string()),
   lineFeedback: z.array(lineFeedbackItemSchema),
