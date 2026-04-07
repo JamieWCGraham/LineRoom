@@ -82,8 +82,8 @@ export function LyricChatPanel({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-zinc-800 bg-zinc-900/30">
-      <div className="border-b border-zinc-800/80 px-3 py-2">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/30">
+      <div className="shrink-0 border-b border-zinc-800/80 px-3 py-2">
         <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
           Chat about your lyrics/poetry
         </h2>
@@ -161,14 +161,14 @@ export function LyricChatPanel({
 
       {error ? (
         <div
-          className="mx-3 mb-2 rounded-lg border border-rose-900/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200"
+          className="mx-3 mb-2 shrink-0 rounded-lg border border-rose-900/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200"
           role="alert"
         >
           {error}
         </div>
       ) : null}
 
-      <div className="border-t border-zinc-800/80 p-3">
+      <div className="shrink-0 border-t border-zinc-800/80 p-3">
         <div className="flex gap-2">
           <textarea
             value={input}
@@ -181,7 +181,7 @@ export function LyricChatPanel({
             }}
             rows={2}
             disabled={loading}
-            className="min-h-[44px] flex-1 resize-y rounded-lg border border-zinc-800 bg-zinc-900/60 p-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:opacity-50"
+            className="min-h-[44px] max-h-40 flex-1 resize-none overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-900/60 p-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:opacity-50"
             placeholder="Message…"
           />
           <button

@@ -26,9 +26,9 @@ export function Header(props: { showDashboardLink?: boolean }) {
           <Link
             href="/"
             prefetch
-            className="shrink-0 text-sm text-zinc-400 underline-offset-4 hover:text-zinc-200 hover:underline"
+            className="shrink-0 rounded-md border border-zinc-700 bg-zinc-800/80 px-3 py-1.5 text-sm font-medium text-zinc-100 shadow-sm transition hover:border-zinc-500 hover:bg-zinc-700/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
           >
-            Dashboard
+            Back to Dashboard
           </Link>
         : null}
       </div>

@@ -20,6 +20,12 @@ const btnPrimary =
 const btnDanger =
   "shrink-0 rounded-md border border-rose-900/60 px-2.5 py-1 text-xs font-medium text-rose-200 hover:border-rose-700 hover:bg-rose-950/40 disabled:opacity-40";
 
+function formatUpdatedAt(value: string) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "Unknown date";
+  return d.toISOString().replace("T", " ").slice(0, 16) + " UTC";
+}
+
 export function PieceRow({ songId, initialTitle, updatedAt }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -137,7 +143,7 @@ export function PieceRow({ songId, initialTitle, updatedAt }: Props) {
                 {initialTitle}
               </Link>
               <p className="text-xs text-zinc-500">
-                Updated {new Date(updatedAt).toLocaleString()}
+                Updated {formatUpdatedAt(updatedAt)}
               </p>
             </div>
           }
