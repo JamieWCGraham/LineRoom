@@ -420,6 +420,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
               pieceTitle={pieceTitle}
               messages={chatMessages}
               onMessagesChange={setChatMessages}
+              onClearMessages={() => setChatMessages([])}
               critique={critique}
               critiqueMeta={meta}
               onCritiqueMetaChange={setMeta}

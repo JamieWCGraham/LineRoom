@@ -318,17 +318,6 @@ export function DraftEditor({
           {tooltip.text}
         </div>
       ) : null}
-      {lineFeedbackByIndex.size > 0 ? (
-        <p className="shrink-0 text-[11px] text-zinc-600">
-          Green lines are praise-only and red lines include actionable critique.
-          Hover a line in the draft to read notes; full line notes also appear in
-          the Critique panel.
-        </p>
-      ) : null}
-      <p className="shrink-0 text-[11px] text-zinc-600">
-        Shortcuts: Cmd/Ctrl+B (bold), Cmd/Ctrl+U (underline), Cmd/Ctrl+/-
-        (selection font size).
-      </p>
     </div>
   );
 }

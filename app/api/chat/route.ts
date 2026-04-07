@@ -3,7 +3,7 @@ import {
   runWithLangfuseTrace,
   scheduleLangfuseFlush,
 } from "@/lib/langfuse-server";
-import { createBaseOpenAI, getChatModel } from "@/lib/openai";
+import { createBaseOpenAI, getFastChatModel } from "@/lib/openai";
 import { buildLyricChatSystemPrompt } from "@/lib/prompts";
 import type { CritiqueMeta, CritiqueResult } from "@/lib/types";
 import { chatRequestSchema } from "@/lib/validators";
@@ -115,22 +115,25 @@ export async function POST(req: Request) {
       async ({ createTracedOpenAI, setTraceIO }) => {
         const openai = createTracedOpenAI(createBaseOpenAI());
         const completion = await openai.chat.completions.create({
-          model: getChatModel(),
+          model: getFastChatModel(),
           messages: openaiMessages,
         });
         const reply = completion.choices[0]?.message?.content?.trim();
         if (!reply) {
-          return NextResponse.json(
-            { error: "Empty model response" },
-            { status: 502 },
-          );
+          return NextResponse.json({ error: "Empty model response" }, { status: 502 });
         }
-
         setTraceIO({
           input: { messages: openaiMessages },
           output: { reply },
         });
-        return NextResponse.json({ message: reply });
+
+        return new Response(reply, {
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "no-store",
+            "X-Chat-Mode": "fast",
+          },
+        });
       },
     );
   } catch (e) {
