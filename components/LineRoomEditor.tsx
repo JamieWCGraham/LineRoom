@@ -9,8 +9,14 @@ import { DraftEditor } from "@/components/DraftEditor";
 import { Header } from "@/components/Header";
 import { LyricChatPanel } from "@/components/LyricChatPanel";
 import { SongTitleEditor } from "@/components/songs/song-title-editor";
-import { buildLineFeedbackByIndex } from "@/lib/lineAnnotations";
-import { saveNewSongVersion } from "@/lib/songs/actions";
+import {
+  buildLineFeedbackByIndex,
+  type LineAnnotation,
+} from "@/lib/lineAnnotations";
+import {
+  saveNewSongVersion,
+  updateSongVersionState,
+} from "@/lib/songs/actions";
 import type { ChatMessage, CritiqueMeta, CritiqueResult } from "@/lib/types";
 import { critiqueResultSchema } from "@/lib/validators";
 
@@ -150,9 +156,11 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   const [critiqueError, setCritiqueError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savePending, startSaveTransition] = useTransition();
+  const [autosaveError, setAutosaveError] = useState<string | null>(null);
 
   const songId = isSong ? props.songId : null;
   const songTitleFromProps = props.mode === "song" ? props.songTitle : null;
+  const activeVersionId = props.mode === "song" ? props.activeVersionId : null;
 
   useEffect(() => {
     if (songTitleFromProps === null) return;
@@ -247,11 +255,41 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     () =>
       critique ?
         buildLineFeedbackByIndex(fullText, critique.lineFeedback)
-      : new Map<number, string[]>(),
+      : new Map<number, LineAnnotation[]>(),
     [critique, fullText],
   );
 
   const lyricsEmpty = !fullText.trim();
+
+  const autosavePayload = useMemo(
+    () =>
+      JSON.stringify({
+        draft_text: fullText,
+        chat_messages: chatMessages,
+        critique,
+        meta,
+      }),
+    [chatMessages, critique, fullText, meta],
+  );
+
+  useEffect(() => {
+    if (!isSong) return;
+    const versionId = activeVersionId;
+    if (!songId || !versionId) return;
+
+    const t = setTimeout(() => {
+      setAutosaveError(null);
+      void (async () => {
+        const payload = JSON.parse(autosavePayload) as unknown;
+        const result = await updateSongVersionState(songId, versionId, payload);
+        if (!result.ok) {
+          setAutosaveError(result.message);
+        }
+      })();
+    }, 1000);
+
+    return () => clearTimeout(t);
+  }, [activeVersionId, autosavePayload, isSong, songId]);
 
   const runCritique = useCallback(async () => {
     if (!fullText.trim()) return;
@@ -324,6 +362,11 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           saveError={saveError}
         />
       : null}
+      {isSong && autosaveError ? (
+        <div className="border-b border-red-900/40 bg-red-950/20 px-4 py-2 text-xs text-red-300">
+          Autosave failed: {autosaveError}
+        </div>
+      ) : null}
       <main className="mx-auto flex w-full max-w-[1920px] flex-1 flex-col gap-6 p-4 pb-10 lg:grid lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(260px,360px)_minmax(260px,380px)] lg:gap-5 lg:p-6 lg:pb-8">
         <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 lg:min-h-[calc(100vh-5.5rem)]">
           <DraftEditor
