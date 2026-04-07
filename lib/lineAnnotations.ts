@@ -1,11 +1,16 @@
 import type { LineFeedbackItem } from "@/lib/types";
 
+export type LineAnnotation = {
+  feedback: string;
+  category: LineFeedbackItem["category"];
+};
+
 export function buildLineFeedbackByIndex(
   draft: string,
   items: LineFeedbackItem[],
-): Map<number, string[]> {
+): Map<number, LineAnnotation[]> {
   const lines = draft.split("\n");
-  const map = new Map<number, string[]>();
+  const map = new Map<number, LineAnnotation[]>();
 
   for (const item of items) {
     const q = item.quotedLine;
@@ -38,7 +43,7 @@ export function buildLineFeedbackByIndex(
     if (idx === -1) continue;
 
     const list = map.get(idx) ?? [];
-    list.push(item.feedback);
+    list.push({ feedback: item.feedback, category: item.category });
     map.set(idx, list);
   }
   return map;

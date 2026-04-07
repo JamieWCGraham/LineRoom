@@ -27,8 +27,13 @@ function formatCritiqueForChat(
   const lines = critique.lineFeedback
     .map((l) => `Line: ${l.quotedLine}\nNote: ${l.feedback}`)
     .join("\n\n");
+  const subscores = Object.entries(critique.subscores)
+    .map(([dimension, score]) => `- ${dimension}: ${score}/5`)
+    .join("\n");
   return `${header}
-Score: ${critique.score}/10
+Overall rating band: ${critique.overallRatingBand}
+${critique.overallBandRationale ? `Band rationale: ${critique.overallBandRationale}\n` : ""}Subscores:
+${subscores}
 
 Genre principles:
 ${critique.genrePrinciples}

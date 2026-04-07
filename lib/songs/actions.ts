@@ -88,38 +88,46 @@ export async function deleteSong(songId: string): Promise<DeleteSongResult> {
 
 export async function createSong(): Promise<void> {
   const supabase = await createClient();
-  const user = await requireAuthUser(supabase);
+  await requireAuthUser(supabase);
 
-  const { data: song, error: songError } = await supabase
-    .from("songs")
-    .insert({ user_id: user.id, title: "Untitled piece" })
-    .select("id")
-    .single();
+  const { data: songId, error } = await supabase.rpc(
+    "create_song_with_initial_version",
+  );
 
-  if (songError || !song) {
+  if (error || !songId) {
     redirect("/?createError=1");
   }
+  redirect(`/song/${songId}`);
+}
 
-  const emptyMeta = { title: "", similarArtists: "", genre: "" };
-  const { error: versionError } = await supabase.from("song_versions").insert({
-    song_id: song.id,
-    version_number: 1,
-    draft_text: "",
-    chat_messages: [],
-    critique: null,
-    meta: emptyMeta,
-  });
+export type CreateSongResult =
+  | { ok: true; songId: string }
+  | { ok: false; message: string };
 
-  if (versionError) {
-    await supabase.from("songs").delete().eq("id", song.id);
-    redirect("/?createError=1");
+export async function createSongAndInitialVersion(): Promise<CreateSongResult> {
+  const supabase = await createClient();
+  await requireAuthUser(supabase);
+
+  const { data: songId, error } = await supabase.rpc(
+    "create_song_with_initial_version",
+  );
+
+  if (error || !songId) {
+    return { ok: false, message: "Could not create a new piece." };
   }
 
-  redirect(`/song/${song.id}`);
+  revalidatePath("/");
+  revalidatePath(`/song/${songId}`);
+
+  return { ok: true, songId };
 }
 
 export type SaveSongVersionResult =
   | { ok: true; versionId: string }
+  | { ok: false; message: string };
+
+export type UpdateSongVersionResult =
+  | { ok: true }
   | { ok: false; message: string };
 
 export async function saveNewSongVersion(
@@ -184,4 +192,59 @@ export async function saveNewSongVersion(
   revalidatePath(`/song/${songId}`);
 
   return { ok: true, versionId: inserted.id };
+}
+
+export async function updateSongVersionState(
+  songId: string,
+  versionId: string,
+  payload: unknown,
+): Promise<UpdateSongVersionResult> {
+  const parsed = saveSongVersionPayloadSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { ok: false, message: "Invalid save payload." };
+  }
+
+  const supabase = await createClient();
+  const user = await requireAuthUser(supabase);
+
+  const { data: song, error: songError } = await supabase
+    .from("songs")
+    .select("id")
+    .eq("id", songId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (songError || !song) {
+    return { ok: false, message: "Piece not found." };
+  }
+
+  const { data: updatedRow, error: updateError } = await supabase
+    .from("song_versions")
+    .update({
+      draft_text: parsed.data.draft_text,
+      chat_messages: parsed.data.chat_messages,
+      critique: parsed.data.critique,
+      meta: parsed.data.meta,
+    })
+    .eq("id", versionId)
+    .eq("song_id", songId)
+    .select("id")
+    .maybeSingle();
+
+  if (updateError || !updatedRow) {
+    return {
+      ok: false,
+      message: updateError?.message ?? "Could not update current version.",
+    };
+  }
+
+  await supabase
+    .from("songs")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", songId);
+
+  revalidatePath("/");
+  revalidatePath(`/song/${songId}`);
+
+  return { ok: true };
 }

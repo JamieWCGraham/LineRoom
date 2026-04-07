@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { LineAnnotation } from "@/lib/lineAnnotations";
 
 type Props = {
   value: string;
   onChange: (value: string) => void;
-  lineFeedbackByIndex: Map<number, string[]>;
+  lineFeedbackByIndex: Map<number, LineAnnotation[]>;
 };
 
 const TEXTAREA_CLASSES =
@@ -68,10 +69,17 @@ export function DraftEditor({
         setTooltip(null);
         return;
       }
+      const noteText = notes
+        .map((note) =>
+          note.category === "praise" ?
+            `Praise: ${note.feedback}`
+          : `Constructive: ${note.feedback}`,
+        )
+        .join("\n\n—\n\n");
       setTooltip({
         x: clientX,
         y: clientY,
-        text: notes.join("\n\n—\n\n"),
+        text: noteText,
       });
     },
     [lineFeedbackByIndex, lines.length],
@@ -92,11 +100,19 @@ export function DraftEditor({
             className="inline-block min-w-full whitespace-pre p-3 text-left text-[15px] font-sans leading-relaxed text-zinc-100"
           >
             {lines.map((line, i) => {
-              const has = lineFeedbackByIndex.has(i);
+              const notes = lineFeedbackByIndex.get(i);
+              const has = Boolean(notes?.length);
+              const hasConstructive = notes?.some(
+                (note) => note.category === "constructive",
+              );
+              const lineHighlightClass =
+                hasConstructive ?
+                  "rounded-sm bg-red-900/45 px-0.5 text-zinc-100"
+                : "rounded-sm bg-green-900/45 px-0.5 text-zinc-100";
               return (
                 <span key={i}>
                   {has ? (
-                    <mark className="rounded-sm bg-amber-900/45 px-0.5 text-zinc-100">
+                    <mark className={lineHighlightClass}>
                       {line}
                     </mark>
                   ) : (
@@ -130,8 +146,9 @@ export function DraftEditor({
       ) : null}
       {lineFeedbackByIndex.size > 0 ? (
         <p className="text-[11px] text-zinc-600">
-          Amber lines have notes—hover a line in the draft to read them; full
-          line notes also appear in the Critique panel.
+          Green lines are praise-only and red lines include actionable critique.
+          Hover a line in the draft to read notes; full line notes also appear in
+          the Critique panel.
         </p>
       ) : null}
     </div>
