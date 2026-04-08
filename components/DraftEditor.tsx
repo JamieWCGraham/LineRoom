@@ -14,6 +14,8 @@ const TEXTAREA_CLASSES =
 
 type LineHighlightTier = "weak" | "promising" | "strong";
 
+type TooltipFeedbackEntry = { label: string; feedback: string };
+
 export function DraftEditor({
   value,
   onChange,
@@ -37,8 +39,8 @@ export function DraftEditor({
   const [tooltip, setTooltip] = useState<{
     x: number;
     y: number;
-    text: string;
     tier: LineHighlightTier;
+    entries: TooltipFeedbackEntry[];
   } | null>(null);
   const [uiFontSize, setUiFontSize] = useState(15);
   const [styleOps, setStyleOps] = useState<StyleOp[]>([]);
@@ -159,20 +161,18 @@ export function DraftEditor({
         notes.some((n) => n.strength === "weak") ? "weak"
         : notes.some((n) => n.strength === "promising") ? "promising"
         : "strong";
-      const noteText = notes
-        .map((note) => {
-          const prefix =
-            note.strength === "strong" ? "Strong"
-            : note.strength === "promising" ? "Promising"
-            : "Room for Improvement";
-          return `${prefix}: ${note.feedback}`;
-        })
-        .join("\n\n—\n\n");
+      const entries: TooltipFeedbackEntry[] = notes.map((note) => {
+        const label =
+          note.strength === "strong" ? "Strong"
+          : note.strength === "promising" ? "Promising"
+          : "Room for Improvement";
+        return { label, feedback: note.feedback };
+      });
       setTooltip({
         x: clientX,
         y: clientY,
-        text: noteText,
         tier,
+        entries,
       });
     },
     [lineFeedbackByIndex, lines.length, showHighlights],
@@ -374,7 +374,16 @@ export function DraftEditor({
           }`}
           style={{ left: tooltip.x + 14, top: tooltip.y + 14 }}
         >
-          {tooltip.text}
+          {tooltip.entries.map((entry, i) => (
+            <div
+              key={i}
+              className={i > 0 ? "mt-3 border-t border-zinc-600/40 pt-3" : undefined}
+            >
+              <strong className="font-semibold text-zinc-100">{entry.label}</strong>
+              {": "}
+              {entry.feedback}
+            </div>
+          ))}
         </div>
       ) : null}
     </div>
