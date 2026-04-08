@@ -153,11 +153,13 @@ export function DraftEditor({
         return;
       }
       const noteText = notes
-        .map((note) =>
-          note.category === "praise" ?
-            `Praise: ${note.feedback}`
-          : `Constructive: ${note.feedback}`,
-        )
+        .map((note) => {
+          const prefix =
+            note.strength === "strong" ? "Strong"
+            : note.strength === "promising" ? "Promising / Tweakable"
+            : "Weak";
+          return `${prefix}: ${note.feedback}`;
+        })
         .join("\n\n—\n\n");
       setTooltip({
         x: clientX,
@@ -254,13 +256,16 @@ export function DraftEditor({
             {lines.map((line, i) => {
               const notes = lineFeedbackByIndex.get(i);
               const has = Boolean(notes?.length);
-              const hasConstructive = notes?.some(
-                (note) => note.category === "constructive",
+              const hasWeak = notes?.some((note) => note.strength === "weak");
+              const hasPromising = notes?.some(
+                (note) => note.strength === "promising",
               );
               const lineHighlightClass =
-                hasConstructive ?
-                  "rounded-sm bg-red-900/45 px-0.5 text-zinc-100"
-                : "rounded-sm bg-green-900/45 px-0.5 text-zinc-100";
+                hasWeak ?
+                  "rounded-sm bg-rose-700/45 px-0.5 text-zinc-50"
+                : hasPromising ?
+                  "rounded-sm bg-amber-500/35 px-0.5 text-zinc-50"
+                : "rounded-sm bg-emerald-600/35 px-0.5 text-zinc-50";
 
               let globalIndex = 0;
               for (let li = 0; li < i; li += 1) globalIndex += lines[li].length + 1;
