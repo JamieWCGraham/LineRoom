@@ -320,7 +320,7 @@ When a lyric demonstrates:
 - multiple lines that feel inevitable or deeply memorable
 - sustained coherence of voice and theme
 - Prioritize holistic impact over equal weighting of checklist weaknesses.
-
+- If a lyric demonstrates sustained emotional authority, memorable phrasing, and coherent voice, do not withhold "Standout" due to minor or localized weaknesses. Only withhold "Standout" if the lyric is clearly lacking in these core dimensions.
 ---
 
 WHEN CRITIQUING LYRICS:

@@ -46,7 +46,7 @@ export function CritiqueDisplayPanel({
           Critique
         </h2>
         <p className="mt-0.5 text-[11px] leading-snug text-zinc-600">
-          Saved after generation. Line notes below match green/yellow/red highlights in
+          Saved after generation. Line notes below match Sage/Ochre/Plum highlights in
           the draft (hover there for the same detail).
         </p>
       </div>
@@ -181,18 +181,18 @@ export function CritiqueDisplayPanel({
                         strength === "strong" ?
                           "border-l-2 border-emerald-400/80 pl-2 font-mono text-[13px] leading-snug text-emerald-100"
                         : strength === "promising" ?
-                          "border-l-2 border-amber-300/85 pl-2 font-mono text-[13px] leading-snug text-amber-100"
-                        : "border-l-2 border-rose-400/80 pl-2 font-mono text-[13px] leading-snug text-rose-100";
+                          "border-l-2 border-yellow-500/85 pl-2 font-mono text-[13px] leading-snug text-yellow-100"
+                        : "border-l-2 border-fuchsia-400/80 pl-2 font-mono text-[13px] leading-snug text-fuchsia-100";
                       const labelClass =
                         strength === "strong" ?
                           "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-emerald-300/90"
                         : strength === "promising" ?
-                          "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-amber-300/90"
-                        : "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-rose-300/90";
+                          "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-yellow-300/90"
+                        : "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-fuchsia-300/90";
                       const strengthLabel =
-                        strength === "strong" ? "Strong"
-                        : strength === "promising" ? "Promising / Tweakable"
-                        : "Weak";
+                        strength === "strong" ? "Sage (Keep)"
+                        : strength === "promising" ? "Ochre (Develop)"
+                        : "Plum (Rework)";
                       return (
                         <>
                     <p
