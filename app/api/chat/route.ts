@@ -25,7 +25,10 @@ function formatCritiqueForChat(
     .map((s) => `- ${s}`)
     .join("\n");
   const lines = critique.lineFeedback
-    .map((l) => `Line: ${l.quotedLine}\nNote: ${l.feedback}`)
+    .map(
+      (l) =>
+        `Line: ${l.quotedLine}\nStrength: ${l.strength ?? (l.category === "praise" ? "strong" : "weak")}\nNote: ${l.feedback}`,
+    )
     .join("\n\n");
   const subscores = Object.entries(critique.subscores)
     .map(([dimension, score]) => `- ${dimension}: ${score}/5`)

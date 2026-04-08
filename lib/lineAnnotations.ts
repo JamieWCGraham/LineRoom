@@ -3,6 +3,7 @@ import type { LineFeedbackItem } from "@/lib/types";
 export type LineAnnotation = {
   feedback: string;
   category: LineFeedbackItem["category"];
+  strength: "strong" | "promising" | "weak";
 };
 
 export function buildLineFeedbackByIndex(
@@ -43,7 +44,13 @@ export function buildLineFeedbackByIndex(
     if (idx === -1) continue;
 
     const list = map.get(idx) ?? [];
-    list.push({ feedback: item.feedback, category: item.category });
+    list.push({
+      feedback: item.feedback,
+      category: item.category,
+      strength:
+        item.strength ??
+        (item.category === "praise" ? "strong" : "weak"),
+    });
     map.set(idx, list);
   }
   return map;

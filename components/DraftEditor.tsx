@@ -12,6 +12,10 @@ type Props = {
 const TEXTAREA_CLASSES =
   "box-border w-full flex-1 min-h-[68dvh] resize-y rounded-lg border-0 bg-transparent p-3 text-[15px] font-sans leading-relaxed text-transparent caret-zinc-100 outline-none whitespace-pre lg:min-h-0";
 
+type LineHighlightTier = "weak" | "promising" | "strong";
+
+type TooltipFeedbackEntry = { label: string; feedback: string };
+
 export function DraftEditor({
   value,
   onChange,
@@ -35,7 +39,8 @@ export function DraftEditor({
   const [tooltip, setTooltip] = useState<{
     x: number;
     y: number;
-    text: string;
+    tier: LineHighlightTier;
+    entries: TooltipFeedbackEntry[];
   } | null>(null);
   const [uiFontSize, setUiFontSize] = useState(15);
   const [styleOps, setStyleOps] = useState<StyleOp[]>([]);
@@ -152,17 +157,22 @@ export function DraftEditor({
         setTooltip(null);
         return;
       }
-      const noteText = notes
-        .map((note) =>
-          note.category === "praise" ?
-            `Praise: ${note.feedback}`
-          : `Constructive: ${note.feedback}`,
-        )
-        .join("\n\n—\n\n");
+      const tier: LineHighlightTier =
+        notes.some((n) => n.strength === "weak") ? "weak"
+        : notes.some((n) => n.strength === "promising") ? "promising"
+        : "strong";
+      const entries: TooltipFeedbackEntry[] = notes.map((note) => {
+        const label =
+          note.strength === "strong" ? "Strong"
+          : note.strength === "promising" ? "Promising"
+          : "Room for Improvement";
+        return { label, feedback: note.feedback };
+      });
       setTooltip({
         x: clientX,
         y: clientY,
-        text: noteText,
+        tier,
+        entries,
       });
     },
     [lineFeedbackByIndex, lines.length, showHighlights],
@@ -254,13 +264,16 @@ export function DraftEditor({
             {lines.map((line, i) => {
               const notes = lineFeedbackByIndex.get(i);
               const has = Boolean(notes?.length);
-              const hasConstructive = notes?.some(
-                (note) => note.category === "constructive",
+              const hasWeak = notes?.some((note) => note.strength === "weak");
+              const hasPromising = notes?.some(
+                (note) => note.strength === "promising",
               );
               const lineHighlightClass =
-                hasConstructive ?
-                  "rounded-sm bg-red-900/45 px-0.5 text-zinc-100"
-                : "rounded-sm bg-green-900/45 px-0.5 text-zinc-100";
+                hasWeak ?
+                  "rounded-sm bg-pink-600/35 px-0.5 text-zinc-50"
+                : hasPromising ?
+                  "rounded-sm bg-yellow-500/25 px-0.5 text-zinc-50"
+                : "rounded-sm bg-emerald-600/35 px-0.5 text-zinc-50";
 
               let globalIndex = 0;
               for (let li = 0; li < i; li += 1) globalIndex += lines[li].length + 1;
@@ -354,10 +367,23 @@ export function DraftEditor({
       </div>
       {tooltip ? (
         <div
-          className="pointer-events-none fixed z-[100] max-h-64 max-w-sm overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900/95 p-3 text-xs leading-relaxed text-zinc-200 shadow-xl backdrop-blur-sm"
+          className={`pointer-events-none fixed z-[100] max-h-64 max-w-sm overflow-y-auto rounded-lg border-2 bg-zinc-900/95 p-3 text-xs leading-relaxed text-zinc-200 shadow-xl backdrop-blur-sm ${
+            tooltip.tier === "weak" ? "border-pink-600/75"
+            : tooltip.tier === "promising" ? "border-yellow-500/75"
+            : "border-green-600/75"
+          }`}
           style={{ left: tooltip.x + 14, top: tooltip.y + 14 }}
         >
-          {tooltip.text}
+          {tooltip.entries.map((entry, i) => (
+            <div
+              key={i}
+              className={i > 0 ? "mt-3 border-t border-zinc-600/40 pt-3" : undefined}
+            >
+              <strong className="font-semibold text-zinc-100">{entry.label}</strong>
+              {": "}
+              {entry.feedback}
+            </div>
+          ))}
         </div>
       ) : null}
     </div>
