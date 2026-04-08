@@ -9,6 +9,7 @@ export const lineFeedbackItemSchema = z.object({
   quotedLine: z.string(),
   feedback: z.string(),
   category: z.enum(["praise", "constructive"]).default("constructive"),
+  strength: z.enum(["strong", "promising", "weak"]).optional(),
 });
 
 export const overallRatingBandSchema = z.enum([
