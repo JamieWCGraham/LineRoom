@@ -46,7 +46,7 @@ export function CritiqueDisplayPanel({
           Critique
         </h2>
         <p className="mt-0.5 text-[11px] leading-snug text-zinc-600">
-          Saved after generation. Line notes below match green/red highlights in
+          Saved after generation. Line notes below match Sage/Ochre/Plum highlights in
           the draft (hover there for the same detail).
         </p>
       </div>
@@ -173,27 +173,44 @@ export function CritiqueDisplayPanel({
               <ul className="mt-2 space-y-3 border-t border-zinc-800/80 pt-3">
                 {critique.lineFeedback.map((item, i) => (
                   <li key={i} className="list-none">
+                    {(() => {
+                      const strength =
+                        item.strength ??
+                        (item.category === "praise" ? "strong" : "weak");
+                      const quotedClass =
+                        strength === "strong" ?
+                          "border-l-2 border-emerald-400/80 pl-2 font-mono text-[13px] leading-snug text-emerald-100"
+                        : strength === "promising" ?
+                          "border-l-2 border-yellow-500/85 pl-2 font-mono text-[13px] leading-snug text-yellow-100"
+                        : "border-l-2 border-fuchsia-400/80 pl-2 font-mono text-[13px] leading-snug text-fuchsia-100";
+                      const labelClass =
+                        strength === "strong" ?
+                          "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-emerald-300/90"
+                        : strength === "promising" ?
+                          "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-yellow-300/90"
+                        : "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-fuchsia-300/90";
+                      const strengthLabel =
+                        strength === "strong" ? "Sage (Keep)"
+                        : strength === "promising" ? "Ochre (Develop)"
+                        : "Plum (Rework)";
+                      return (
+                        <>
                     <p
-                      className={
-                        item.category === "praise" ?
-                          "border-l-2 border-green-800/70 pl-2 font-mono text-[13px] leading-snug text-green-100/90"
-                        : "border-l-2 border-red-800/70 pl-2 font-mono text-[13px] leading-snug text-red-100/90"
-                      }
+                      className={quotedClass}
                     >
                       {item.quotedLine || "—"}
                     </p>
                     <p
-                      className={
-                        item.category === "praise" ?
-                          "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-green-300/80"
-                        : "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-red-300/80"
-                      }
+                      className={labelClass}
                     >
-                      {item.category === "praise" ? "Praise" : "Constructive"}
+                      {strengthLabel}
                     </p>
                     <p className="mt-1.5 pl-2 text-[13px] leading-relaxed text-zinc-400">
                       {item.feedback}
                     </p>
+                        </>
+                      );
+                    })()}
                   </li>
                 ))}
               </ul>

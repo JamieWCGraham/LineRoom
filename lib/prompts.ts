@@ -37,6 +37,7 @@ function formatCritiqueSnapshotForPrompt(critique: {
     quotedLine: string;
     feedback: string;
     category: "praise" | "constructive";
+    strength?: "strong" | "promising" | "weak";
   }>;
 }): string {
   return `Prior rating band: ${critique.overallRatingBand}
@@ -57,7 +58,7 @@ ${critique.lineFeedback
   .slice(0, 6)
   .map(
     (item) =>
-      `- [${item.category}] "${item.quotedLine}" -> ${item.feedback}`,
+      `- [${item.strength ?? (item.category === "praise" ? "strong" : "weak")}; ${item.category}] "${item.quotedLine}" -> ${item.feedback}`,
   )
   .join("\n") || "- (none)"}`;
 }
@@ -110,6 +111,7 @@ export function buildCritiqueUserPayload(input: {
       quotedLine: string;
       feedback: string;
       category: "praise" | "constructive";
+      strength?: "strong" | "promising" | "weak";
     }>;
   };
   priorVersions?: Array<{
@@ -132,6 +134,7 @@ export function buildCritiqueUserPayload(input: {
         quotedLine: string;
         feedback: string;
         category: "praise" | "constructive";
+        strength?: "strong" | "promising" | "weak";
       }>;
     } | null;
   }>;
@@ -279,6 +282,10 @@ The voice should feel lived-in, deliberate, and native to the song’s world.
 Do not reward imagery just for being decorative.  
 Do not reward repetition just for sounding song-like.  
 Images, symbols, refrains, and hooks should create memorability, deepen meaning, sharpen emotion, or generate momentum.
+Note Hooks may function differently across genres:
+  - In pop: catchiness, repetition, immediate memorability
+  - In folk/indie: thematic refrains that accumulate meaning over repetition
+  Do not penalize a hook for lacking punch or novelty if it effectively anchors the song’s emotional or thematic core.
 
 7. PHYSICALIZE WHEN IT HELPS  
 When useful, encourage emotion to appear through action, gesture, sensory detail, body language, or spatial relation.  
@@ -300,6 +307,20 @@ Distinguish between:
 - unearned directness → generic, interchangeable, or substituting for detail
 Only criticize direct language when it weakens specificity, originality, or emotional impact.
 
+10. PROSODY IS GENRE-DEPENDENT
+
+In indie, folk, and similar styles, phrasing is often speech-like, elastic, and melody-driven rather than metrically strict.
+Do not penalize irregular line lengths or phrasing if they can plausibly resolve in performance or contribute to a natural, conversational delivery.
+Only penalize prosody when it clearly disrupts singability, flow, or phrasing under appropriate genre-specific musical setting (e.g. top-40 pop, theatre, hip-hop, etc).
+
+11. RECOGNIZING EXCEPTIONAL WRITING
+
+When a lyric demonstrates:
+- strong emotional authority
+- multiple lines that feel inevitable or deeply memorable
+- sustained coherence of voice and theme
+- Prioritize holistic impact over equal weighting of checklist weaknesses.
+- If a lyric demonstrates sustained emotional authority, memorable phrasing, and coherent voice, do not withhold "Standout" due to minor or localized weaknesses. Only withhold "Standout" if the lyric is clearly lacking in these core dimensions.
 ---
 
 WHEN CRITIQUING LYRICS:
@@ -334,8 +355,12 @@ OUTPUT STYLE:
   - Use confident language ("is", "does", "breaks", "weakens") when identifying clear issues (cliché, awkward phrasing, broken prosody, vague language).
   - Use qualified language ("may", "leans", "reads as", "risks") when evaluating taste, tone, or tradeoffs.
   - Avoid hedging everything. Maintain authority while staying precise about uncertainty.
+  - A piece may still qualify as "Strong" or "Standout" even if it contains minor or localized weaknesses, provided those weaknesses do not materially reduce the song’s overall emotional impact, memorability, or coherence.
+  Distinguish between:
+  - structural weaknesses → limit the piece (e.g., broken voice, unsingable phrasing, no emotional center)
+  - non-fatal imperfections → present but do not reduce overall effectiveness.
 Your goal is not to impose one aesthetic.  
-Your goal is to help the writing become more effective, original, and emotionally convincing within its intended genre and voice.
+Your goal is to help the writing become more effective, original, and emotionally convincing WITHIN its intended genre and voice.
 
 ---
 
@@ -356,7 +381,7 @@ Respond with a single JSON object only (no markdown fences), using this exact sh
   },
   "overallStrengths": string[],
   "overallWeaknesses": string[],
-  "lineFeedback": { "quotedLine": string, "feedback": string, "category": "praise" | "constructive" }[]
+  "lineFeedback": { "quotedLine": string, "feedback": string, "category": "praise" | "constructive", "strength": "strong" | "promising" | "weak" }[]
 }
 
 ---
@@ -401,6 +426,12 @@ Weigh overall effectiveness, concentration of strengths, severity of weaknesses,
 - "category":
   - "praise" → purely affirming, no requested change  
   - "constructive" → may include praise, but definitely includes critique or actionable improvement  
+
+- "strength":
+  - "strong" (🟢) → line clearly lands and should mostly be preserved
+  - "promising" (🟡) → line has useful material but benefits from tightening, clarity, or phrasing tweaks
+  - "weak" (🔴) → line currently underperforms and likely needs substantial revision or replacement
+  - Use all three states when warranted; avoid collapsing everything into only strong/weak.
 
 - Treat line-level analysis as context-first interpretation:
   - infer what the line is trying to do  
