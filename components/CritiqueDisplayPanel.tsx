@@ -31,7 +31,9 @@ export function CritiqueDisplayPanel({
   lyricsEmpty,
 }: Props) {
   const mobileHeaderRef = useRef<HTMLDivElement>(null);
+  const mobileFooterRef = useRef<HTMLDivElement>(null);
   const mobileHeaderInsetPx = useMobileToolbarInset(mobileHeaderRef);
+  const mobileFooterInsetPx = useMobileToolbarInset(mobileFooterRef);
   const [showFullGenrePrinciples, setShowFullGenrePrinciples] = useState(false);
   const genrePrinciplesText = critique?.genrePrinciples ?? "";
   const genrePrinciplesMaxChars = 420;
@@ -63,7 +65,7 @@ export function CritiqueDisplayPanel({
         aria-hidden
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-none p-3 [touch-action:pan-y]">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-none px-3 pt-3 [touch-action:pan-y] lg:pb-3 max-lg:pb-0">
         {!critique && !loading ? (
           <p className="text-center text-sm leading-relaxed text-zinc-600">
             Your critique will appear here after you click{" "}
@@ -231,9 +233,17 @@ export function CritiqueDisplayPanel({
             Refreshing critique... this may take up to 1-2 minutes.
           </p>
         ) : null}
+        <div
+          className="shrink-0 lg:hidden"
+          style={{ height: mobileFooterInsetPx }}
+          aria-hidden
+        />
       </div>
 
-      <div className="shrink-0 border-t border-zinc-800/80 p-3">
+      <div
+        ref={mobileFooterRef}
+        className="shrink-0 border-t border-zinc-800/80 p-3 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom))] max-lg:z-[50] max-lg:border-zinc-800/80 max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pb-3 max-lg:pt-2 max-lg:shadow-[0_-12px_32px_rgba(0,0,0,0.45)] max-lg:backdrop-blur-md lg:relative lg:bottom-auto lg:z-auto lg:bg-transparent lg:shadow-none"
+      >
         <button
           type="button"
           onClick={onRegenerate}
