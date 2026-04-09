@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useMobileToolbarInset } from "@/hooks/useMobileToolbarInset";
 import type { CritiqueResult } from "@/lib/types";
 
 const DIMENSION_LABELS: Array<{
@@ -29,6 +30,8 @@ export function CritiqueDisplayPanel({
   onRegenerate,
   lyricsEmpty,
 }: Props) {
+  const mobileHeaderRef = useRef<HTMLDivElement>(null);
+  const mobileHeaderInsetPx = useMobileToolbarInset(mobileHeaderRef);
   const [showFullGenrePrinciples, setShowFullGenrePrinciples] = useState(false);
   const genrePrinciplesText = critique?.genrePrinciples ?? "";
   const genrePrinciplesMaxChars = 420;
@@ -40,8 +43,11 @@ export function CritiqueDisplayPanel({
     : `${genrePrinciplesText.slice(0, genrePrinciplesMaxChars).trimEnd()}...`;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/30">
-      <div className="shrink-0 border-b border-zinc-800/80 px-3 py-2">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/30 max-lg:rounded-none max-lg:border-x-0">
+      <div
+        ref={mobileHeaderRef}
+        className="shrink-0 border-b border-zinc-800/80 px-3 py-2 max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-[50] max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pt-[max(0.25rem,env(safe-area-inset-top))] max-lg:backdrop-blur-md lg:relative lg:z-auto lg:bg-transparent lg:px-3 lg:pt-0"
+      >
         <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
           Critique
         </h2>
@@ -51,7 +57,13 @@ export function CritiqueDisplayPanel({
         </p>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+      <div
+        className="shrink-0 lg:hidden"
+        style={{ height: mobileHeaderInsetPx }}
+        aria-hidden
+      />
+
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-none p-3 [touch-action:pan-y]">
         {!critique && !loading ? (
           <p className="text-center text-sm leading-relaxed text-zinc-600">
             Your critique will appear here after you click{" "}

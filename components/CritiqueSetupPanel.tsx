@@ -1,5 +1,8 @@
 "use client";
 
+import { useRef } from "react";
+import { useMobileToolbarInset } from "@/hooks/useMobileToolbarInset";
+
 type Props = {
   similarArtists: string;
   genre: string;
@@ -21,9 +24,15 @@ export function CritiqueSetupPanel({
   error,
   lyricsEmpty,
 }: Props) {
+  const mobileHeaderRef = useRef<HTMLDivElement>(null);
+  const mobileHeaderInsetPx = useMobileToolbarInset(mobileHeaderRef);
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/30">
-      <div className="shrink-0 border-b border-zinc-800/80 px-3 py-2">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/30 max-lg:rounded-none max-lg:border-x-0">
+      <div
+        ref={mobileHeaderRef}
+        className="shrink-0 border-b border-zinc-800/80 px-3 py-2 max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-[50] max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pt-[max(0.25rem,env(safe-area-inset-top))] max-lg:backdrop-blur-md lg:relative lg:z-auto lg:bg-transparent lg:px-3 lg:pt-0"
+      >
         <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
           Before the critique
         </h2>
@@ -33,7 +42,13 @@ export function CritiqueSetupPanel({
         </p>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
+      <div
+        className="shrink-0 lg:hidden"
+        style={{ height: mobileHeaderInsetPx }}
+        aria-hidden
+      />
+
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-none p-3 [touch-action:pan-y]">
         <label className="block">
           <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
            Who are the closest artists/influences for this piece?

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { useMobileToolbarInset } from "@/hooks/useMobileToolbarInset";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import type { ChatMessage, CritiqueMeta, CritiqueResult } from "@/lib/types";
@@ -63,10 +64,14 @@ export function LyricChatPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modeBanner, setModeBanner] = useState<string | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const mobileHeaderRef = useRef<HTMLDivElement>(null);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
+  const mobileHeaderInsetPx = useMobileToolbarInset(mobileHeaderRef);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = messagesScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
 
   async function send() {
@@ -149,8 +154,11 @@ export function LyricChatPanel({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/30">
-      <div className="shrink-0 border-b border-zinc-800/80 px-3 py-2">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/30 max-lg:rounded-none max-lg:border-x-0">
+      <div
+        ref={mobileHeaderRef}
+        className="shrink-0 border-b border-zinc-800/80 px-3 py-2 max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-[50] max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pt-[max(0.25rem,env(safe-area-inset-top))] max-lg:backdrop-blur-md lg:relative lg:z-auto lg:bg-transparent lg:px-3 lg:pt-0"
+      >
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
             Chat about your lyrics
@@ -213,7 +221,16 @@ export function LyricChatPanel({
         </details>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+      <div
+        className="shrink-0 lg:hidden"
+        style={{ height: mobileHeaderInsetPx }}
+        aria-hidden
+      />
+
+      <div
+        ref={messagesScrollRef}
+        className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-none p-3 [touch-action:pan-y]"
+      >
         {modeBanner ? (
           <div className="rounded-lg border border-zinc-800 bg-zinc-950/50 px-2.5 py-2 text-[11px] text-zinc-400">
             {modeBanner}
@@ -253,7 +270,6 @@ export function LyricChatPanel({
             Thinking…
           </div>
         ) : null}
-        <div ref={bottomRef} />
       </div>
 
       {error ? (
