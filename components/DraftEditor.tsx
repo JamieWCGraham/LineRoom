@@ -1,7 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { LineAnnotation } from "@/lib/lineAnnotations";
+
+const MIN_UI_FONT_PX = 8;
+const MAX_UI_FONT_PX = 24;
+const MIN_SEGMENT_FONT_PX = 8;
+const MAX_SEGMENT_FONT_PX = 32;
 
 type Props = {
   value: string;
@@ -14,7 +27,7 @@ type Props = {
 };
 
 const TEXTAREA_CLASSES =
-  "box-border w-full flex-1 min-h-[44dvh] resize-y rounded-lg border-0 bg-transparent p-4 text-[15px] font-sans leading-relaxed text-transparent caret-zinc-100 outline-none whitespace-pre sm:min-h-[56dvh] lg:min-h-0";
+  "box-border w-full min-h-0 flex-1 resize-none rounded-lg border-0 bg-transparent p-4 text-[15px] font-sans leading-relaxed text-transparent caret-zinc-100 outline-none [touch-action:manipulation] [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain] whitespace-pre sm:min-h-[56dvh] sm:resize-y lg:min-h-0";
 
 type LineHighlightTier = "weak" | "promising" | "strong";
 
@@ -43,6 +56,7 @@ export function DraftEditor({
 
   const taRef = useRef<HTMLTextAreaElement>(null);
   const backdropInnerRef = useRef<HTMLDivElement>(null);
+  const scrollRafRef = useRef<number | null>(null);
   const [tooltip, setTooltip] = useState<{
     x: number;
     y: number;
@@ -55,7 +69,12 @@ export function DraftEditor({
   const [copyLabel, setCopyLabel] = useState("Copy Draft");
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
 
+  const deferredBackdropText = useDeferredValue(value);
   const lines = useMemo(() => value.split("\n"), [value]);
+  const backdropLines = useMemo(
+    () => deferredBackdropText.split("\n"),
+    [deferredBackdropText],
+  );
   const totalChars = value.length;
 
   const getStyleAt = useCallback(
@@ -117,16 +136,31 @@ export function DraftEditor({
   );
 
   const syncBackdropScroll = useCallback((el: HTMLTextAreaElement) => {
-    const inner = backdropInnerRef.current;
-    if (inner) {
-      inner.style.transform = `translate(-${el.scrollLeft}px, -${el.scrollTop}px)`;
+    if (scrollRafRef.current !== null) {
+      cancelAnimationFrame(scrollRafRef.current);
     }
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      const inner = backdropInnerRef.current;
+      if (inner) {
+        inner.style.transform = `translate3d(-${el.scrollLeft}px,-${el.scrollTop}px,0)`;
+      }
+    });
   }, []);
+
+  useEffect(
+    () => () => {
+      if (scrollRafRef.current !== null) {
+        cancelAnimationFrame(scrollRafRef.current);
+      }
+    },
+    [],
+  );
 
   useLayoutEffect(() => {
     const el = taRef.current;
     if (el) syncBackdropScroll(el);
-  }, [value, syncBackdropScroll]);
+  }, [value, deferredBackdropText, syncBackdropScroll]);
 
   useEffect(() => {
     if (lineFeedbackAutoShowKey) {
@@ -186,6 +220,74 @@ export function DraftEditor({
     [lineFeedbackByIndex, lines.length, showHighlights],
   );
 
+  const highlightLayer = useMemo(() => {
+    return backdropLines.map((line, i) => {
+      const notes = lineFeedbackByIndex.get(i);
+      const has = Boolean(notes?.length);
+      const hasWeak = notes?.some((note) => note.strength === "weak");
+      const hasPromising = notes?.some((note) => note.strength === "promising");
+      const lineHighlightClass =
+        hasWeak ?
+          "rounded-sm bg-pink-600/35 px-0.5 text-zinc-50"
+        : hasPromising ?
+          "rounded-sm bg-yellow-500/25 px-0.5 text-zinc-50"
+        : "rounded-sm bg-emerald-600/35 px-0.5 text-zinc-50";
+
+      let globalIndex = 0;
+      for (let li = 0; li < i; li += 1) globalIndex += backdropLines[li].length + 1;
+      const segments: Array<{
+        text: string;
+        style: EffectiveStyle;
+      }> = [];
+      for (let charOffset = 0; charOffset < line.length; charOffset += 1) {
+        const ch = line[charOffset];
+        const charStyle = getStyleAt(globalIndex + charOffset);
+        const last = segments[segments.length - 1];
+        if (
+          last &&
+          last.style.bold === charStyle.bold &&
+          last.style.underline === charStyle.underline &&
+          last.style.fontSizeDelta === charStyle.fontSizeDelta
+        ) {
+          last.text += ch;
+        } else {
+          segments.push({ text: ch, style: charStyle });
+        }
+      }
+      if (segments.length === 0) {
+        segments.push({
+          text: "",
+          style: { bold: false, underline: false, fontSizeDelta: 0 },
+        });
+      }
+
+      const renderedLine = segments.map((seg, segIdx) => (
+        <span
+          key={`${i}-${segIdx}`}
+          style={{
+            fontWeight: seg.style.bold ? 700 : 400,
+            textDecoration: seg.style.underline ? "underline" : "none",
+            fontSize: `${Math.max(
+              MIN_SEGMENT_FONT_PX,
+              Math.min(MAX_SEGMENT_FONT_PX, uiFontSize + seg.style.fontSizeDelta),
+            )}px`,
+          }}
+        >
+          {seg.text}
+        </span>
+      ));
+
+      return (
+        <span key={i}>
+          {showHighlights && has ?
+            <mark className={lineHighlightClass}>{renderedLine}</mark>
+          : renderedLine}
+          {i < backdropLines.length - 1 ? "\n" : null}
+        </span>
+      );
+    });
+  }, [backdropLines, getStyleAt, lineFeedbackByIndex, showHighlights, uiFontSize]);
+
   const handleCopyDraft = useCallback(async () => {
     if (!value.length) return;
     try {
@@ -205,7 +307,7 @@ export function DraftEditor({
     <>
       <button
         type="button"
-        onClick={() => setUiFontSize((v) => Math.max(12, v - 1))}
+        onClick={() => setUiFontSize((v) => Math.max(MIN_UI_FONT_PX, v - 1))}
         className={buttonClassName}
         aria-label="Decrease draft font size"
       >
@@ -213,7 +315,7 @@ export function DraftEditor({
       </button>
       <button
         type="button"
-        onClick={() => setUiFontSize((v) => Math.min(24, v + 1))}
+        onClick={() => setUiFontSize((v) => Math.min(MAX_UI_FONT_PX, v + 1))}
         className={buttonClassName}
         aria-label="Increase draft font size"
       >
@@ -269,11 +371,9 @@ export function DraftEditor({
             type="button"
             onClick={() => setMobileControlsOpen((v) => !v)}
             className="rounded-full border border-zinc-700/70 bg-transparent px-2.5 py-1 text-xs font-medium text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-900/30"
-            aria-label={
-              mobileControlsOpen ? "Hide draft editor controls" : "Show draft editor controls"
-            }
+            aria-label={mobileControlsOpen ? "Hide Tools" : "Show Tools"}
           >
-            Tools
+            {mobileControlsOpen ? "Hide Tools" : "Show Tools"}
           </button>
           {onMobileSave ? (
             <button
@@ -291,7 +391,7 @@ export function DraftEditor({
         {renderControls(controlButtonClasses)}
       </div>
       {mobileControlsOpen ? (
-        <div className="shrink-0 flex flex-wrap items-center gap-2 lg:hidden">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 lg:hidden">
           {renderControls(controlButtonClasses)}
         </div>
       ) : null}
@@ -302,75 +402,12 @@ export function DraftEditor({
         >
           <div
             ref={backdropInnerRef}
-            className="inline-block min-w-full whitespace-pre p-4 text-left text-[15px] font-sans leading-relaxed text-zinc-100"
+            className="inline-block min-w-full whitespace-pre p-4 text-left text-[15px] font-sans leading-relaxed text-zinc-100 will-change-transform"
             style={{
               fontSize: `${uiFontSize}px`,
             }}
           >
-            {lines.map((line, i) => {
-              const notes = lineFeedbackByIndex.get(i);
-              const has = Boolean(notes?.length);
-              const hasWeak = notes?.some((note) => note.strength === "weak");
-              const hasPromising = notes?.some(
-                (note) => note.strength === "promising",
-              );
-              const lineHighlightClass =
-                hasWeak ?
-                  "rounded-sm bg-pink-600/35 px-0.5 text-zinc-50"
-                : hasPromising ?
-                  "rounded-sm bg-yellow-500/25 px-0.5 text-zinc-50"
-                : "rounded-sm bg-emerald-600/35 px-0.5 text-zinc-50";
-
-              let globalIndex = 0;
-              for (let li = 0; li < i; li += 1) globalIndex += lines[li].length + 1;
-              const segments: Array<{
-                text: string;
-                style: EffectiveStyle;
-              }> = [];
-              for (let charOffset = 0; charOffset < line.length; charOffset += 1) {
-                const ch = line[charOffset];
-                const charStyle = getStyleAt(globalIndex + charOffset);
-                const last = segments[segments.length - 1];
-                if (
-                  last &&
-                  last.style.bold === charStyle.bold &&
-                  last.style.underline === charStyle.underline &&
-                  last.style.fontSizeDelta === charStyle.fontSizeDelta
-                ) {
-                  last.text += ch;
-                } else {
-                  segments.push({ text: ch, style: charStyle });
-                }
-              }
-              if (segments.length === 0) {
-                segments.push({
-                  text: "",
-                  style: { bold: false, underline: false, fontSizeDelta: 0 },
-                });
-              }
-
-              const renderedLine = segments.map((seg, segIdx) => (
-                <span
-                  key={`${i}-${segIdx}`}
-                  style={{
-                    fontWeight: seg.style.bold ? 700 : 400,
-                    textDecoration: seg.style.underline ? "underline" : "none",
-                    fontSize: `${Math.max(12, Math.min(32, uiFontSize + seg.style.fontSizeDelta))}px`,
-                  }}
-                >
-                  {seg.text}
-                </span>
-              ));
-
-              return (
-                <span key={i}>
-                  {showHighlights && has ?
-                    <mark className={lineHighlightClass}>{renderedLine}</mark>
-                  : renderedLine}
-                  {i < lines.length - 1 ? "\n" : null}
-                </span>
-              );
-            })}
+            {highlightLayer}
           </div>
         </div>
         <textarea
