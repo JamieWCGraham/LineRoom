@@ -463,10 +463,12 @@ export function DraftEditor({
             ) : null}
           </div>
         </div>
-        <div
-          aria-hidden
-          className="hidden max-lg:block max-lg:shrink-0 max-lg:h-px max-lg:w-auto max-lg:-mx-4 max-lg:bg-zinc-500 max-lg:shadow-[0_1px_0_0_rgba(255,255,255,0.08)]"
-        />
+        {mobileControlsOpen ? (
+          <div
+            aria-hidden
+            className="hidden max-lg:block max-lg:shrink-0 max-lg:h-px max-lg:w-auto max-lg:-mx-4 max-lg:bg-zinc-500 max-lg:shadow-[0_1px_0_0_rgba(255,255,255,0.08)]"
+          />
+        ) : null}
         <div className="hidden shrink-0 flex-wrap items-center gap-2 lg:flex">
           {renderControls(controlButtonClasses)}
         </div>

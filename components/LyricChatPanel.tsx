@@ -65,14 +65,16 @@ export function LyricChatPanel({
   const [error, setError] = useState<string | null>(null);
   const [modeBanner, setModeBanner] = useState<string | null>(null);
   const mobileHeaderRef = useRef<HTMLDivElement>(null);
+  const mobileComposerRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
   const mobileHeaderInsetPx = useMobileToolbarInset(mobileHeaderRef);
+  const mobileComposerInsetPx = useMobileToolbarInset(mobileComposerRef);
 
   useEffect(() => {
     const el = messagesScrollRef.current;
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, loading, mobileComposerInsetPx]);
 
   async function send() {
     const trimmed = input.trim();
@@ -229,7 +231,7 @@ export function LyricChatPanel({
 
       <div
         ref={messagesScrollRef}
-        className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-none p-3 [touch-action:pan-y]"
+        className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-none px-3 pt-3 [touch-action:pan-y] lg:pb-3 max-lg:pb-0"
       >
         {modeBanner ? (
           <div className="rounded-lg border border-zinc-800 bg-zinc-950/50 px-2.5 py-2 text-[11px] text-zinc-400">
@@ -270,18 +272,25 @@ export function LyricChatPanel({
             Thinking…
           </div>
         ) : null}
+        <div
+          className="shrink-0 lg:hidden"
+          style={{ height: mobileComposerInsetPx }}
+          aria-hidden
+        />
       </div>
 
-      {error ? (
-        <div
-          className="mx-3 mb-2 shrink-0 rounded-lg border border-rose-900/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200"
-          role="alert"
-        >
-          {error}
-        </div>
-      ) : null}
-
-      <div className="shrink-0 border-t border-zinc-800/80 p-3">
+      <div
+        ref={mobileComposerRef}
+        className="shrink-0 border-t border-zinc-800/80 p-3 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom))] max-lg:z-[50] max-lg:border-zinc-800/80 max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pb-3 max-lg:pt-2 max-lg:shadow-[0_-12px_32px_rgba(0,0,0,0.45)] max-lg:backdrop-blur-md lg:relative lg:bottom-auto lg:z-auto lg:bg-transparent lg:shadow-none"
+      >
+        {error ? (
+          <div
+            className="mb-2 rounded-lg border border-rose-900/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200"
+            role="alert"
+          >
+            {error}
+          </div>
+        ) : null}
         <div className="flex gap-2">
           <textarea
             value={input}
