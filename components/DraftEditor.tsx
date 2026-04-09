@@ -27,7 +27,7 @@ type Props = {
 };
 
 const TEXTAREA_CLASSES =
-  "box-border w-full min-h-0 flex-1 resize-none rounded-lg border-0 bg-transparent p-4 text-base font-sans leading-relaxed text-transparent caret-zinc-100 outline-none [touch-action:manipulation] [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain] whitespace-pre sm:min-h-[56dvh] sm:resize-y lg:min-h-0 lg:text-[15px]";
+  "box-border w-full min-h-0 flex-1 resize-none rounded-lg border-0 bg-transparent p-4 text-base font-sans leading-relaxed text-transparent caret-zinc-100 outline-none touch-pan-x touch-pan-y [-webkit-overflow-scrolling:touch] overscroll-none whitespace-pre sm:min-h-[56dvh] sm:resize-y lg:min-h-0 lg:text-[15px]";
 
 type LineHighlightTier = "weak" | "promising" | "strong";
 
@@ -56,7 +56,8 @@ export function DraftEditor({
 
   const taRef = useRef<HTMLTextAreaElement>(null);
   const backdropInnerRef = useRef<HTMLDivElement>(null);
-  const scrollRafRef = useRef<number | null>(null);
+  const mobileToolbarRef = useRef<HTMLDivElement>(null);
+  const [mobileToolbarInsetPx, setMobileToolbarInsetPx] = useState(56);
   const [tooltip, setTooltip] = useState<{
     x: number;
     y: number;
@@ -135,32 +136,46 @@ export function DraftEditor({
     [getSelectionBounds],
   );
 
-  const syncBackdropScroll = useCallback((el: HTMLTextAreaElement) => {
-    if (scrollRafRef.current !== null) {
-      cancelAnimationFrame(scrollRafRef.current);
+  const applyBackdropScroll = useCallback((el: HTMLTextAreaElement) => {
+    const inner = backdropInnerRef.current;
+    if (inner) {
+      inner.style.transform = `translate3d(-${el.scrollLeft}px,-${el.scrollTop}px,0)`;
     }
-    scrollRafRef.current = requestAnimationFrame(() => {
-      scrollRafRef.current = null;
-      const inner = backdropInnerRef.current;
-      if (inner) {
-        inner.style.transform = `translate3d(-${el.scrollLeft}px,-${el.scrollTop}px,0)`;
-      }
-    });
   }, []);
-
-  useEffect(
-    () => () => {
-      if (scrollRafRef.current !== null) {
-        cancelAnimationFrame(scrollRafRef.current);
-      }
-    },
-    [],
-  );
 
   useLayoutEffect(() => {
     const el = taRef.current;
-    if (el) syncBackdropScroll(el);
-  }, [value, deferredBackdropText, syncBackdropScroll]);
+    if (!el) return;
+    const onScroll = () => {
+      applyBackdropScroll(el);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    applyBackdropScroll(el);
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [applyBackdropScroll]);
+
+  useLayoutEffect(() => {
+    const el = taRef.current;
+    if (el) applyBackdropScroll(el);
+  }, [value, deferredBackdropText, applyBackdropScroll]);
+
+  useLayoutEffect(() => {
+    const toolbar = mobileToolbarRef.current;
+    if (!toolbar || typeof ResizeObserver === "undefined") return;
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const update = () => {
+      if (!mq.matches) return;
+      setMobileToolbarInsetPx(toolbar.getBoundingClientRect().height);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(toolbar);
+    mq.addEventListener("change", update);
+    return () => {
+      ro.disconnect();
+      mq.removeEventListener("change", update);
+    };
+  }, [mobileControlsOpen]);
 
   useEffect(() => {
     if (lineFeedbackAutoShowKey) {
@@ -362,7 +377,10 @@ export function DraftEditor({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden max-lg:min-h-0 max-lg:flex-1 max-lg:gap-0">
-      <div className="flex max-lg:sticky max-lg:top-0 max-lg:z-30 max-lg:flex-col max-lg:gap-2 max-lg:border-b max-lg:border-zinc-800/60 max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pb-2 max-lg:pt-2 max-lg:backdrop-blur-md lg:contents">
+      <div
+        ref={mobileToolbarRef}
+        className="flex shrink-0 flex-col gap-2 border-b border-transparent max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-[50] max-lg:border-zinc-800/60 max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pb-2 max-lg:pt-[max(0.5rem,env(safe-area-inset-top))] max-lg:backdrop-blur-md lg:relative lg:border-b-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0"
+      >
         <div className="flex shrink-0 items-center justify-between gap-2">
           <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
             Draft
@@ -397,10 +415,15 @@ export function DraftEditor({
           </div>
         ) : null}
       </div>
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/60 focus-within:border-amber-700/40 focus-within:ring-1 focus-within:ring-amber-600/25 max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:focus-within:border-transparent max-lg:focus-within:ring-0">
+      <div
+        className="shrink-0 lg:hidden"
+        style={{ height: mobileToolbarInsetPx }}
+        aria-hidden
+      />
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden overscroll-none rounded-lg border border-zinc-800 bg-zinc-900/60 focus-within:border-amber-700/40 focus-within:ring-1 focus-within:ring-amber-600/25 max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:focus-within:border-transparent max-lg:focus-within:ring-0">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]"
+          className="pointer-events-none absolute inset-0 z-0 overflow-hidden overscroll-none rounded-[inherit]"
         >
           <div
             ref={backdropInnerRef}
@@ -416,7 +439,6 @@ export function DraftEditor({
           ref={taRef}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          onScroll={(e) => syncBackdropScroll(e.currentTarget)}
           onMouseMove={(e) => updateTooltip(e.clientX, e.clientY)}
           onMouseLeave={() => setTooltip(null)}
           onKeyDown={(e) => {
