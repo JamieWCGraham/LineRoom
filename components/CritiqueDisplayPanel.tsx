@@ -46,7 +46,7 @@ export function CritiqueDisplayPanel({
           Critique
         </h2>
         <p className="mt-0.5 text-[11px] leading-snug text-zinc-600">
-          Saved after generation. Line notes below match Sage/Ochre/Plum highlights in
+          Saved after generation. Line notes below match the colored highlights in
           the draft (hover there for the same detail).
         </p>
       </div>
