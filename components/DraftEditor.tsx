@@ -7,12 +7,14 @@ type Props = {
   value: string;
   onChange: (value: string) => void;
   lineFeedbackByIndex: Map<number, LineAnnotation[]>;
+  /** Changes only when critique line feedback content changes (new generation), not when the draft text edits. */
+  lineFeedbackAutoShowKey?: string;
   onMobileSave?: () => void;
   mobileSavePending?: boolean;
 };
 
 const TEXTAREA_CLASSES =
-  "box-border w-full flex-1 min-h-[44dvh] resize-y rounded-lg border-0 bg-transparent p-3 text-[15px] font-sans leading-relaxed text-transparent caret-zinc-100 outline-none whitespace-pre sm:min-h-[56dvh] lg:min-h-0";
+  "box-border w-full flex-1 min-h-[44dvh] resize-y rounded-lg border-0 bg-transparent p-4 text-[15px] font-sans leading-relaxed text-transparent caret-zinc-100 outline-none whitespace-pre sm:min-h-[56dvh] lg:min-h-0";
 
 type LineHighlightTier = "weak" | "promising" | "strong";
 
@@ -22,6 +24,7 @@ export function DraftEditor({
   value,
   onChange,
   lineFeedbackByIndex,
+  lineFeedbackAutoShowKey = "",
   onMobileSave,
   mobileSavePending = false,
 }: Props) {
@@ -126,10 +129,10 @@ export function DraftEditor({
   }, [value, syncBackdropScroll]);
 
   useEffect(() => {
-    if (lineFeedbackByIndex.size > 0) {
+    if (lineFeedbackAutoShowKey) {
       setShowHighlights(true);
     }
-  }, [lineFeedbackByIndex]);
+  }, [lineFeedbackAutoShowKey]);
 
   const updateTooltip = useCallback(
     (clientX: number, clientY: number) => {
@@ -299,7 +302,7 @@ export function DraftEditor({
         >
           <div
             ref={backdropInnerRef}
-            className="inline-block min-w-full whitespace-pre p-3 text-left text-[15px] font-sans leading-relaxed text-zinc-100"
+            className="inline-block min-w-full whitespace-pre p-4 text-left text-[15px] font-sans leading-relaxed text-zinc-100"
             style={{
               fontSize: `${uiFontSize}px`,
             }}

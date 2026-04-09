@@ -349,6 +349,14 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     [critique, fullText],
   );
 
+  const lineFeedbackAutoShowKey = useMemo(
+    () =>
+      critique?.lineFeedback?.length ?
+        JSON.stringify(critique.lineFeedback)
+      : "",
+    [critique],
+  );
+
   const lyricsEmpty = !fullText.trim();
 
   const autosavePayload = useMemo(
@@ -800,6 +808,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
             value={fullText}
             onChange={setFullText}
             lineFeedbackByIndex={lineFeedbackByIndex}
+            lineFeedbackAutoShowKey={lineFeedbackAutoShowKey}
             onMobileSave={isSong ? handleSaveVersion : undefined}
             mobileSavePending={savePending}
           />

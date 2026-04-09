@@ -22,7 +22,7 @@ export function NewPieceButton() {
   };
 
   return (
-    <div className="flex flex-col items-end gap-2">
+    <div className="flex flex-col items-start gap-2">
       <button
         type="button"
         onClick={onCreate}
