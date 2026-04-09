@@ -27,7 +27,7 @@ type Props = {
 };
 
 const TEXTAREA_CLASSES =
-  "box-border w-full min-h-0 flex-1 resize-none rounded-lg border-0 bg-transparent p-4 text-[15px] font-sans leading-relaxed text-transparent caret-zinc-100 outline-none [touch-action:manipulation] [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain] whitespace-pre sm:min-h-[56dvh] sm:resize-y lg:min-h-0";
+  "box-border w-full min-h-0 flex-1 resize-none rounded-lg border-0 bg-transparent p-4 text-base font-sans leading-relaxed text-transparent caret-zinc-100 outline-none [touch-action:manipulation] [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain] whitespace-pre sm:min-h-[56dvh] sm:resize-y lg:min-h-0 lg:text-[15px]";
 
 type LineHighlightTier = "weak" | "promising" | "strong";
 
@@ -63,7 +63,7 @@ export function DraftEditor({
     tier: LineHighlightTier;
     entries: TooltipFeedbackEntry[];
   } | null>(null);
-  const [uiFontSize, setUiFontSize] = useState(15);
+  const [uiFontSize, setUiFontSize] = useState(16);
   const [styleOps, setStyleOps] = useState<StyleOp[]>([]);
   const [showHighlights, setShowHighlights] = useState(true);
   const [copyLabel, setCopyLabel] = useState("Copy Draft");
@@ -361,48 +361,50 @@ export function DraftEditor({
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-      <div className="flex shrink-0 items-center justify-between gap-2">
-        <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-          Draft
-        </label>
-        <div className="flex items-center gap-2 lg:hidden">
-          <button
-            type="button"
-            onClick={() => setMobileControlsOpen((v) => !v)}
-            className="rounded-full border border-zinc-700/70 bg-transparent px-2.5 py-1 text-xs font-medium text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-900/30"
-            aria-label={mobileControlsOpen ? "Hide Tools" : "Show Tools"}
-          >
-            {mobileControlsOpen ? "Hide Tools" : "Show Tools"}
-          </button>
-          {onMobileSave ? (
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden max-lg:min-h-0 max-lg:flex-1 max-lg:gap-0">
+      <div className="flex max-lg:sticky max-lg:top-0 max-lg:z-30 max-lg:flex-col max-lg:gap-2 max-lg:border-b max-lg:border-zinc-800/60 max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pb-2 max-lg:pt-2 max-lg:backdrop-blur-md lg:contents">
+        <div className="flex shrink-0 items-center justify-between gap-2">
+          <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            Draft
+          </label>
+          <div className="flex items-center gap-2 lg:hidden">
             <button
               type="button"
-              onClick={onMobileSave}
-              disabled={mobileSavePending}
-              className="rounded-md bg-blue-700/90 px-2.5 py-1.5 text-xs font-medium text-white shadow-[0_1px_3px_rgba(0,0,0,0.35)] transition hover:bg-blue-600/90 disabled:opacity-50"
+              onClick={() => setMobileControlsOpen((v) => !v)}
+              className="rounded-full border border-zinc-700/70 bg-transparent px-2.5 py-1 text-xs font-medium text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-900/30"
+              aria-label={mobileControlsOpen ? "Hide Tools" : "Show Tools"}
             >
-              {mobileSavePending ? "Saving..." : "Save"}
+              {mobileControlsOpen ? "Hide Tools" : "Show Tools"}
             </button>
-          ) : null}
+            {onMobileSave ? (
+              <button
+                type="button"
+                onClick={onMobileSave}
+                disabled={mobileSavePending}
+                className="rounded-md bg-blue-700/90 px-2.5 py-1.5 text-xs font-medium text-white shadow-[0_1px_3px_rgba(0,0,0,0.35)] transition hover:bg-blue-600/90 disabled:opacity-50"
+              >
+                {mobileSavePending ? "Saving..." : "Save"}
+              </button>
+            ) : null}
+          </div>
         </div>
-      </div>
-      <div className="hidden shrink-0 flex-wrap items-center gap-2 lg:flex">
-        {renderControls(controlButtonClasses)}
-      </div>
-      {mobileControlsOpen ? (
-        <div className="flex shrink-0 flex-wrap items-center gap-2 lg:hidden">
+        <div className="hidden shrink-0 flex-wrap items-center gap-2 lg:flex">
           {renderControls(controlButtonClasses)}
         </div>
-      ) : null}
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/60 focus-within:border-amber-700/40 focus-within:ring-1 focus-within:ring-amber-600/25">
+        {mobileControlsOpen ? (
+          <div className="flex shrink-0 flex-wrap items-center gap-2 lg:hidden">
+            {renderControls(controlButtonClasses)}
+          </div>
+        ) : null}
+      </div>
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/60 focus-within:border-amber-700/40 focus-within:ring-1 focus-within:ring-amber-600/25 max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:focus-within:border-transparent max-lg:focus-within:ring-0">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]"
         >
           <div
             ref={backdropInnerRef}
-            className="inline-block min-w-full whitespace-pre p-4 text-left text-[15px] font-sans leading-relaxed text-zinc-100 will-change-transform"
+            className="inline-block min-w-full whitespace-pre p-4 text-left text-base font-sans leading-relaxed text-zinc-100 will-change-transform lg:text-[15px]"
             style={{
               fontSize: `${uiFontSize}px`,
             }}
