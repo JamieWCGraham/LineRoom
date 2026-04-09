@@ -27,7 +27,7 @@ type Props = {
 };
 
 const TEXTAREA_CLASSES =
-  "box-border w-full min-h-0 flex-1 resize-none rounded-lg border-0 bg-transparent p-4 text-base font-sans leading-relaxed text-transparent caret-zinc-100 outline-none touch-pan-x touch-pan-y [-webkit-overflow-scrolling:touch] overscroll-none whitespace-pre sm:min-h-[56dvh] sm:resize-y lg:min-h-0 lg:text-[15px]";
+  "box-border w-full min-h-0 flex-1 resize-none rounded-lg border-0 bg-transparent p-4 text-base font-sans leading-relaxed text-transparent caret-zinc-100 outline-none [touch-action:pan-x_pan-y] overscroll-none whitespace-pre sm:min-h-[56dvh] sm:resize-y lg:min-h-0 lg:text-[15px]";
 
 type LineHighlightTier = "weak" | "promising" | "strong";
 
@@ -420,7 +420,7 @@ export function DraftEditor({
         style={{ height: mobileToolbarInsetPx }}
         aria-hidden
       />
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden overscroll-none rounded-lg border border-zinc-800 bg-zinc-900/60 focus-within:border-amber-700/40 focus-within:ring-1 focus-within:ring-amber-600/25 max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:focus-within:border-transparent max-lg:focus-within:ring-0">
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden overscroll-none rounded-lg border border-zinc-800 bg-zinc-900/60 focus-within:border-amber-700/40 focus-within:ring-1 focus-within:ring-amber-600/25 max-lg:touch-none max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:focus-within:border-transparent max-lg:focus-within:ring-0">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 z-0 overflow-hidden overscroll-none rounded-[inherit]"
