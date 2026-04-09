@@ -146,12 +146,69 @@ export function DraftEditor({
   useLayoutEffect(() => {
     const el = taRef.current;
     if (!el) return;
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const COMMIT_PX = 10;
+    let axisLock: "x" | "y" | null = null;
+    let freezeX = 0;
+    let freezeY = 0;
+    let startClientX = 0;
+    let startClientY = 0;
+
+    const enforceAxis = () => {
+      if (!mq.matches || axisLock === null) return;
+      if (axisLock === "y" && el.scrollLeft !== freezeX) {
+        el.scrollLeft = freezeX;
+      }
+      if (axisLock === "x" && el.scrollTop !== freezeY) {
+        el.scrollTop = freezeY;
+      }
+    };
+
     const onScroll = () => {
+      enforceAxis();
       applyBackdropScroll(el);
     };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (!mq.matches || e.touches.length !== 1) return;
+      axisLock = null;
+      startClientX = e.touches[0].clientX;
+      startClientY = e.touches[0].clientY;
+      freezeX = el.scrollLeft;
+      freezeY = el.scrollTop;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!mq.matches || e.touches.length !== 1) return;
+      const t = e.touches[0];
+      const dx = t.clientX - startClientX;
+      const dy = t.clientY - startClientY;
+      if (axisLock === null) {
+        if (dx * dx + dy * dy < COMMIT_PX * COMMIT_PX) return;
+        axisLock = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+        freezeX = el.scrollLeft;
+        freezeY = el.scrollTop;
+      }
+      enforceAxis();
+    };
+
+    const onTouchEnd = () => {
+      axisLock = null;
+    };
+
     el.addEventListener("scroll", onScroll, { passive: true });
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: true });
+    el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchEnd);
     applyBackdropScroll(el);
-    return () => el.removeEventListener("scroll", onScroll);
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+    };
   }, [applyBackdropScroll]);
 
   useLayoutEffect(() => {
