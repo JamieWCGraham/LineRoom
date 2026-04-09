@@ -94,6 +94,8 @@ function SongVersionBar(props: {
   onSaveVersion: () => void;
   savePending: boolean;
   saveError: string | null;
+  onNewVersion: () => void;
+  newVersionPending: boolean;
   onDeleteVersion: () => void;
   deleteVersionPending: boolean;
   deleteVersionError: string | null;
@@ -125,6 +127,7 @@ function SongVersionBar(props: {
               disabled={
                 props.deleteVersionPending ||
                 props.savePending ||
+                props.newVersionPending ||
                 props.editorBusy
               }
               className="rounded-md border border-zinc-800 bg-zinc-900/70 px-2 py-1 text-xs text-zinc-100 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:cursor-not-allowed disabled:opacity-50"
@@ -142,11 +145,30 @@ function SongVersionBar(props: {
           <button
             type="button"
             onClick={props.onSaveVersion}
-            disabled={props.savePending || props.deleteVersionPending || props.editorBusy}
+            disabled={
+              props.savePending ||
+              props.deleteVersionPending ||
+              props.newVersionPending ||
+              props.editorBusy
+            }
             title="Save draft, chat, and critique to the selected version. Does not create a new version."
-            className="shrink-0 rounded-lg bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
+            className="shrink-0 rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-400 disabled:opacity-50"
           >
             {props.savePending ? "Saving…" : "Save"}
+          </button>
+          <button
+            type="button"
+            onClick={props.onNewVersion}
+            disabled={
+              props.savePending ||
+              props.deleteVersionPending ||
+              props.newVersionPending ||
+              props.editorBusy
+            }
+            title="Save this version, then open a new numbered copy you can edit separately."
+            className="shrink-0 rounded-lg border border-blue-800/40 bg-blue-950/35 px-3 py-1.5 text-xs font-medium text-blue-100/90 transition hover:border-blue-700/50 hover:bg-blue-900/30 disabled:opacity-50"
+          >
+            {props.newVersionPending ? "Creating…" : "New Version"}
           </button>
           <button
             type="button"
@@ -155,11 +177,12 @@ function SongVersionBar(props: {
               !props.canDeleteActiveVersion ||
               props.deleteVersionPending ||
               props.savePending ||
+              props.newVersionPending ||
               props.editorBusy
             }
             className="shrink-0 rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-1.5 text-xs font-medium text-red-200/95 transition hover:border-red-800/60 hover:bg-red-950/50 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {props.deleteVersionPending ? "Deleting…" : "Delete version"}
+            {props.deleteVersionPending ? "Deleting…" : "Delete Version"}
           </button>
         </div>
       </div>
@@ -203,6 +226,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     null,
   );
   const [savePending, startSaveTransition] = useTransition();
+  const [newVersionPending, startNewVersionTransition] = useTransition();
   const [deleteVersionPending, startDeleteVersionTransition] = useTransition();
   const [autosaveError, setAutosaveError] = useState<string | null>(null);
   const [mobilePane, setMobilePane] = useState<MobilePane>("draft");
@@ -593,6 +617,48 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     songId,
   ]);
 
+  const handleNewVersion = useCallback(() => {
+    if (!songId || !activeVersionId) return;
+    setSaveError(null);
+    versionRowPersistLockRef.current = true;
+    startNewVersionTransition(async () => {
+      try {
+        const payload = {
+          draft_text: fullText,
+          chat_messages: chatMessages,
+          critique,
+          meta,
+        };
+        const saveCurrentResult = await updateSongVersionState(
+          songId,
+          activeVersionId,
+          payload,
+        );
+        if (!saveCurrentResult.ok) {
+          setSaveError(saveCurrentResult.message);
+          return;
+        }
+        const bumpResult = await saveNewSongVersion(songId, payload);
+        if (!bumpResult.ok) {
+          setSaveError(bumpResult.message);
+          return;
+        }
+        router.replace(`/song/${songId}?v=${bumpResult.versionId}`);
+        await router.refresh();
+      } finally {
+        versionRowPersistLockRef.current = false;
+      }
+    });
+  }, [
+    activeVersionId,
+    chatMessages,
+    critique,
+    fullText,
+    meta,
+    router,
+    songId,
+  ]);
+
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-zinc-950">
       <div className="hidden lg:block">
@@ -610,11 +676,13 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           onSaveVersion={handleSaveVersion}
           savePending={savePending}
           saveError={saveError}
+          onNewVersion={handleNewVersion}
+          newVersionPending={newVersionPending}
           onDeleteVersion={handleDeleteVersion}
           deleteVersionPending={deleteVersionPending}
           deleteVersionError={deleteVersionError}
           canDeleteActiveVersion={props.versions.length > 1}
-          editorBusy={critiqueLoading}
+          editorBusy={critiqueLoading || newVersionPending}
         />
         </div>
       : null}
@@ -706,7 +774,12 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                       setMobileMenuOpen(false);
                       router.push(`/song/${props.songId}?v=${e.target.value}`);
                     }}
-                    disabled={deleteVersionPending || savePending || critiqueLoading}
+                    disabled={
+                      deleteVersionPending ||
+                      savePending ||
+                      newVersionPending ||
+                      critiqueLoading
+                    }
                     className="mt-3 h-11 w-full rounded-lg border border-zinc-700/80 bg-zinc-900/70 px-3 text-sm text-zinc-100 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {props.versions
@@ -727,10 +800,31 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                       setMobileMenuOpen(false);
                       handleSaveVersion();
                     }}
-                    disabled={savePending || deleteVersionPending || critiqueLoading}
+                    disabled={
+                      savePending ||
+                      deleteVersionPending ||
+                      newVersionPending ||
+                      critiqueLoading
+                    }
                     className="w-full rounded-lg bg-blue-700 px-4 py-3 text-base font-medium text-white shadow-sm transition hover:bg-blue-600 active:bg-blue-700/90 disabled:opacity-50"
                   >
                     {savePending ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleNewVersion();
+                    }}
+                    disabled={
+                      savePending ||
+                      deleteVersionPending ||
+                      newVersionPending ||
+                      critiqueLoading
+                    }
+                    className="w-full rounded-lg border border-blue-800/40 bg-blue-950/40 px-4 py-3 text-base font-medium text-blue-100/90 transition hover:border-blue-700/50 hover:bg-blue-900/35 active:bg-blue-900/45 disabled:opacity-50"
+                  >
+                    {newVersionPending ? "Creating Version..." : "New Version"}
                   </button>
                   <button
                     type="button"
@@ -742,11 +836,12 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                       props.versions.length <= 1 ||
                       deleteVersionPending ||
                       savePending ||
+                      newVersionPending ||
                       critiqueLoading
                     }
                     className="w-full rounded-lg border border-red-900/35 bg-transparent px-4 py-3 text-base font-medium text-[#E57373] transition hover:bg-red-950/20 active:bg-red-950/30 disabled:opacity-40"
                   >
-                    {deleteVersionPending ? "Deleting..." : "Delete version"}
+                    {deleteVersionPending ? "Deleting..." : "Delete Version"}
                   </button>
                 </div>
               </div>
@@ -771,7 +866,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
             lineFeedbackByIndex={lineFeedbackByIndex}
             lineFeedbackAutoShowKey={lineFeedbackAutoShowKey}
             onMobileSave={isSong ? handleSaveVersion : undefined}
-            mobileSavePending={savePending}
+            mobileSavePending={savePending || newVersionPending}
           />
         </section>
 
