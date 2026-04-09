@@ -7,10 +7,12 @@ type Props = {
   value: string;
   onChange: (value: string) => void;
   lineFeedbackByIndex: Map<number, LineAnnotation[]>;
+  onMobileSave?: () => void;
+  mobileSavePending?: boolean;
 };
 
 const TEXTAREA_CLASSES =
-  "box-border w-full flex-1 min-h-[68dvh] resize-y rounded-lg border-0 bg-transparent p-3 text-[15px] font-sans leading-relaxed text-transparent caret-zinc-100 outline-none whitespace-pre lg:min-h-0";
+  "box-border w-full flex-1 min-h-[44dvh] resize-y rounded-lg border-0 bg-transparent p-3 text-[15px] font-sans leading-relaxed text-transparent caret-zinc-100 outline-none whitespace-pre sm:min-h-[56dvh] lg:min-h-0";
 
 type LineHighlightTier = "weak" | "promising" | "strong";
 
@@ -20,6 +22,8 @@ export function DraftEditor({
   value,
   onChange,
   lineFeedbackByIndex,
+  onMobileSave,
+  mobileSavePending = false,
 }: Props) {
   type StyleOp = {
     start: number;
@@ -46,6 +50,7 @@ export function DraftEditor({
   const [styleOps, setStyleOps] = useState<StyleOp[]>([]);
   const [showHighlights, setShowHighlights] = useState(true);
   const [copyLabel, setCopyLabel] = useState("Copy Draft");
+  const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
 
   const lines = useMemo(() => value.split("\n"), [value]);
   const totalChars = value.length;
@@ -190,65 +195,103 @@ export function DraftEditor({
     }
   }, [value]);
 
+  const controlButtonClasses =
+    "rounded-md border border-zinc-800 bg-zinc-900/70 px-2 py-1 text-xs text-zinc-300 hover:border-zinc-700 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50";
+
+  const renderControls = (buttonClassName: string) => (
+    <>
+      <button
+        type="button"
+        onClick={() => setUiFontSize((v) => Math.max(12, v - 1))}
+        className={buttonClassName}
+        aria-label="Decrease draft font size"
+      >
+        A-
+      </button>
+      <button
+        type="button"
+        onClick={() => setUiFontSize((v) => Math.min(24, v + 1))}
+        className={buttonClassName}
+        aria-label="Increase draft font size"
+      >
+        A+
+      </button>
+      <button
+        type="button"
+        onClick={() => applyToggleStyle("bold")}
+        className={buttonClassName}
+        aria-label="Toggle bold for selected draft text"
+      >
+        B
+      </button>
+      <button
+        type="button"
+        onClick={() => applyToggleStyle("underline")}
+        className={buttonClassName}
+        aria-label="Toggle underline for selected draft text"
+      >
+        U
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setShowHighlights((prev) => !prev);
+          setTooltip(null);
+        }}
+        className={buttonClassName}
+        aria-label="Show or hide draft feedback highlights"
+      >
+        {showHighlights ? "Hide Feedback" : "Show Feedback"}
+      </button>
+      <button
+        type="button"
+        onClick={() => void handleCopyDraft()}
+        disabled={!value.length}
+        className={buttonClassName}
+        aria-label="Copy full draft text to clipboard"
+      >
+        {copyLabel}
+      </button>
+    </>
+  );
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-      <label className="shrink-0 text-xs font-medium uppercase tracking-wide text-zinc-500">
-        Draft
-      </label>
-      <div className="flex shrink-0 items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setUiFontSize((v) => Math.max(12, v - 1))}
-          className="rounded-md border border-zinc-800 bg-zinc-900/70 px-2 py-1 text-xs text-zinc-300 hover:border-zinc-700 hover:text-zinc-100"
-          aria-label="Decrease draft font size"
-        >
-          A-
-        </button>
-        <button
-          type="button"
-          onClick={() => setUiFontSize((v) => Math.min(24, v + 1))}
-          className="rounded-md border border-zinc-800 bg-zinc-900/70 px-2 py-1 text-xs text-zinc-300 hover:border-zinc-700 hover:text-zinc-100"
-          aria-label="Increase draft font size"
-        >
-          A+
-        </button>
-        <button
-          type="button"
-          onClick={() => applyToggleStyle("bold")}
-          className="rounded-md border border-zinc-800 bg-zinc-900/70 px-2 py-1 text-xs text-zinc-300 hover:border-zinc-700 hover:text-zinc-100"
-          aria-label="Toggle bold for selected draft text"
-        >
-          B
-        </button>
-        <button
-          type="button"
-          onClick={() => applyToggleStyle("underline")}
-          className="rounded-md border border-zinc-800 bg-zinc-900/70 px-2 py-1 text-xs text-zinc-300 hover:border-zinc-700 hover:text-zinc-100"
-          aria-label="Toggle underline for selected draft text"
-        >
-          U
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setShowHighlights((prev) => !prev);
-            setTooltip(null);
-          }}
-          className="rounded-md border border-zinc-800 bg-zinc-900/70 px-2 py-1 text-xs text-zinc-300 hover:border-zinc-700 hover:text-zinc-100"
-          aria-label="Show or hide draft feedback highlights"
-        >
-          {showHighlights ? "Hide Feedback" : "Show Feedback"}
-        </button>
-        <button
-          type="button"
-          onClick={() => void handleCopyDraft()}
-          disabled={!value.length}
-          className="rounded-md border border-zinc-800 bg-zinc-900/70 px-2 py-1 text-xs text-zinc-300 hover:border-zinc-700 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
-          aria-label="Copy full draft text to clipboard"
-        >
-          {copyLabel}
-        </button>
+      <div className="flex shrink-0 items-center justify-between gap-2">
+        <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          Draft
+        </label>
+        <div className="flex items-center gap-2 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileControlsOpen((v) => !v)}
+            className="rounded-full border border-zinc-700/70 bg-transparent px-2.5 py-1 text-xs font-medium text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-900/30"
+            aria-label={
+              mobileControlsOpen ? "Hide draft editor controls" : "Show draft editor controls"
+            }
+          >
+            Tools
+          </button>
+          {onMobileSave ? (
+            <button
+              type="button"
+              onClick={onMobileSave}
+              disabled={mobileSavePending}
+              className="rounded-md bg-blue-700/90 px-2.5 py-1.5 text-xs font-medium text-white shadow-[0_1px_3px_rgba(0,0,0,0.35)] transition hover:bg-blue-600/90 disabled:opacity-50"
+            >
+              {mobileSavePending ? "Saving..." : "Save"}
+            </button>
+          ) : null}
+        </div>
       </div>
+      <div className="hidden shrink-0 flex-wrap items-center gap-2 lg:flex">
+        {renderControls(controlButtonClasses)}
+      </div>
+      {mobileControlsOpen ? (
+        <div className="shrink-0 flex flex-wrap items-center gap-2 lg:hidden">
+          {renderControls(controlButtonClasses)}
+        </div>
+      ) : null}
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/60 focus-within:border-amber-700/40 focus-within:ring-1 focus-within:ring-amber-600/25">
         <div
           aria-hidden
@@ -360,6 +403,7 @@ export function DraftEditor({
           className={`relative z-10 min-h-0 flex-1 overflow-auto ${TEXTAREA_CLASSES}`}
           style={{
             fontSize: `${uiFontSize}px`,
+            colorScheme: "dark",
           }}
           placeholder="Paste or write your full lyrics/poetry draft…"
           spellCheck

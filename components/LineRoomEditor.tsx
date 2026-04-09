@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   useCallback,
@@ -205,6 +206,8 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   const [deleteVersionPending, startDeleteVersionTransition] = useTransition();
   const [autosaveError, setAutosaveError] = useState<string | null>(null);
   const [mobilePane, setMobilePane] = useState<MobilePane>("draft");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileTitleEditorOpen, setMobileTitleEditorOpen] = useState(false);
 
   const songId = isSong ? props.songId : null;
   const songTitleFromProps = props.mode === "song" ? props.songTitle : null;
@@ -328,6 +331,15 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     }, 400);
     return () => clearTimeout(t);
   }, [meta, isSong]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileMenuOpen]);
 
   const lineFeedbackByIndex = useMemo(
     () =>
@@ -575,8 +587,50 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
 
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-zinc-950">
-      <Header showDashboardLink={isSong} />
+      <div className="hidden lg:block">
+        <Header showDashboardLink={isSong} />
+      </div>
+      <div className="shrink-0 border-b border-zinc-800/80 bg-zinc-950/95 px-4 py-3 lg:hidden">
+        <div className="mx-auto flex w-full max-w-[1920px] items-center justify-between gap-3">
+          <div className="grid flex-1 grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => setMobilePane("critique")}
+              className={mobilePane === "critique" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
+            >
+              Critique
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobilePane("draft")}
+              className={mobilePane === "draft" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
+            >
+              Draft
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobilePane("chat")}
+              className={mobilePane === "chat" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
+            >
+              Chat
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900/70 px-3 py-2 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800/80"
+            aria-label="Open mobile controls menu"
+          >
+            <span className="inline-flex flex-col gap-1" aria-hidden>
+              <span className="h-0.5 w-4 rounded bg-zinc-200" />
+              <span className="h-0.5 w-4 rounded bg-zinc-200" />
+              <span className="h-0.5 w-4 rounded bg-zinc-200" />
+            </span>
+          </button>
+        </div>
+      </div>
       {isSong ?
+        <div className="hidden lg:block">
         <SongVersionBar
           songId={props.songId}
           initialSongTitle={props.songTitle}
@@ -593,39 +647,146 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           canDeleteActiveVersion={props.versions.length > 1}
           editorBusy={critiqueLoading}
         />
+        </div>
       : null}
       {isSong && autosaveError ? (
         <div className="border-b border-red-900/40 bg-red-950/20 px-4 py-2 text-xs text-red-300">
           Autosave failed: {autosaveError}
         </div>
       ) : null}
-      <div className="mx-auto w-full max-w-[1920px] shrink-0 px-4 pt-3 lg:hidden">
-        <div className="grid grid-cols-3 gap-2">
+      {mobileMenuOpen ? (
+        <div className="fixed inset-0 z-[120] lg:hidden" role="dialog" aria-modal="true">
           <button
             type="button"
-            onClick={() => setMobilePane("critique")}
-            className={mobilePane === "critique" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
-          >
-            Critique
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobilePane("draft")}
-            className={mobilePane === "draft" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
-          >
-            Draft
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobilePane("chat")}
-            className={mobilePane === "chat" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
-          >
-            Chat
-          </button>
+            aria-label="Close mobile controls menu"
+            onClick={() => setMobileMenuOpen(false)}
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          />
+          <aside className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-zinc-800/80 bg-zinc-950 shadow-2xl animate-in slide-in-from-bottom-6 duration-200 ease-out">
+            <div className="sticky top-0 z-10 border-b border-zinc-800/80 bg-zinc-950/95 px-4 pb-3 pt-2 backdrop-blur-sm">
+              <div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-zinc-700/80" aria-hidden />
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-base font-medium text-zinc-100">LineRoom controls</p>
+                  <p className="mt-0.5 text-xs text-zinc-500">
+                    Manage version settings
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="absolute right-4 top-4 rounded-md border border-zinc-700/80 bg-zinc-900/70 px-2.5 py-1 text-sm text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800/80 active:bg-zinc-700/80"
+                aria-label="Close menu"
+              >
+                ✕
+              </button>
+            </div>
+
+            {isSong ? (
+              <div className="px-4 pb-6">
+                <Link
+                  href="/"
+                  prefetch
+                  className="mt-5 flex min-h-12 items-center rounded-lg px-3 text-sm font-medium text-zinc-200 transition hover:bg-zinc-900/70 active:bg-zinc-800/80"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <span aria-hidden>←</span>
+                    Back to Dashboard
+                  </span>
+                </Link>
+                <div className="mt-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setMobileTitleEditorOpen(true)}
+                      className="min-w-0 truncate text-left text-lg font-medium text-zinc-100 transition hover:text-zinc-50"
+                    >
+                      {pieceTitle}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMobileTitleEditorOpen((v) => !v)}
+                      className="shrink-0 rounded-md border border-zinc-700/80 px-2.5 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:bg-zinc-900/70 active:bg-zinc-800/80"
+                    >
+                      {mobileTitleEditorOpen ? "Done" : "Edit"}
+                    </button>
+                  </div>
+                  {mobileTitleEditorOpen ? (
+                    <div className="mt-3">
+                      <SongTitleEditor
+                        songId={props.songId}
+                        initialTitle={props.songTitle}
+                        onTitleSaved={(title) => {
+                          setPieceTitle(title);
+                          setMobileTitleEditorOpen(false);
+                        }}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="mt-5">
+                  <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    Version
+                  </p>
+                  <select
+                    value={props.activeVersionId}
+                    onChange={(e) => {
+                      setMobileMenuOpen(false);
+                      router.push(`/song/${props.songId}?v=${e.target.value}`);
+                    }}
+                    disabled={deleteVersionPending || savePending || critiqueLoading}
+                    className="mt-3 h-11 w-full rounded-lg border border-zinc-700/80 bg-zinc-900/70 px-3 text-sm text-zinc-100 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {props.versions
+                      .slice()
+                      .sort((a, b) => b.versionNumber - a.versionNumber)
+                      .map((v) => (
+                        <option key={v.id} value={v.id}>
+                          v{v.versionNumber}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div className="mt-5 flex flex-col gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleSaveVersion();
+                    }}
+                    disabled={savePending || deleteVersionPending || critiqueLoading}
+                    className="w-full rounded-lg bg-blue-700 px-4 py-3 text-base font-medium text-white shadow-sm transition hover:bg-blue-600 active:bg-blue-700/90 disabled:opacity-50"
+                  >
+                    {savePending ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleDeleteVersion();
+                    }}
+                    disabled={
+                      props.versions.length <= 1 ||
+                      deleteVersionPending ||
+                      savePending ||
+                      critiqueLoading
+                    }
+                    className="w-full rounded-lg border border-red-900/35 bg-transparent px-4 py-3 text-base font-medium text-[#E57373] transition hover:bg-red-950/20 active:bg-red-950/30 disabled:opacity-40"
+                  >
+                    {deleteVersionPending ? "Deleting..." : "Delete version"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </aside>
         </div>
-      </div>
+      ) : null}
       <main className="mx-auto flex min-h-0 w-full max-w-[1920px] flex-1 flex-col overflow-hidden gap-6 p-4 pb-4 lg:grid lg:grid-cols-[minmax(260px,320px)_minmax(0,1.35fr)_minmax(240px,320px)] lg:gap-6 lg:p-6 lg:pb-6">
-        <section className={`${mobilePane === "critique" ? "flex" : "hidden"} min-h-[52dvh] flex-col border-t border-zinc-800/80 pt-4 lg:min-h-0 lg:flex lg:border-r lg:border-t-0 lg:border-zinc-800/80 lg:pr-5 lg:pt-0`}>
+        <section className={`${mobilePane === "critique" ? "flex" : "hidden"} min-h-0 flex-1 flex-col border-t border-zinc-800/80 pt-4 lg:min-h-0 lg:flex lg:border-r lg:border-t-0 lg:border-zinc-800/80 lg:pr-5 lg:pt-0`}>
           <CritiqueDisplayPanel
             critique={critique}
             loading={critiqueLoading}
@@ -634,15 +795,17 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           />
         </section>
 
-        <section className={`${mobilePane === "draft" ? "flex" : "hidden"} min-h-[52dvh] min-w-0 flex-1 flex-col gap-2 lg:min-h-0 lg:flex`}>
+        <section className={`${mobilePane === "draft" ? "flex" : "hidden"} min-h-0 min-w-0 flex-1 flex-col gap-2 lg:min-h-0 lg:flex`}>
           <DraftEditor
             value={fullText}
             onChange={setFullText}
             lineFeedbackByIndex={lineFeedbackByIndex}
+            onMobileSave={isSong ? handleSaveVersion : undefined}
+            mobileSavePending={savePending}
           />
         </section>
 
-        <section className={`${mobilePane === "chat" ? "flex" : "hidden"} min-h-[52dvh] flex-col border-t border-zinc-800/80 pt-4 lg:min-h-0 lg:flex lg:border-l lg:border-t-0 lg:border-zinc-800/80 lg:pl-5 lg:pt-0 lg:opacity-95`}>
+        <section className={`${mobilePane === "chat" ? "flex" : "hidden"} min-h-0 flex-1 flex-col border-t border-zinc-800/80 pt-4 lg:min-h-0 lg:flex lg:border-l lg:border-t-0 lg:border-zinc-800/80 lg:pl-5 lg:pt-0 lg:opacity-95`}>
           {critique ?
             <LyricChatPanel
               fullText={fullText}
