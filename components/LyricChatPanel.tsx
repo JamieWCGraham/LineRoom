@@ -192,6 +192,7 @@ export function LyricChatPanel({
               }
               disabled={loading}
               className="w-full rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:opacity-50"
+            style={{ colorScheme: "dark" }}
               placeholder="Genre"
             />
             <textarea
@@ -205,6 +206,7 @@ export function LyricChatPanel({
               disabled={loading}
               rows={2}
               className="w-full resize-y rounded border border-zinc-800 bg-zinc-900/60 p-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:opacity-50"
+              style={{ colorScheme: "dark" }}
               placeholder="Similar writers / voice (lyrics or poetry)"
             />
           </div>
@@ -277,6 +279,7 @@ export function LyricChatPanel({
             rows={2}
             disabled={loading}
             className="min-h-[44px] max-h-40 flex-1 resize-none overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-900/60 p-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:opacity-50"
+            style={{ colorScheme: "dark" }}
             placeholder="Message…"
           />
           <button

@@ -179,35 +179,27 @@ export function CritiqueDisplayPanel({
                         (item.category === "praise" ? "strong" : "weak");
                       const quotedClass =
                         strength === "strong" ?
-                          "border-l-2 border-emerald-400/80 pl-2 font-mono text-[13px] leading-snug text-emerald-100"
+                          "border-l-2 border-green-600/75 pl-2 font-mono text-[13px] leading-snug text-zinc-100"
                         : strength === "promising" ?
                           "border-l-2 border-yellow-500/85 pl-2 font-mono text-[13px] leading-snug text-yellow-100"
-                        : "border-l-2 border-fuchsia-400/80 pl-2 font-mono text-[13px] leading-snug text-fuchsia-100";
+                        : "border-l-2 border-pink-600/75 pl-2 font-mono text-[13px] leading-snug text-pink-100";
                       const labelClass =
                         strength === "strong" ?
-                          "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-emerald-300/90"
+                          "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-green-300/90"
                         : strength === "promising" ?
                           "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-yellow-300/90"
-                        : "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-fuchsia-300/90";
+                        : "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-pink-300/90";
                       const strengthLabel =
-                        strength === "strong" ? "Sage (Keep)"
-                        : strength === "promising" ? "Ochre (Develop)"
-                        : "Plum (Rework)";
+                        strength === "strong" ? "Strong"
+                        : strength === "promising" ? "Promising"
+                        : "Room for Improvement";
                       return (
                         <>
-                    <p
-                      className={quotedClass}
-                    >
-                      {item.quotedLine || "—"}
-                    </p>
-                    <p
-                      className={labelClass}
-                    >
-                      {strengthLabel}
-                    </p>
-                    <p className="mt-1.5 pl-2 text-[13px] leading-relaxed text-zinc-400">
-                      {item.feedback}
-                    </p>
+                          <p className={quotedClass}>{item.quotedLine || "—"}</p>
+                          <p className={labelClass}>{strengthLabel}</p>
+                          <p className="mt-1.5 pl-2 text-[13px] leading-relaxed text-zinc-400">
+                            {item.feedback}
+                          </p>
                         </>
                       );
                     })()}
