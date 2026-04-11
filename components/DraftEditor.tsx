@@ -15,6 +15,9 @@ const MIN_UI_FONT_PX = 8;
 const MAX_UI_FONT_PX = 24;
 const MIN_SEGMENT_FONT_PX = 8;
 const MAX_SEGMENT_FONT_PX = 32;
+/** Default draft font on viewports below `lg` (matches Tailwind max-lg). */
+const DEFAULT_MOBILE_UI_FONT_PX = 14;
+const DEFAULT_DESKTOP_UI_FONT_PX = 16;
 
 type Props = {
   value: string;
@@ -27,7 +30,7 @@ type Props = {
 };
 
 const TEXTAREA_CLASSES =
-  "box-border w-full min-h-0 flex-1 resize-none rounded-lg border-0 bg-transparent p-4 text-base font-sans leading-relaxed text-transparent caret-zinc-100 outline-none [touch-action:pan-x_pan-y] overscroll-none whitespace-pre sm:min-h-[56dvh] sm:resize-y lg:min-h-0 lg:text-[15px]";
+  "box-border w-full min-h-0 flex-1 resize-none rounded-lg border-0 bg-transparent p-4 text-sm font-sans leading-relaxed text-transparent caret-zinc-100 outline-none [touch-action:pan-x_pan-y] overscroll-none whitespace-pre sm:min-h-[56dvh] sm:resize-y lg:min-h-0 lg:text-base";
 
 type LineHighlightTier = "weak" | "promising" | "strong";
 
@@ -64,7 +67,7 @@ export function DraftEditor({
     tier: LineHighlightTier;
     entries: TooltipFeedbackEntry[];
   } | null>(null);
-  const [uiFontSize, setUiFontSize] = useState(16);
+  const [uiFontSize, setUiFontSize] = useState(DEFAULT_DESKTOP_UI_FONT_PX);
   const [styleOps, setStyleOps] = useState<StyleOp[]>([]);
   const [showHighlights, setShowHighlights] = useState(true);
   const [copyLabel, setCopyLabel] = useState("Copy Draft");
@@ -215,6 +218,13 @@ export function DraftEditor({
     const el = taRef.current;
     if (el) applyBackdropScroll(el);
   }, [value, deferredBackdropText, applyBackdropScroll]);
+
+  useLayoutEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    if (mq.matches) {
+      setUiFontSize(DEFAULT_MOBILE_UI_FONT_PX);
+    }
+  }, []);
 
   useLayoutEffect(() => {
     const toolbar = mobileToolbarRef.current;
@@ -490,7 +500,7 @@ export function DraftEditor({
         >
           <div
             ref={backdropInnerRef}
-            className="inline-block min-w-full whitespace-pre p-4 text-left text-base font-sans leading-relaxed text-zinc-100 will-change-transform lg:text-[15px]"
+            className="inline-block min-w-full whitespace-pre p-4 text-left text-sm font-sans leading-relaxed text-zinc-100 will-change-transform lg:text-base"
             style={{
               fontSize: `${uiFontSize}px`,
             }}
