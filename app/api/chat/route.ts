@@ -4,9 +4,16 @@ import {
   scheduleLangfuseFlush,
 } from "@/lib/langfuse-server";
 import { createBaseOpenAI, getFastChatModel } from "@/lib/openai";
-import { buildLyricChatSystemPrompt } from "@/lib/prompts";
+import {
+  buildChatActionSystemPrompt,
+  buildLyricChatSystemPrompt,
+} from "@/lib/prompts";
 import type { CritiqueMeta, CritiqueResult } from "@/lib/types";
-import { chatRequestSchema } from "@/lib/validators";
+import type { ChatActionPayload, ChatActionResponse } from "@/types/chat";
+import {
+  chatActionResponseSchema,
+  chatRequestSchema,
+} from "@/lib/validators";
 
 function formatCritiqueForChat(
   critique: CritiqueResult | undefined,
@@ -58,6 +65,32 @@ Line-level notes:
 ${lines}`;
 }
 
+function parseModelJsonObject(raw: string): unknown {
+  let s = raw.trim();
+  if (s.startsWith("```")) {
+    s = s
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```\s*$/u, "")
+      .trim();
+  }
+  return JSON.parse(s) as unknown;
+}
+
+function validateChatActionPayload(payload: ChatActionPayload): string | null {
+  if (payload.scope === "selection") {
+    const parts = payload.selections?.filter((s) => s.text?.trim()) ?? [];
+    if (parts.length === 0) {
+      return "Selection scope requires at least one excerpt added from the draft.";
+    }
+  }
+  if (payload.scope === "section") {
+    if (!payload.section?.text?.trim()) {
+      return "Section scope requires section text.";
+    }
+  }
+  return null;
+}
+
 export async function POST(req: Request) {
   let body: unknown;
   try {
@@ -74,7 +107,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { fullText, pieceTitle, messages, critique, critiqueMeta } =
+  const { fullText, pieceTitle, messages, critique, critiqueMeta, chatAction } =
     parsed.data;
   if (messages.length === 0) {
     return NextResponse.json(
@@ -93,11 +126,100 @@ export async function POST(req: Request) {
 
   scheduleLangfuseFlush();
 
+  const effectiveCritique = critique ?? chatAction?.critique;
   const critiqueBlock = formatCritiqueForChat(
-    critique,
+    effectiveCritique,
     critiqueMeta,
     pieceTitle,
   );
+
+  if (chatAction) {
+    const payload: ChatActionPayload = {
+      ...chatAction,
+      draft: fullText,
+      critique: effectiveCritique,
+    };
+    const scopeErr = validateChatActionPayload(payload);
+    if (scopeErr) {
+      return NextResponse.json({ error: scopeErr }, { status: 400 });
+    }
+
+    try {
+      return await runWithLangfuseTrace(
+        {
+          traceName: "LineRoom",
+          rootObservationName: "lineroom-chat-action",
+          tags: ["lineroom", "chat", "action"],
+          langfuseConfig: {
+            traceName: "LineRoom",
+            generationName: "lyric-chat-action",
+            tags: ["lineroom", "chat", "action"],
+          },
+        },
+        async ({ createTracedOpenAI, setTraceIO }) => {
+          const openai = createTracedOpenAI(createBaseOpenAI());
+          const system = buildChatActionSystemPrompt(payload, critiqueBlock);
+          const completion = await openai.chat.completions.create({
+            model: getFastChatModel(),
+            response_format: { type: "json_object" },
+            messages: [
+              { role: "system", content: system },
+              { role: "user", content: chatAction.userMessage },
+            ],
+          });
+          const raw = completion.choices[0]?.message?.content?.trim();
+          if (!raw) {
+            return NextResponse.json(
+              { error: "Empty model response" },
+              { status: 502 },
+            );
+          }
+          let json: unknown;
+          try {
+            json = parseModelJsonObject(raw);
+          } catch {
+            return NextResponse.json(
+              { error: "Model returned invalid JSON" },
+              { status: 502 },
+            );
+          }
+          const shaped = chatActionResponseSchema.safeParse(json);
+          if (!shaped.success) {
+            return NextResponse.json(
+              { error: "Model JSON did not match the expected shape" },
+              { status: 502 },
+            );
+          }
+          const structured: ChatActionResponse = {
+            ...shaped.data,
+            mode: payload.action,
+            scope: payload.scope,
+          };
+          setTraceIO({
+            input: { chatAction: payload, userMessage: chatAction.userMessage },
+            output: structured,
+          });
+          return NextResponse.json(structured, {
+            headers: {
+              "Cache-Control": "no-store",
+              "X-Chat-Mode": "fast",
+              "X-Chat-Response-Kind": "action",
+            },
+          });
+        },
+      );
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Unknown error";
+      if (message === "OPENAI_API_KEY is not set") {
+        return NextResponse.json(
+          { error: "Server is not configured with OPENAI_API_KEY" },
+          { status: 503 },
+        );
+      }
+      console.error("[chat-action]", message);
+      return NextResponse.json({ error: "Chat failed" }, { status: 500 });
+    }
+  }
 
   const openaiMessages = [
     {

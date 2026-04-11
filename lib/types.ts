@@ -1,6 +1,9 @@
+import type { ChatActionResponse } from "@/types/chat";
+
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  structured?: ChatActionResponse;
 };
 
 export type ChatRequest = {

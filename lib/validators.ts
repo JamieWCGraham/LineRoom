@@ -1,8 +1,24 @@
 import { z } from "zod";
 
+export const chatActionResponseSchema = z.object({
+  mode: z.enum([
+    "find_rhymes",
+    "suggest_rewrites",
+    "diagnose",
+    "rewrite",
+    "hook",
+  ]),
+  scope: z.enum(["selection", "section", "full_draft"]),
+  summary: z.string(),
+  diagnosis: z.array(z.string()).optional(),
+  options: z.array(z.string()).optional(),
+  recommendedOption: z.number().int().nullable().optional(),
+});
+
 export const chatMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
   content: z.string(),
+  structured: chatActionResponseSchema.optional(),
 });
 
 export const lineFeedbackItemSchema = z.object({
@@ -50,6 +66,27 @@ export const critiqueResultSchema = z.object({
   comparedToSummary: z.string().optional(),
 });
 
+export const chatSelectionPayloadSchema = z.object({
+  startLine: z.number().int().nonnegative(),
+  endLine: z.number().int().nonnegative(),
+  text: z.string(),
+});
+
+export const chatActionPayloadSchema = z.object({
+  action: z.enum(["find_rhymes", "suggest_rewrites", "diagnose"]),
+  scope: z.enum(["selection", "section", "full_draft"]),
+  userMessage: z.string(),
+  draft: z.string(),
+  critique: critiqueResultSchema.optional(),
+  selections: z.array(chatSelectionPayloadSchema).max(16).optional(),
+  section: z
+    .object({
+      type: z.string(),
+      text: z.string(),
+    })
+    .optional(),
+});
+
 export const critiqueRequestSchema = z.object({
   fullText: z.string().min(1, "Lyrics or poetry are required"),
   title: z.string(),
@@ -87,6 +124,7 @@ export const chatRequestSchema = z.object({
       genre: z.string(),
     })
     .optional(),
+  chatAction: chatActionPayloadSchema.optional(),
 });
 
 export const critiqueMetaSchema = z.object({

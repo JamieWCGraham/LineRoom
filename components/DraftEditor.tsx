@@ -10,6 +10,8 @@ import {
   useState,
 } from "react";
 import type { LineAnnotation } from "@/lib/lineAnnotations";
+import { getSelectionTopRightAnchor } from "@/lib/draft/selectionPopupAnchor";
+import type { ChatSelectionPayload, DraftEditorContext } from "@/types/chat";
 
 const MIN_UI_FONT_PX = 8;
 const MAX_UI_FONT_PX = 24;
@@ -27,10 +29,15 @@ type Props = {
   lineFeedbackAutoShowKey?: string;
   onMobileSave?: () => void;
   mobileSavePending?: boolean;
+  onDraftContextChange?: (ctx: DraftEditorContext) => void;
+  /** When true and user highlights text, show “Add to chat” (requires critique). */
+  addToChatEnabled?: boolean;
+  onAddSelectionToChat?: (payload: ChatSelectionPayload) => void;
 };
 
+/** Synthetic overlay: hide glyphs in WebKit (caret stays visible); other engines use caret-color + transparent color. */
 const TEXTAREA_CLASSES =
-  "box-border w-full min-h-0 flex-1 resize-none rounded-lg border-0 bg-transparent p-4 text-sm font-sans leading-relaxed text-transparent caret-zinc-100 outline-none [touch-action:pan-x_pan-y] overscroll-none whitespace-pre sm:min-h-[56dvh] sm:resize-y lg:min-h-0 lg:text-base";
+  "box-border h-full min-h-[min(50dvh,28rem)] w-full flex-1 resize-none rounded-lg border-0 bg-transparent p-4 text-sm font-sans leading-relaxed whitespace-pre caret-zinc-100 outline-none [touch-action:pan-x_pan-y] overscroll-none [-webkit-text-fill-color:transparent] [color:rgb(244_244_245)] sm:min-h-[min(56dvh,32rem)] sm:resize-y lg:min-h-0 lg:text-base";
 
 type LineHighlightTier = "weak" | "promising" | "strong";
 
@@ -43,6 +50,9 @@ export function DraftEditor({
   lineFeedbackAutoShowKey = "",
   onMobileSave,
   mobileSavePending = false,
+  onDraftContextChange,
+  addToChatEnabled = false,
+  onAddSelectionToChat,
 }: Props) {
   type StyleOp = {
     start: number;
@@ -72,6 +82,13 @@ export function DraftEditor({
   const [showHighlights, setShowHighlights] = useState(true);
   const [copyLabel, setCopyLabel] = useState("Copy Draft");
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
+  /** `top` = popover bottom Y; `rightX` = selection top-right X (use translate(-100%, -100%)). */
+  const [addToChatAnchor, setAddToChatAnchor] = useState<{
+    top: number;
+    rightX: number;
+  } | null>(null);
+  const addToChatPopoverRef = useRef<HTMLDivElement>(null);
+  const updateAddToChatAnchorRef = useRef<() => void>(() => {});
 
   const deferredBackdropText = useDeferredValue(value);
   const lines = useMemo(() => value.split("\n"), [value]);
@@ -99,6 +116,62 @@ export function DraftEditor({
     },
     [styleOps],
   );
+
+  const updateAddToChatAnchor = useCallback(() => {
+    if (!addToChatEnabled || !onAddSelectionToChat) {
+      setAddToChatAnchor(null);
+      return;
+    }
+    const el = taRef.current;
+    if (!el) return;
+    const startRaw = el.selectionStart ?? 0;
+    const endRaw = el.selectionEnd ?? 0;
+    const start = Math.max(0, Math.min(startRaw, totalChars));
+    const end = Math.max(0, Math.min(endRaw, totalChars));
+    const a = Math.min(start, end);
+    const b = Math.max(start, end);
+    if (a === b || !value.slice(a, b).trim()) {
+      setAddToChatAnchor(null);
+      return;
+    }
+    const { lineTop, rightX } = getSelectionTopRightAnchor(el, value, a, b);
+    const gap = 5;
+    const approxPopH = 26;
+    const vw = typeof window !== "undefined" ? window.innerWidth : 400;
+    const popW = 118;
+    const clampedRightX = Math.min(
+      Math.max(8 + popW, rightX),
+      vw - 8,
+    );
+    let popBottom = lineTop - gap;
+    if (popBottom < 8 + approxPopH) {
+      popBottom = 8 + approxPopH;
+    }
+    setAddToChatAnchor({ top: popBottom, rightX: clampedRightX });
+  }, [addToChatEnabled, onAddSelectionToChat, totalChars, value]);
+
+  updateAddToChatAnchorRef.current = updateAddToChatAnchor;
+
+  const reportDraftContext = useCallback(() => {
+    const el = taRef.current;
+    if (!el) return;
+    const startRaw = el.selectionStart ?? 0;
+    const endRaw = el.selectionEnd ?? 0;
+    const start = Math.max(0, Math.min(startRaw, totalChars));
+    const end = Math.max(0, Math.min(endRaw, totalChars));
+    const a = Math.min(start, end);
+    const b = Math.max(start, end);
+    const caretLine = value.slice(0, start).split("\n").length - 1;
+    let selection: DraftEditorContext["selection"] = null;
+    if (a !== b) {
+      const selText = value.slice(a, b);
+      const startLine = value.slice(0, a).split("\n").length - 1;
+      const endLine = value.slice(0, b).split("\n").length - 1;
+      selection = { startLine, endLine, text: selText };
+    }
+    onDraftContextChange?.({ selection, caretLine });
+    updateAddToChatAnchor();
+  }, [onDraftContextChange, totalChars, value, updateAddToChatAnchor]);
 
   const getSelectionBounds = useCallback(() => {
     const el = taRef.current;
@@ -170,6 +243,7 @@ export function DraftEditor({
     const onScroll = () => {
       enforceAxis();
       applyBackdropScroll(el);
+      updateAddToChatAnchorRef.current();
     };
 
     const onTouchStart = (e: TouchEvent) => {
@@ -250,10 +324,58 @@ export function DraftEditor({
     }
   }, [lineFeedbackAutoShowKey]);
 
+  useEffect(() => {
+    if (!addToChatEnabled) {
+      setAddToChatAnchor(null);
+    }
+  }, [addToChatEnabled]);
+
+  useEffect(() => {
+    const onDocMouseDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (taRef.current?.contains(t)) return;
+      if (addToChatPopoverRef.current?.contains(t)) return;
+      setAddToChatAnchor(null);
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => updateAddToChatAnchorRef.current();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const handleAddSelectionToChat = useCallback(() => {
+    if (!onAddSelectionToChat) return;
+    const el = taRef.current;
+    if (!el) return;
+    const startRaw = el.selectionStart ?? 0;
+    const endRaw = el.selectionEnd ?? 0;
+    const start = Math.max(0, Math.min(startRaw, totalChars));
+    const end = Math.max(0, Math.min(endRaw, totalChars));
+    const a = Math.min(start, end);
+    const b = Math.max(start, end);
+    if (a === b) return;
+    const text = value.slice(a, b);
+    if (!text.trim()) return;
+    const startLine = value.slice(0, a).split("\n").length - 1;
+    const endLine = value.slice(0, b).split("\n").length - 1;
+    onAddSelectionToChat({ startLine, endLine, text });
+    setAddToChatAnchor(null);
+  }, [onAddSelectionToChat, totalChars, value]);
+
   const updateTooltip = useCallback(
     (clientX: number, clientY: number) => {
       const el = taRef.current;
       if (!el || !showHighlights || lineFeedbackByIndex.size === 0) {
+        setTooltip(null);
+        return;
+      }
+      const ss = el.selectionStart ?? 0;
+      const se = el.selectionEnd ?? 0;
+      if (ss !== se) {
         setTooltip(null);
         return;
       }
@@ -493,7 +615,7 @@ export function DraftEditor({
         style={{ height: mobileToolbarInsetPx }}
         aria-hidden
       />
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden overscroll-none rounded-lg border border-zinc-800 bg-zinc-900/60 focus-within:border-amber-700/40 focus-within:ring-1 focus-within:ring-amber-600/25 max-lg:touch-none max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:focus-within:border-transparent max-lg:focus-within:ring-0">
+      <div className="relative flex min-h-[min(50dvh,28rem)] flex-1 flex-col overflow-hidden overscroll-none rounded-lg border border-zinc-800 bg-zinc-900/60 focus-within:border-amber-700/40 focus-within:ring-1 focus-within:ring-amber-600/25 max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:focus-within:border-transparent max-lg:focus-within:ring-0 lg:min-h-0">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 z-0 overflow-hidden overscroll-none rounded-[inherit]"
@@ -512,11 +634,17 @@ export function DraftEditor({
           ref={taRef}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onInput={reportDraftContext}
+          onSelect={reportDraftContext}
+          onKeyUp={reportDraftContext}
+          onClick={reportDraftContext}
+          onFocus={reportDraftContext}
+          onBlur={reportDraftContext}
           onMouseMove={(e) => updateTooltip(e.clientX, e.clientY)}
           onMouseLeave={() => setTooltip(null)}
           onKeyDown={(e) => {
             const meta = e.metaKey || e.ctrlKey;
-            const key = e.key.toLowerCase();
+            const key = (e.key ?? "").toLowerCase();
             if (meta && key === "b") {
               e.preventDefault();
               applyToggleStyle("bold");
@@ -537,7 +665,7 @@ export function DraftEditor({
               applyFontDelta(-1);
             }
           }}
-          className={`relative z-10 min-h-0 flex-1 overflow-auto ${TEXTAREA_CLASSES}`}
+          className={`pointer-events-auto relative z-20 flex-1 overflow-auto ${TEXTAREA_CLASSES}`}
           style={{
             fontSize: `${uiFontSize}px`,
             colorScheme: "dark",
@@ -567,6 +695,29 @@ export function DraftEditor({
           ))}
         </div>
       ) : null}
+
+      {addToChatAnchor && addToChatEnabled && onAddSelectionToChat ?
+        <div
+          ref={addToChatPopoverRef}
+          className="fixed z-[110] overflow-hidden rounded-[5px] border border-zinc-600/75 bg-zinc-950/98 shadow-lg shadow-black/40 backdrop-blur-sm"
+          style={{
+            top: addToChatAnchor.top,
+            left: addToChatAnchor.rightX,
+            transform: "translate(-100%, -100%)",
+          }}
+          role="toolbar"
+          aria-label="Selection actions"
+        >
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={handleAddSelectionToChat}
+            className="rounded-[5px] px-2 py-1 text-[11px] font-medium leading-tight text-zinc-100 transition hover:bg-zinc-800/90"
+          >
+            Add to chat
+          </button>
+        </div>
+      : null}
     </div>
   );
 }

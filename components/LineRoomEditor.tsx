@@ -31,6 +31,7 @@ import type {
   CritiqueResult,
   PriorVersionContext,
 } from "@/lib/types";
+import type { ChatSelectionPayload, DraftEditorContext } from "@/types/chat";
 import { critiqueResultSchema } from "@/lib/validators";
 
 const LS_DRAFT = "lineroom_draft";
@@ -232,6 +233,13 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   const [mobilePane, setMobilePane] = useState<MobilePane>("draft");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileTitleEditorOpen, setMobileTitleEditorOpen] = useState(false);
+  const [draftContext, setDraftContext] = useState<DraftEditorContext>({
+    selection: null,
+    caretLine: 0,
+  });
+  const [chatPinnedSelections, setChatPinnedSelections] = useState<
+    ChatSelectionPayload[]
+  >([]);
 
   const songId = isSong ? props.songId : null;
   const songTitleFromProps = props.mode === "song" ? props.songTitle : null;
@@ -275,6 +283,12 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   useEffect(() => {
     setMeta((m) => ({ ...m, title: pieceTitle }));
   }, [pieceTitle]);
+
+  useEffect(() => {
+    setChatPinnedSelections((prev) =>
+      prev.filter((p) => p.text.trim() && fullText.includes(p.text)),
+    );
+  }, [fullText]);
 
   useEffect(() => {
     if (props.mode === "song") return;
@@ -859,7 +873,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           />
         </section>
 
-        <section className={`${mobilePane === "draft" ? "flex" : "hidden"} min-h-0 min-w-0 flex-1 flex-col gap-2 max-lg:min-h-0 max-lg:flex-1 max-lg:px-0 lg:min-h-0 lg:flex`}>
+        <section className={`${mobilePane === "draft" ? "flex" : "hidden"} relative z-[1] min-h-0 min-w-0 flex-1 flex-col gap-2 max-lg:min-h-0 max-lg:flex-1 max-lg:px-0 lg:min-h-0 lg:flex`}>
           <DraftEditor
             value={fullText}
             onChange={setFullText}
@@ -867,6 +881,23 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
             lineFeedbackAutoShowKey={lineFeedbackAutoShowKey}
             onMobileSave={isSong ? handleSaveVersion : undefined}
             mobileSavePending={savePending || newVersionPending}
+            onDraftContextChange={setDraftContext}
+            addToChatEnabled={Boolean(critique)}
+            onAddSelectionToChat={(sel) => {
+              setChatPinnedSelections((prev) => {
+                const key = `${sel.startLine}:${sel.endLine}:${sel.text}`;
+                if (
+                  prev.some(
+                    (p) => `${p.startLine}:${p.endLine}:${p.text}` === key,
+                  )
+                ) {
+                  return prev;
+                }
+                if (prev.length >= 16) return prev;
+                return [...prev, sel];
+              });
+              setMobilePane("chat");
+            }}
           />
         </section>
 
@@ -881,6 +912,14 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
               critique={critique}
               critiqueMeta={meta}
               onCritiqueMetaChange={setMeta}
+              draftContext={draftContext}
+              pinnedSelections={chatPinnedSelections}
+              onClearPinnedSelections={() => setChatPinnedSelections([])}
+              onRemovePinnedSelection={(index) =>
+                setChatPinnedSelections((prev) =>
+                  prev.filter((_, i) => i !== index),
+                )
+              }
             />
           : <CritiqueSetupPanel
               similarArtists={meta.similarArtists}

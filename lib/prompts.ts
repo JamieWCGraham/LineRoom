@@ -1,3 +1,5 @@
+import type { ChatActionPayload } from "@/types/chat";
+
 export const LYRIC_CHAT_SYSTEM = `You are a thoughtful writing collaborator for lyrics and poetry. The user is working on a draft shown below under "Current draft".
 
 You are in a chat: they want to talk through ideas, doubts, imagery, structure, and feeling—not receive a wall of generic praise.
@@ -61,6 +63,88 @@ ${critique.lineFeedback
       `- [${item.strength ?? (item.category === "praise" ? "strong" : "weak")}; ${item.category}] "${item.quotedLine}" -> ${item.feedback}`,
   )
   .join("\n") || "- (none)"}`;
+}
+
+function formatSelectionsForPrompt(
+  selections: ChatActionPayload["selections"],
+): string {
+  const list = (selections ?? []).filter((s) => s.text?.trim());
+  if (list.length === 0) return "(empty selection)";
+  return list
+    .map(
+      (s, i) =>
+        `Excerpt ${i + 1} (lines ${s.startLine + 1}–${s.endLine + 1}):\n${s.text.trim()}`,
+    )
+    .join("\n\n---\n\n");
+}
+
+export function buildFocusedLyricContext(payload: ChatActionPayload): string {
+  switch (payload.scope) {
+    case "selection":
+      return formatSelectionsForPrompt(payload.selections);
+    case "section":
+      return payload.section?.text?.trim() || payload.draft;
+    case "full_draft":
+      return payload.draft;
+    default:
+      return payload.draft;
+  }
+}
+
+export function buildChatActionSystemPrompt(
+  payload: ChatActionPayload,
+  critiqueBlock?: string,
+): string {
+  const focused = buildFocusedLyricContext(payload);
+  const selectionCount =
+    payload.scope === "selection" ?
+      (payload.selections?.filter((s) => s.text?.trim()).length ?? 0)
+    : 0;
+  const multiExcerpt = selectionCount > 1;
+  const critiqueSection =
+    critiqueBlock?.trim() ?
+      `
+
+Structured critique (authoritative — ground your answer in it, do not repeat it verbatim):
+${critiqueBlock.trim()}
+`
+    : "";
+
+  const actionRules =
+    payload.action === "diagnose" ?
+      `Action: DIAGNOSE (is it landing?)
+Return 2-4 concise bullets in "diagnosis" on whether the scoped lyrics land, what works, and what could improve (imagery, clarity, emotion, prosody, memorability). Be honest and practical. Omit "options" or use [].`
+    : payload.action === "suggest_rewrites" ?
+      `Action: SUGGEST REWRITES / ALTERNATIVES
+Return exactly 3 full rewrite candidates in "options" that improve prosody and flow while preserving meaning and voice. Match approximate length of the scoped text. Optional: 1-2 short "diagnosis" points. You may set "recommendedOption" to 0, 1, or 2 if one is clearly strongest.`
+    : `Action: FIND RHYMES
+Infer the target word or ending sound from the user's message and the scoped lyrics. Return 10-18 rhyme suggestions in "options" (single words or very short phrases; group by slant/near rhymes if useful). Include a brief "summary" on the rhyme sound you're using. Omit "diagnosis" or use [].`;
+
+  return `You are a songwriting collaborator. The user chose a scoped chat action in their writing tool.
+
+Global rules:
+- Be concise and practical.
+- Do not rewrite more text than the scoped lyrics below.
+- Preserve voice and tone unless the user explicitly asks otherwise.
+- Prefer local edits over broad rewrites.
+${multiExcerpt ? "- The user attached multiple excerpts; treat them as related context without pretending they are one continuous block.\n" : ""}${critiqueSection}
+
+${actionRules}
+
+Output contract — respond with ONE JSON object only (no markdown, no code fences):
+{
+  "mode": "${payload.action}",
+  "scope": "${payload.scope}",
+  "summary": string,
+  "diagnosis": string[] (optional),
+  "options": string[] (optional),
+  "recommendedOption": number | null (optional, 0-based index into options)
+}
+
+Scoped lyrics (scope type: ${payload.scope}):
+---
+${focused}
+---`;
 }
 
 export function buildLyricChatSystemPrompt(
