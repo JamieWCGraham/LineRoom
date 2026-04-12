@@ -126,7 +126,7 @@ export function BillingSection({ initialAccess }: Props) {
         <div className="mt-4 rounded-lg border border-red-900/50 bg-red-950/30 p-4">
           <p className="text-sm text-red-200">
             Your subscription will be canceled immediately and a refund will be
-            issued for your most recent payment. This cannot be undone.
+            issued for your most recent payment.
           </p>
           <div className="mt-3 flex gap-3">
             <button
