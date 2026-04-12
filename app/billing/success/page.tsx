@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 export default function BillingSuccessPage() {
   const router = useRouter();
-  const [note, setNote] = useState("Activating subscription…");
+  const [note, setNote] = useState("Activated subscription!");
 
   useEffect(() => {
     let cancelled = false;
@@ -22,7 +22,7 @@ export default function BillingSuccessPage() {
           if (data.access?.hasActiveSubscription) {
             if (!cancelled) {
               setNote("Subscription active. Redirecting…");
-              router.replace("/account");
+              router.replace("/dashboard");
             }
             return;
           }
@@ -33,7 +33,7 @@ export default function BillingSuccessPage() {
       }
       if (!cancelled) {
         setNote(
-          "Still processing. If you completed checkout, open Account and tap Refresh status.",
+          "Still processing. If you completed checkout, open Dashboard and tap Refresh status in Account if needed.",
         );
       }
     })();
@@ -52,8 +52,8 @@ export default function BillingSuccessPage() {
           Account
         </Link>
         {" · "}
-        <Link href="/lineroom" className="text-amber-500/90 underline">
-          LineRoom
+        <Link href="/dashboard" className="text-amber-500/90 underline">
+          Dashboard
         </Link>
       </p>
     </div>

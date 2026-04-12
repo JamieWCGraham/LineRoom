@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
+import { resolveWebhookUserIdFromCheckoutSession } from "@/lib/billing/reconcile";
 import { upsertSubscriptionFromStripe } from "@/lib/billing/stripe-sync";
 import { getStripe } from "@/lib/stripe";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
@@ -71,8 +72,22 @@ export async function POST(req: Request) {
         if (!subId) break;
         const stripe = getStripe();
         const stripeSub = await stripe.subscriptions.retrieve(subId);
-        const metaUser = session.metadata?.user_id?.trim();
-        await upsertSubscriptionFromStripe(admin, stripeSub, metaUser || null);
+        const userId = resolveWebhookUserIdFromCheckoutSession(session);
+        await upsertSubscriptionFromStripe(admin, stripeSub, userId);
+        break;
+      }
+      case "checkout.session.async_payment_succeeded": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.mode !== "subscription") break;
+        const subId =
+          typeof session.subscription === "string" ?
+            session.subscription
+          : session.subscription?.id;
+        if (!subId) break;
+        const stripe = getStripe();
+        const stripeSub = await stripe.subscriptions.retrieve(subId);
+        const userId = resolveWebhookUserIdFromCheckoutSession(session);
+        await upsertSubscriptionFromStripe(admin, stripeSub, userId);
         break;
       }
       case "customer.subscription.created":

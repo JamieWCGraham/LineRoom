@@ -5,6 +5,7 @@ import {
   isBillingBypassed,
 } from "@/lib/billing/config";
 import { fetchSubscriptionForUser, subscriptionIsPaid } from "@/lib/billing/subscription-row";
+import { reconcileSubscriptionForUser } from "@/lib/billing/reconcile";
 import type { CritiqueAccessState } from "@/lib/billing/types";
 import type { CritiqueUsageRow } from "@/types/database";
 
@@ -60,8 +61,16 @@ export async function getCritiqueAccessForUser(
     };
   }
 
-  const sub = await fetchSubscriptionForUser(supabase, user.id);
-  const hasActiveSubscription = subscriptionIsPaid(sub);
+  let sub = await fetchSubscriptionForUser(supabase, user.id);
+  let hasActiveSubscription = subscriptionIsPaid(sub);
+
+  if (!hasActiveSubscription) {
+    const reconcile = await reconcileSubscriptionForUser(user.id, email);
+    if (reconcile.attempted) {
+      sub = await fetchSubscriptionForUser(supabase, user.id);
+      hasActiveSubscription = subscriptionIsPaid(sub);
+    }
+  }
 
   if (hasActiveSubscription) {
     const usage = await fetchCritiqueUsageForUser(supabase, user.id);
