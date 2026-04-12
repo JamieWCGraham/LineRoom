@@ -1,28 +1,58 @@
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
-import { subscriptionIsPaid } from "@/lib/billing/subscription-row";
 import { upsertSubscriptionFromStripe } from "@/lib/billing/stripe-sync";
+import { billingLog } from "@/lib/billing/logger";
 
-type ReconcileResult = {
+export interface ReconcileResult {
   attempted: boolean;
   hasPaidSubscription: boolean;
-};
-
-function isUuid(value: string | null | undefined): value is string {
-  if (!value) return false;
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value.trim(),
-  );
 }
 
+const PAID = new Set(["active", "trialing"]);
+const TERMINAL = new Set(["canceled", "incomplete_expired"]);
+
+function isPaid(status: string | null): boolean {
+  return status !== null && PAID.has(status);
+}
+
+function isTerminal(status: string | null): boolean {
+  return status !== null && TERMINAL.has(status);
+}
+
+/**
+ * Finds the best subscription for a customer from Stripe's subscription list.
+ *
+ * Prefers an active/trialing subscription. If none exists, returns the most
+ * recently created one (Stripe returns them in reverse chronological order).
+ */
+function pickBestSubscription(
+  subs: import("stripe").Stripe.Subscription[],
+): import("stripe").Stripe.Subscription | null {
+  return subs.find((s) => isPaid(s.status)) ?? subs[0] ?? null;
+}
+
+/**
+ * Reconciles the local `subscriptions` row for a user against Stripe.
+ *
+ * This is a **defensive fallback** for when a webhook may have been missed
+ * (local dev, temporary endpoint downtime, etc.). It tries three resolution
+ * strategies in order of specificity:
+ *
+ *  1. Retrieve by `stripe_subscription_id` — if still active, sync and return.
+ *     If the stored subscription is in a terminal state (canceled), **fall
+ *     through** to the customer listing so we can discover a newer subscription
+ *     the user may have created after re-subscribing.
+ *  2. List subscriptions for `stripe_customer_id`, pick the best one.
+ *  3. Search Stripe customers by email, then list their subscriptions.
+ *
+ * After finding the most relevant Stripe subscription it upserts the row via
+ * {@link upsertSubscriptionFromStripe}, keeping a single write-path.
+ */
 export async function reconcileSubscriptionForUser(
   userId: string,
   email?: string | null,
 ): Promise<ReconcileResult> {
-  if (!userId) {
-    return { attempted: false, hasPaidSubscription: false };
-  }
+  if (!userId) return { attempted: false, hasPaidSubscription: false };
 
   let admin: ReturnType<typeof createServiceRoleClient>;
   try {
@@ -33,154 +63,85 @@ export async function reconcileSubscriptionForUser(
 
   const { data: row, error } = await admin
     .from("subscriptions")
-    .select("stripe_customer_id, stripe_subscription_id, status")
+    .select("stripe_customer_id, stripe_subscription_id")
     .eq("user_id", userId)
     .maybeSingle();
 
   if (error) {
-    console.error("[billing] reconcile fetch subscription", error.message);
+    billingLog.error("Reconcile: failed to read local row", { userId, error: error.message });
     return { attempted: false, hasPaidSubscription: false };
   }
 
-  const stripeSubId = row?.stripe_subscription_id?.trim() || null;
-  const stripeCustomerId = row?.stripe_customer_id?.trim() || null;
   const normalizedEmail = email?.trim().toLowerCase() || null;
+  const custId = row?.stripe_customer_id?.trim() || null;
 
   try {
     const stripe = getStripe();
 
-    if (stripeSubId) {
-      const stripeSub = await stripe.subscriptions.retrieve(stripeSubId);
-      await upsertSubscriptionFromStripe(admin, stripeSub, userId, normalizedEmail);
-      return {
-        attempted: true,
-        hasPaidSubscription: subscriptionIsPaid({
-          user_id: userId,
-          email: normalizedEmail ?? null,
-          stripe_customer_id:
-            typeof stripeSub.customer === "string" ?
-              stripeSub.customer
-            : stripeSub.customer.id,
-          stripe_subscription_id: stripeSub.id,
-          stripe_price_id: stripeSub.items.data[0]?.price?.id ?? null,
-          status: stripeSub.status,
-          current_period_end:
-            stripeSub.current_period_end ?
-              new Date(stripeSub.current_period_end * 1000).toISOString()
-            : null,
-          cancel_at_period_end: stripeSub.cancel_at_period_end,
-          created_at: "",
-          updated_at: "",
-        }),
-      };
-    }
+    // 1. Direct subscription retrieval — but fall through when terminal
+    const subId = row?.stripe_subscription_id?.trim();
+    if (subId) {
+      const stripeSub = await stripe.subscriptions.retrieve(subId);
 
-    if (stripeCustomerId) {
-      const list = await stripe.subscriptions.list({
-        customer: stripeCustomerId,
-        status: "all",
-        limit: 1,
-      });
-      const latest = list.data[0];
-      if (!latest) {
-        return { attempted: true, hasPaidSubscription: false };
+      if (!isTerminal(stripeSub.status)) {
+        const result = await upsertSubscriptionFromStripe(admin, stripeSub, {
+          explicitUserId: userId,
+          explicitEmail: normalizedEmail,
+        });
+        return { attempted: true, hasPaidSubscription: isPaid(result.status) };
       }
-      await upsertSubscriptionFromStripe(admin, latest, userId, normalizedEmail);
-      return {
-        attempted: true,
-        hasPaidSubscription: subscriptionIsPaid({
-          user_id: userId,
-          email: normalizedEmail ?? null,
-          stripe_customer_id: stripeCustomerId,
-          stripe_subscription_id: latest.id,
-          stripe_price_id: latest.items.data[0]?.price?.id ?? null,
-          status: latest.status,
-          current_period_end:
-            latest.current_period_end ?
-              new Date(latest.current_period_end * 1000).toISOString()
-            : null,
-          cancel_at_period_end: latest.cancel_at_period_end,
-          created_at: "",
-          updated_at: "",
-        }),
-      };
+
+      // Stored subscription is canceled/expired — there may be a newer one.
+      // Fall through to customer listing instead of returning immediately.
+      billingLog.info("Reconcile: stored subscription is terminal, checking customer", {
+        userId,
+        stripeSubscriptionId: subId,
+        status: stripeSub.status,
+      });
     }
 
-    if (normalizedEmail) {
-      const customers = await stripe.customers.list({
-        email: normalizedEmail,
+    // 2. Customer subscription list — picks active over canceled
+    if (custId) {
+      const list = await stripe.subscriptions.list({
+        customer: custId,
+        status: "all",
         limit: 10,
       });
+      const best = pickBestSubscription(list.data);
+      if (!best) return { attempted: true, hasPaidSubscription: false };
+
+      const result = await upsertSubscriptionFromStripe(admin, best, {
+        explicitUserId: userId,
+        explicitEmail: normalizedEmail,
+      });
+      return { attempted: true, hasPaidSubscription: isPaid(result.status) };
+    }
+
+    // 3. Email-based customer search
+    if (normalizedEmail) {
+      const customers = await stripe.customers.list({ email: normalizedEmail, limit: 5 });
 
       for (const customer of customers.data) {
         const subs = await stripe.subscriptions.list({
           customer: customer.id,
           status: "all",
-          limit: 10,
+          limit: 5,
         });
 
-        const paid = subs.data.find((sub) =>
-          sub.status === "active" || sub.status === "trialing",
-        );
+        const target = pickBestSubscription(subs.data);
+        if (!target) continue;
 
-        if (paid) {
-          await upsertSubscriptionFromStripe(
-            admin,
-            paid,
-            userId,
-            customer.email?.trim().toLowerCase() ?? normalizedEmail,
-          );
-          return {
-            attempted: true,
-            hasPaidSubscription: true,
-          };
-        }
-
-        const latest = subs.data[0];
-        if (latest) {
-          await upsertSubscriptionFromStripe(
-            admin,
-            latest,
-            userId,
-            customer.email?.trim().toLowerCase() ?? normalizedEmail,
-          );
-          return {
-            attempted: true,
-            hasPaidSubscription: subscriptionIsPaid({
-              user_id: userId,
-              email: customer.email?.trim().toLowerCase() ?? normalizedEmail ?? null,
-              stripe_customer_id: customer.id,
-              stripe_subscription_id: latest.id,
-              stripe_price_id: latest.items.data[0]?.price?.id ?? null,
-              status: latest.status,
-              current_period_end:
-                latest.current_period_end ?
-                  new Date(latest.current_period_end * 1000).toISOString()
-                : null,
-              cancel_at_period_end: latest.cancel_at_period_end,
-              created_at: "",
-              updated_at: "",
-            }),
-          };
-        }
+        const result = await upsertSubscriptionFromStripe(admin, target, {
+          explicitUserId: userId,
+          explicitEmail: customer.email?.trim().toLowerCase() ?? normalizedEmail,
+        });
+        return { attempted: true, hasPaidSubscription: isPaid(result.status) };
       }
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
-    console.error("[billing] reconcile from stripe", msg);
+    billingLog.error("Reconcile: Stripe API error", { userId, error: msg });
   }
 
   return { attempted: false, hasPaidSubscription: false };
-}
-
-export function resolveWebhookUserIdFromCheckoutSession(
-  session: Pick<Stripe.Checkout.Session, "metadata" | "client_reference_id">,
-): string | null {
-  const metaUser = session.metadata?.user_id?.trim();
-  if (isUuid(metaUser)) return metaUser;
-
-  const clientRef = session.client_reference_id?.trim();
-  if (isUuid(clientRef)) return clientRef;
-
-  return null;
 }

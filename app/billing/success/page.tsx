@@ -1,21 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function BillingSuccessPage() {
   const router = useRouter();
-  const [note, setNote] = useState("Activated subscription!");
+  const searchParams = useSearchParams();
+  const sessionId = searchParams.get("session_id");
+  const [note, setNote] = useState("Activating subscription…");
 
   useEffect(() => {
     let cancelled = false;
+
+    const accessUrl = sessionId
+      ? `/api/billing/access?session_id=${encodeURIComponent(sessionId)}`
+      : "/api/billing/access";
 
     void (async () => {
       for (let i = 0; i < 45; i++) {
         if (cancelled) return;
         try {
-          const res = await fetch("/api/billing/access");
+          const res = await fetch(accessUrl);
           const data = (await res.json()) as {
             access?: { hasActiveSubscription?: boolean };
           };
@@ -41,7 +47,7 @@ export default function BillingSuccessPage() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [router, sessionId]);
 
   return (
     <div className="mx-auto max-w-md px-4 py-16 text-center">

@@ -6,6 +6,7 @@ import {
 } from "@/lib/billing/config";
 import { fetchSubscriptionForUser, subscriptionIsPaid } from "@/lib/billing/subscription-row";
 import { reconcileSubscriptionForUser } from "@/lib/billing/reconcile";
+import { billingLog } from "@/lib/billing/logger";
 import type { CritiqueAccessState } from "@/lib/billing/types";
 import type { CritiqueUsageRow } from "@/types/database";
 
@@ -20,7 +21,7 @@ export async function fetchCritiqueUsageForUser(
     .maybeSingle();
 
   if (error) {
-    console.error("[billing] fetchCritiqueUsageForUser", error.message);
+    billingLog.error("Failed to fetch critique usage", { userId, error: error.message });
     return null;
   }
   return data as CritiqueUsageRow | null;

@@ -1,9 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getStripe } from "@/lib/stripe";
+import { billingLog } from "@/lib/billing/logger";
 
 /**
- * Returns Stripe customer id for the user, creating the customer and row as needed.
- * Caller must have verified `userId` matches the session user.
+ * Ensures a Stripe customer exists for the given user and returns the customer ID.
+ *
+ * If a `subscriptions` row already has a `stripe_customer_id`, it is returned
+ * immediately. Otherwise a new Stripe customer is created, and a skeleton row
+ * is upserted so the webhook can later fill in subscription details.
  */
 export async function getOrCreateStripeCustomer(
   admin: SupabaseClient,
@@ -16,8 +20,9 @@ export async function getOrCreateStripeCustomer(
     .eq("user_id", userId)
     .maybeSingle();
 
-  const cid = existing?.stripe_customer_id as string | null | undefined;
-  if (cid) return cid;
+  if (existing?.stripe_customer_id) {
+    return existing.stripe_customer_id as string;
+  }
 
   const stripe = getStripe();
   const customer = await stripe.customers.create({
@@ -38,9 +43,14 @@ export async function getOrCreateStripeCustomer(
   );
 
   if (error) {
-    console.error("[billing] upsert subscription row for customer", error.message);
+    billingLog.error("Failed to persist Stripe customer", {
+      userId,
+      stripeCustomerId: customer.id,
+      error: error.message,
+    });
     throw new Error("Failed to save Stripe customer");
   }
 
+  billingLog.info("Created Stripe customer", { userId, stripeCustomerId: customer.id });
   return customer.id;
 }

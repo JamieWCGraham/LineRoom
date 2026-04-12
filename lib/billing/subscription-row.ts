@@ -1,13 +1,23 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { SubscriptionRow } from "@/types/database";
+import type { SubscriptionRow, SubscriptionStatus } from "@/types/database";
+import { billingLog } from "@/lib/billing/logger";
 
-const PAID_OR_GRACE = new Set(["active", "trialing"]);
+/** Statuses that represent an actively-paid subscription. */
+const PAID_STATUSES: ReadonlySet<SubscriptionStatus> = new Set(["active", "trialing"]);
 
+/**
+ * Returns `true` when the subscription row represents a currently-paid plan.
+ * Both `active` and `trialing` are treated as paid.
+ */
 export function subscriptionIsPaid(row: SubscriptionRow | null): boolean {
   if (!row?.status) return false;
-  return PAID_OR_GRACE.has(row.status);
+  return PAID_STATUSES.has(row.status);
 }
 
+/**
+ * Fetches the single `subscriptions` row for a user.
+ * Returns `null` if no row exists or on query error.
+ */
 export async function fetchSubscriptionForUser(
   supabase: SupabaseClient,
   userId: string,
@@ -19,7 +29,7 @@ export async function fetchSubscriptionForUser(
     .maybeSingle();
 
   if (error) {
-    console.error("[billing] fetchSubscriptionForUser", error.message);
+    billingLog.error("Failed to fetch subscription", { userId, error: error.message });
     return null;
   }
   return data as SubscriptionRow | null;
