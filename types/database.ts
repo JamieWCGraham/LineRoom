@@ -40,6 +40,7 @@ export type SongVersionRow = {
 
 export type SubscriptionRow = {
   user_id: string;
+  email: string | null;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   stripe_price_id: string | null;

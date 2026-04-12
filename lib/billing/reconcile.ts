@@ -44,17 +44,19 @@ export async function reconcileSubscriptionForUser(
 
   const stripeSubId = row?.stripe_subscription_id?.trim() || null;
   const stripeCustomerId = row?.stripe_customer_id?.trim() || null;
+  const normalizedEmail = email?.trim().toLowerCase() || null;
 
   try {
     const stripe = getStripe();
 
     if (stripeSubId) {
       const stripeSub = await stripe.subscriptions.retrieve(stripeSubId);
-      await upsertSubscriptionFromStripe(admin, stripeSub, userId);
+      await upsertSubscriptionFromStripe(admin, stripeSub, userId, normalizedEmail);
       return {
         attempted: true,
         hasPaidSubscription: subscriptionIsPaid({
           user_id: userId,
+          email: normalizedEmail ?? null,
           stripe_customer_id:
             typeof stripeSub.customer === "string" ?
               stripeSub.customer
@@ -83,11 +85,12 @@ export async function reconcileSubscriptionForUser(
       if (!latest) {
         return { attempted: true, hasPaidSubscription: false };
       }
-      await upsertSubscriptionFromStripe(admin, latest, userId);
+      await upsertSubscriptionFromStripe(admin, latest, userId, normalizedEmail);
       return {
         attempted: true,
         hasPaidSubscription: subscriptionIsPaid({
           user_id: userId,
+          email: normalizedEmail ?? null,
           stripe_customer_id: stripeCustomerId,
           stripe_subscription_id: latest.id,
           stripe_price_id: latest.items.data[0]?.price?.id ?? null,
@@ -103,7 +106,6 @@ export async function reconcileSubscriptionForUser(
       };
     }
 
-    const normalizedEmail = email?.trim().toLowerCase();
     if (normalizedEmail) {
       const customers = await stripe.customers.list({
         email: normalizedEmail,
@@ -122,7 +124,12 @@ export async function reconcileSubscriptionForUser(
         );
 
         if (paid) {
-          await upsertSubscriptionFromStripe(admin, paid, userId);
+          await upsertSubscriptionFromStripe(
+            admin,
+            paid,
+            userId,
+            customer.email?.trim().toLowerCase() ?? normalizedEmail,
+          );
           return {
             attempted: true,
             hasPaidSubscription: true,
@@ -131,11 +138,17 @@ export async function reconcileSubscriptionForUser(
 
         const latest = subs.data[0];
         if (latest) {
-          await upsertSubscriptionFromStripe(admin, latest, userId);
+          await upsertSubscriptionFromStripe(
+            admin,
+            latest,
+            userId,
+            customer.email?.trim().toLowerCase() ?? normalizedEmail,
+          );
           return {
             attempted: true,
             hasPaidSubscription: subscriptionIsPaid({
               user_id: userId,
+              email: customer.email?.trim().toLowerCase() ?? normalizedEmail ?? null,
               stripe_customer_id: customer.id,
               stripe_subscription_id: latest.id,
               stripe_price_id: latest.items.data[0]?.price?.id ?? null,

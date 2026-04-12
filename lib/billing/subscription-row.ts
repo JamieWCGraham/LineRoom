@@ -1,11 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SubscriptionRow } from "@/types/database";
 
-const ACTIVE = new Set(["active", "trialing"]);
+const PAID_OR_GRACE = new Set(["active", "trialing"]);
 
 export function subscriptionIsPaid(row: SubscriptionRow | null): boolean {
   if (!row?.status) return false;
-  return ACTIVE.has(row.status);
+  return PAID_OR_GRACE.has(row.status);
 }
 
 export async function fetchSubscriptionForUser(

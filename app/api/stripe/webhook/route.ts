@@ -7,6 +7,46 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 export const runtime = "nodejs";
 
+async function logSubscriptionWrite(
+  admin: ReturnType<typeof createServiceRoleClient>,
+  details: {
+    eventType: string;
+    eventId: string;
+    stripeSubscriptionId: string;
+    resolvedUserId?: string | null;
+    statusOverride?: string;
+  },
+): Promise<void> {
+  const { data: row, error } = await admin
+    .from("subscriptions")
+    .select("user_id, status, stripe_subscription_id")
+    .eq("stripe_subscription_id", details.stripeSubscriptionId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[stripe webhook] log lookup failed", {
+      eventType: details.eventType,
+      eventId: details.eventId,
+      stripeSubscriptionId: details.stripeSubscriptionId,
+      resolvedUserId: details.resolvedUserId ?? null,
+      statusOverride: details.statusOverride ?? null,
+      error: error.message,
+    });
+    return;
+  }
+
+  console.log("[stripe webhook] subscription sync", {
+    eventType: details.eventType,
+    eventId: details.eventId,
+    stripeSubscriptionId: details.stripeSubscriptionId,
+    resolvedUserId: details.resolvedUserId ?? null,
+    statusOverride: details.statusOverride ?? null,
+    rowUserId: row?.user_id ?? null,
+    rowStatus: row?.status ?? null,
+    rowSubscriptionId: row?.stripe_subscription_id ?? null,
+  });
+}
+
 async function isEventProcessed(
   admin: ReturnType<typeof createServiceRoleClient>,
   eventId: string,
@@ -73,7 +113,19 @@ export async function POST(req: Request) {
         const stripe = getStripe();
         const stripeSub = await stripe.subscriptions.retrieve(subId);
         const userId = resolveWebhookUserIdFromCheckoutSession(session);
-        await upsertSubscriptionFromStripe(admin, stripeSub, userId);
+        const email = session.customer_details?.email ?? session.customer_email ?? null;
+        const statusOverride =
+          session.payment_status === "paid" ? "active" : undefined;
+        await upsertSubscriptionFromStripe(admin, stripeSub, userId, email, {
+          statusOverride,
+        });
+        await logSubscriptionWrite(admin, {
+          eventType: event.type,
+          eventId: event.id,
+          stripeSubscriptionId: stripeSub.id,
+          resolvedUserId: userId,
+          statusOverride,
+        });
         break;
       }
       case "checkout.session.async_payment_succeeded": {
@@ -87,14 +139,62 @@ export async function POST(req: Request) {
         const stripe = getStripe();
         const stripeSub = await stripe.subscriptions.retrieve(subId);
         const userId = resolveWebhookUserIdFromCheckoutSession(session);
-        await upsertSubscriptionFromStripe(admin, stripeSub, userId);
+        const email = session.customer_details?.email ?? session.customer_email ?? null;
+        await upsertSubscriptionFromStripe(admin, stripeSub, userId, email, {
+          statusOverride: "active",
+        });
+        await logSubscriptionWrite(admin, {
+          eventType: event.type,
+          eventId: event.id,
+          stripeSubscriptionId: stripeSub.id,
+          resolvedUserId: userId,
+          statusOverride: "active",
+        });
         break;
       }
       case "customer.subscription.created":
-      case "customer.subscription.updated":
+      case "customer.subscription.updated": {
+        const stripeSub = event.data.object as Stripe.Subscription;
+        await upsertSubscriptionFromStripe(admin, stripeSub, undefined, undefined, {
+          statusOverride: undefined,
+          allowCustomerLookup: false,
+        });
+        await logSubscriptionWrite(admin, {
+          eventType: event.type,
+          eventId: event.id,
+          stripeSubscriptionId: stripeSub.id,
+          resolvedUserId: null,
+        });
+        break;
+      }
       case "customer.subscription.deleted": {
         const stripeSub = event.data.object as Stripe.Subscription;
-        await upsertSubscriptionFromStripe(admin, stripeSub);
+        const { data: prior } = await admin
+          .from("subscriptions")
+          .select("user_id, stripe_subscription_id")
+          .eq("stripe_subscription_id", stripeSub.id)
+          .maybeSingle();
+        if (!prior?.user_id) {
+          // Ignore stale deletes for older subscriptions that no longer map to
+          // the user's current subscription row.
+          console.log("[stripe webhook] ignored stale delete", {
+            eventType: event.type,
+            eventId: event.id,
+            stripeSubscriptionId: stripeSub.id,
+          });
+          break;
+        }
+        await upsertSubscriptionFromStripe(admin, stripeSub, prior.user_id, undefined, {
+          statusOverride: "canceled",
+          allowCustomerLookup: false,
+        });
+        await logSubscriptionWrite(admin, {
+          eventType: event.type,
+          eventId: event.id,
+          stripeSubscriptionId: stripeSub.id,
+          resolvedUserId: prior.user_id,
+          statusOverride: "canceled",
+        });
         break;
       }
       default:

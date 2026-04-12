@@ -66,7 +66,9 @@ export async function getCritiqueAccessForUser(
 
   if (!hasActiveSubscription) {
     const reconcile = await reconcileSubscriptionForUser(user.id, email);
-    if (reconcile.attempted) {
+    if (reconcile.hasPaidSubscription) {
+      hasActiveSubscription = true;
+    } else if (reconcile.attempted) {
       sub = await fetchSubscriptionForUser(supabase, user.id);
       hasActiveSubscription = subscriptionIsPaid(sub);
     }
