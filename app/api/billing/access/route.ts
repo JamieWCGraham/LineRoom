@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCritiqueAccessForUser } from "@/lib/billing/access";
+import { reconcileSubscriptionForUser } from "@/lib/billing/reconcile";
 import { billingLog } from "@/lib/billing/logger";
 import { upsertSubscriptionFromStripe } from "@/lib/billing/stripe-sync";
 import { getStripe } from "@/lib/stripe";
@@ -7,14 +8,15 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 /**
- * `GET /api/billing/access[?session_id=cs_xxx]`
+ * `GET /api/billing/access[?session_id=cs_xxx][&sync=1]`
  *
- * Returns the user's current critique access state. When `session_id` is
- * provided (e.g. from the success page redirect), it first attempts to
- * resolve the subscription directly from the Stripe Checkout Session.
+ * Returns the user's current critique access state.
  *
- * This handles the case where the webhook hasn't arrived yet (common in
- * local dev or when webhook delivery is delayed).
+ * Optional query params:
+ *  - `session_id` — Resolves the subscription directly from a Stripe Checkout
+ *    Session (used by the success page when the webhook hasn't arrived yet).
+ *  - `sync` — Forces a reconcile against Stripe regardless of the current DB
+ *    state (used by the "Refresh status" button and after portal returns).
  */
 export async function GET(req: Request) {
   const supabase = await createClient();
@@ -24,9 +26,12 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const sessionId = searchParams.get("session_id")?.trim();
+  const forceSync = searchParams.get("sync") === "1";
 
   if (user && sessionId) {
     await reconcileFromCheckoutSession(sessionId, user.id, user.email ?? null);
+  } else if (user && forceSync) {
+    await reconcileSubscriptionForUser(user.id, user.email);
   }
 
   const access = await getCritiqueAccessForUser(supabase, user);

@@ -2,13 +2,14 @@ import Link from "next/link";
 import { BillingSection } from "@/components/account/BillingSection";
 import { ProfileForm } from "@/components/account/profile-form";
 import { getCritiqueAccessForUser } from "@/lib/billing/access";
+import { reconcileSubscriptionForUser } from "@/lib/billing/reconcile";
 import { ensureProfile } from "@/lib/auth/profile";
 import { requireAuthUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import type { ProfileRow } from "@/types/database";
 
 type Props = {
-  searchParams: Promise<{ saved?: string }>;
+  searchParams: Promise<{ saved?: string; portal_return?: string }>;
 };
 
 export default async function AccountPage({ searchParams }: Props) {
@@ -32,6 +33,11 @@ export default async function AccountPage({ searchParams }: Props) {
   }
 
   const q = await searchParams;
+
+  if (q.portal_return) {
+    await reconcileSubscriptionForUser(user.id, user.email);
+  }
+
   const billingAccess = await getCritiqueAccessForUser(supabase, user);
 
   return (

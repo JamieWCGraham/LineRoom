@@ -35,7 +35,7 @@ export async function POST() {
   try {
     const session = await getStripe().billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${appUrl}/account`,
+      return_url: `${appUrl}/account?portal_return=1`,
     });
 
     billingLog.info("Portal session created", { userId: user.id, customerId });
