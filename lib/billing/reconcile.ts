@@ -1,4 +1,5 @@
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { subscriptionIsPaid } from "@/lib/billing/subscription-row";
 import { upsertSubscriptionFromStripe } from "@/lib/billing/stripe-sync";
@@ -160,7 +161,7 @@ export async function reconcileSubscriptionForUser(
 }
 
 export function resolveWebhookUserIdFromCheckoutSession(
-  session: { metadata?: Record<string, string | undefined>; client_reference_id?: string | null },
+  session: Pick<Stripe.Checkout.Session, "metadata" | "client_reference_id">,
 ): string | null {
   const metaUser = session.metadata?.user_id?.trim();
   if (isUuid(metaUser)) return metaUser;
