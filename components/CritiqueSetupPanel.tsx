@@ -12,6 +12,8 @@ type Props = {
   loading: boolean;
   error: string | null;
   lyricsEmpty: boolean;
+  /** e.g. "Free: 2 left" or "Pro" */
+  quotaBadge?: string | null;
 };
 
 export function CritiqueSetupPanel({
@@ -23,6 +25,7 @@ export function CritiqueSetupPanel({
   loading,
   error,
   lyricsEmpty,
+  quotaBadge,
 }: Props) {
   const mobileHeaderRef = useRef<HTMLDivElement>(null);
   const mobileHeaderInsetPx = useMobileToolbarInset(mobileHeaderRef);
@@ -88,6 +91,11 @@ export function CritiqueSetupPanel({
       ) : null}
 
       <div className="shrink-0 border-t border-zinc-800/80 p-3">
+        {quotaBadge ?
+          <p className="mb-2 text-center text-[11px] font-medium text-zinc-500">
+            {quotaBadge}
+          </p>
+        : null}
         <button
           type="button"
           onClick={onGenerate}

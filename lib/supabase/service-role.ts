@@ -1,0 +1,18 @@
+import { createClient } from "@supabase/supabase-js";
+
+/**
+ * Server-only Supabase client with service role. Bypasses RLS — use only after
+ * verifying the authenticated user (or for Stripe webhooks).
+ */
+export function createServiceRoleClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error(
+      "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY",
+    );
+  }
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}

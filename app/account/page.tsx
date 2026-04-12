@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { BillingSection } from "@/components/account/BillingSection";
 import { ProfileForm } from "@/components/account/profile-form";
+import { getCritiqueAccessForUser } from "@/lib/billing/access";
 import { ensureProfile } from "@/lib/auth/profile";
 import { requireAuthUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
@@ -30,6 +32,7 @@ export default async function AccountPage({ searchParams }: Props) {
   }
 
   const q = await searchParams;
+  const billingAccess = await getCritiqueAccessForUser(supabase, user);
 
   return (
     <div className="mx-auto max-w-lg px-4 py-12">
@@ -51,6 +54,7 @@ export default async function AccountPage({ searchParams }: Props) {
       <div className="mt-8">
         <ProfileForm profile={profile as ProfileRow | null} />
       </div>
+      <BillingSection initialAccess={billingAccess} />
     </div>
   );
 }

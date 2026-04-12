@@ -10,6 +10,8 @@ import {
   useState,
   useTransition,
 } from "react";
+import type { CritiqueAccessState } from "@/lib/billing/types";
+import { UpgradeModal } from "@/components/billing/UpgradeModal";
 import { CritiqueDisplayPanel } from "@/components/CritiqueDisplayPanel";
 import { CritiqueSetupPanel } from "@/components/CritiqueSetupPanel";
 import { DraftEditor } from "@/components/DraftEditor";
@@ -240,6 +242,10 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   const [chatPinnedSelections, setChatPinnedSelections] = useState<
     ChatSelectionPayload[]
   >([]);
+  const [critiqueAccess, setCritiqueAccess] = useState<CritiqueAccessState | null>(
+    null,
+  );
+  const [paywallOpen, setPaywallOpen] = useState(false);
 
   const songId = isSong ? props.songId : null;
   const songTitleFromProps = props.mode === "song" ? props.songTitle : null;
@@ -274,6 +280,29 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
       props,
     ],
   );
+
+  const quotaBadge = useMemo(() => {
+    if (!critiqueAccess) return null;
+    if (critiqueAccess.hasActiveSubscription) return "Pro";
+    if (critiqueAccess.isBypassed) return null;
+    return `Free: ${critiqueAccess.remainingFreeCritiques} left`;
+  }, [critiqueAccess]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/billing/access");
+        const data = (await res.json()) as { access?: CritiqueAccessState };
+        if (!cancelled && data.access) setCritiqueAccess(data.access);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (songTitleFromProps === null) return;
@@ -506,7 +535,15 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
         const data = (await res.json().catch(() => ({}))) as {
           error?: string;
           critique?: CritiqueResult;
+          access?: CritiqueAccessState;
+          code?: string;
         };
+        if (data.access) setCritiqueAccess(data.access);
+        if (res.status === 402 && data.code === "PAYWALL_REQUIRED") {
+          setCritiqueError(null);
+          setPaywallOpen(true);
+          return;
+        }
         if (!res.ok) {
           setCritiqueError(
             typeof data.error === "string" ? data.error : "Critique failed.",
@@ -570,6 +607,17 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
       songCritiqueSource,
       songId,
     ],
+  );
+
+  const requestCritique = useCallback(
+    (opts?: { regenerate?: boolean }) => {
+      if (critiqueAccess && !critiqueAccess.canGenerateCritique) {
+        setPaywallOpen(true);
+        return;
+      }
+      void runCritique(opts);
+    },
+    [critiqueAccess, runCritique],
   );
 
   const handleDeleteVersion = useCallback(() => {
@@ -868,8 +916,9 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           <CritiqueDisplayPanel
             critique={critique}
             loading={critiqueLoading}
-            onRegenerate={() => void runCritique({ regenerate: true })}
+            onRegenerate={() => requestCritique({ regenerate: true })}
             lyricsEmpty={lyricsEmpty}
+            quotaBadge={quotaBadge}
           />
         </section>
 
@@ -928,10 +977,11 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                 setMeta((m) => ({ ...m, similarArtists }))
               }
               onGenreChange={(genre) => setMeta((m) => ({ ...m, genre }))}
-              onGenerate={() => void runCritique()}
+              onGenerate={() => requestCritique()}
               loading={critiqueLoading}
               error={critiqueError}
               lyricsEmpty={lyricsEmpty}
+              quotaBadge={quotaBadge}
             />
           }
         </section>
@@ -975,6 +1025,10 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           </button>
         </div>
       </div>
+      <UpgradeModal
+        open={paywallOpen}
+        onClose={() => setPaywallOpen(false)}
+      />
     </div>
   );
 }

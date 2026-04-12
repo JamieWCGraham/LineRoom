@@ -22,6 +22,7 @@ type Props = {
   loading: boolean;
   onRegenerate: () => void;
   lyricsEmpty: boolean;
+  quotaBadge?: string | null;
 };
 
 export function CritiqueDisplayPanel({
@@ -29,6 +30,7 @@ export function CritiqueDisplayPanel({
   loading,
   onRegenerate,
   lyricsEmpty,
+  quotaBadge,
 }: Props) {
   const mobileHeaderRef = useRef<HTMLDivElement>(null);
   const mobileFooterRef = useRef<HTMLDivElement>(null);
@@ -244,6 +246,11 @@ export function CritiqueDisplayPanel({
         ref={mobileFooterRef}
         className="shrink-0 border-t border-zinc-800/80 p-3 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom))] max-lg:z-[50] max-lg:border-zinc-800/80 max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pb-3 max-lg:pt-2 max-lg:shadow-[0_-12px_32px_rgba(0,0,0,0.45)] max-lg:backdrop-blur-md lg:relative lg:bottom-auto lg:z-auto lg:bg-transparent lg:shadow-none"
       >
+        {quotaBadge ?
+          <p className="mb-2 text-center text-[11px] font-medium text-zinc-500">
+            {quotaBadge}
+          </p>
+        : null}
         <button
           type="button"
           onClick={onRegenerate}
