@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
-export default function BillingSuccessPage() {
+function SuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
@@ -50,8 +50,7 @@ export default function BillingSuccessPage() {
   }, [router, sessionId]);
 
   return (
-    <div className="mx-auto max-w-md px-4 py-16 text-center">
-      <h1 className="text-xl font-semibold text-zinc-100">Thanks!</h1>
+    <>
       <p className="mt-3 text-sm text-zinc-400">{note}</p>
       <p className="mt-8 text-sm">
         <Link href="/account" className="text-amber-500/90 underline">
@@ -62,6 +61,17 @@ export default function BillingSuccessPage() {
           Dashboard
         </Link>
       </p>
+    </>
+  );
+}
+
+export default function BillingSuccessPage() {
+  return (
+    <div className="mx-auto max-w-md px-4 py-16 text-center">
+      <h1 className="text-xl font-semibold text-zinc-100">Thanks!</h1>
+      <Suspense fallback={<p className="mt-3 text-sm text-zinc-400">Loading…</p>}>
+        <SuccessContent />
+      </Suspense>
     </div>
   );
 }
