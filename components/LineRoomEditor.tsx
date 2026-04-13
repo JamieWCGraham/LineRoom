@@ -14,6 +14,7 @@ import type { CritiqueAccessState } from "@/lib/billing/types";
 import { UpgradeModal } from "@/components/billing/UpgradeModal";
 import { CritiqueDisplayPanel } from "@/components/CritiqueDisplayPanel";
 import { CritiqueSetupPanel } from "@/components/CritiqueSetupPanel";
+import { DraftRecordingsPanel } from "@/components/draft/DraftRecordingsPanel";
 import { DraftEditor } from "@/components/DraftEditor";
 import { Header } from "@/components/Header";
 import { LyricChatPanel } from "@/components/LyricChatPanel";
@@ -22,6 +23,8 @@ import {
   buildLineFeedbackByIndex,
   type LineAnnotation,
 } from "@/lib/lineAnnotations";
+
+const EMPTY_LINE_FEEDBACK = new Map<number, LineAnnotation[]>();
 import {
   deleteSongVersion,
   saveNewSongVersion,
@@ -31,12 +34,14 @@ import type {
   ChatMessage,
   CritiqueMeta,
   CritiqueResult,
+  DraftRecordingMeta,
   PriorVersionContext,
 } from "@/lib/types";
 import type { ChatSelectionPayload, DraftEditorContext } from "@/types/chat";
 import { critiqueResultSchema } from "@/lib/validators";
 
 const LS_DRAFT = "lineroom_draft";
+const LS_BRAINSTORM = "lineroom_brainstorm";
 const LS_CHAT = "lineroom_chat_messages";
 const LS_CRITIQUE = "lineroom_critique";
 const LS_META = "lineroom_critique_meta";
@@ -52,16 +57,46 @@ function parseCritique(raw: string | null): CritiqueResult | null {
   }
 }
 
+function parseLocalRecording(item: unknown): DraftRecordingMeta | null {
+  if (typeof item !== "object" || item === null) return null;
+  const r = item as Record<string, unknown>;
+  if (
+    typeof r.id !== "string" ||
+    typeof r.name !== "string" ||
+    typeof r.objectPath !== "string" ||
+    typeof r.mimeType !== "string" ||
+    typeof r.createdAt !== "string"
+  ) {
+    return null;
+  }
+  const rec: DraftRecordingMeta = {
+    id: r.id,
+    name: r.name,
+    objectPath: r.objectPath,
+    mimeType: r.mimeType,
+    createdAt: r.createdAt,
+  };
+  if (typeof r.durationSec === "number") rec.durationSec = r.durationSec;
+  return rec;
+}
+
 function parseMeta(raw: string | null): CritiqueMeta {
   const empty: CritiqueMeta = { title: "", similarArtists: "", genre: "" };
   if (raw === null) return empty;
   try {
     const j = JSON.parse(raw) as Record<string, unknown>;
+    const draftRecordings = Array.isArray(j.draftRecordings) ?
+      j.draftRecordings
+        .map(parseLocalRecording)
+        .filter((x): x is DraftRecordingMeta => x !== null)
+    : [];
     return {
       title: typeof j.title === "string" ? j.title : "",
       similarArtists:
         typeof j.similarArtists === "string" ? j.similarArtists : "",
       genre: typeof j.genre === "string" ? j.genre : "",
+      draftRecordings:
+        draftRecordings.length ? draftRecordings : undefined,
     };
   } catch {
     return empty;
@@ -79,6 +114,7 @@ type SongProps = {
   activeVersionNumber: number;
   activeVersionId: string;
   initialDraftText: string;
+  initialBrainstormText: string;
   initialChatMessages: ChatMessage[];
   initialCritique: CritiqueResult | null;
   initialMeta: CritiqueMeta;
@@ -86,6 +122,7 @@ type SongProps = {
 
 export type LineRoomEditorProps = LocalProps | SongProps;
 type MobilePane = "draft" | "chat" | "critique";
+type LyricDocPane = "draft" | "brainstorm";
 
 function SongVersionBar(props: {
   songId: string;
@@ -210,6 +247,10 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   const [fullText, setFullText] = useState(
     isSong ? props.initialDraftText : "",
   );
+  const [brainstormText, setBrainstormText] = useState(
+    isSong ? props.initialBrainstormText : "",
+  );
+  const [lyricDocPane, setLyricDocPane] = useState<LyricDocPane>("draft");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(
     isSong ? props.initialChatMessages : [],
   );
@@ -265,6 +306,47 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   const priorVersionsContext = useMemo(
     () => (props.mode === "song" ? props.priorVersionsContext : []),
     [props],
+  );
+
+  const lyricPaneTabs = useMemo(
+    () => (
+      <div
+        className="flex min-w-0 items-baseline gap-1 text-xs font-medium uppercase tracking-wide"
+        role="tablist"
+        aria-label="Lyrics document"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={lyricDocPane === "draft"}
+          onClick={() => setLyricDocPane("draft")}
+          className={
+            lyricDocPane === "draft" ?
+              "shrink-0 rounded-sm border-b border-zinc-400/90 pb-0.5 text-zinc-200 outline-none focus-visible:ring-1 focus-visible:ring-amber-600/35"
+            : "shrink-0 rounded-sm border-b border-transparent pb-0.5 text-zinc-500 outline-none transition hover:text-zinc-400 focus-visible:ring-1 focus-visible:ring-amber-600/35"
+          }
+        >
+          DRAFT
+        </button>
+        <span className="shrink-0 select-none text-zinc-600" aria-hidden>
+          ·
+        </span>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={lyricDocPane === "brainstorm"}
+          onClick={() => setLyricDocPane("brainstorm")}
+          className={
+            lyricDocPane === "brainstorm" ?
+              "shrink-0 rounded-sm border-b border-zinc-400/90 pb-0.5 text-zinc-200 outline-none focus-visible:ring-1 focus-visible:ring-amber-600/35"
+            : "shrink-0 rounded-sm border-b border-transparent pb-0.5 text-zinc-500 outline-none transition hover:text-zinc-400 focus-visible:ring-1 focus-visible:ring-amber-600/35"
+          }
+        >
+          BRAINSTORM
+        </button>
+      </div>
+    ),
+    [lyricDocPane],
   );
 
   const songCritiqueSource = useMemo(
@@ -327,6 +409,8 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
       const cr = localStorage.getItem(LS_CRITIQUE);
       const m = localStorage.getItem(LS_META);
       if (d !== null) setFullText(d);
+      const b = localStorage.getItem(LS_BRAINSTORM);
+      if (b !== null) setBrainstormText(b);
       if (c !== null) {
         const parsed = JSON.parse(c) as unknown;
         if (Array.isArray(parsed)) {
@@ -358,6 +442,18 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     }, 400);
     return () => clearTimeout(t);
   }, [fullText, isSong]);
+
+  useEffect(() => {
+    if (isSong) return;
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(LS_BRAINSTORM, brainstormText);
+      } catch {
+        /* ignore */
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [brainstormText, isSong]);
 
   useEffect(() => {
     if (isSong) return;
@@ -430,11 +526,12 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     () =>
       JSON.stringify({
         draft_text: fullText,
+        brainstorm_text: brainstormText,
         chat_messages: chatMessages,
         critique,
         meta,
       }),
-    [chatMessages, critique, fullText, meta],
+    [brainstormText, chatMessages, critique, fullText, meta],
   );
 
   const persistSongState = useCallback(
@@ -446,6 +543,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
       setAutosaveError(null);
       const payload = {
         draft_text: fullText,
+        brainstorm_text: brainstormText,
         chat_messages: chatMessages,
         critique: nextCritique === undefined ? critique : nextCritique,
         meta,
@@ -467,7 +565,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
         setAutosaveError(result.message);
       }
     },
-    [chatMessages, critique, fullText, isSong, meta, songId],
+    [brainstormText, chatMessages, critique, fullText, isSong, meta, songId],
   );
 
   useEffect(() => {
@@ -562,6 +660,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           versionRowPersistLockRef.current = true;
           const payload = {
             draft_text: fullText,
+            brainstorm_text: brainstormText,
             chat_messages: chatMessages,
             critique: nextCritique,
             meta,
@@ -595,6 +694,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     },
     [
       activeVersionId,
+      brainstormText,
       chatMessages,
       critique,
       fullText,
@@ -627,7 +727,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     const label = active ? `Version ${active.versionNumber}` : "this version";
     if (
       !window.confirm(
-        `Delete ${label}? Its draft, chat, and critique will be removed. This cannot be undone.`,
+        `Delete ${label}? Its draft, brainstorm notes, chat, and critique will be removed. This cannot be undone.`,
       )
     ) {
       return;
@@ -659,6 +759,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     startSaveTransition(async () => {
       const result = await updateSongVersionState(songId, activeVersionId, {
         draft_text: fullText,
+        brainstorm_text: brainstormText,
         chat_messages: chatMessages,
         critique,
         meta,
@@ -671,6 +772,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     });
   }, [
     activeVersionId,
+    brainstormText,
     chatMessages,
     critique,
     fullText,
@@ -687,6 +789,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
       try {
         const payload = {
           draft_text: fullText,
+          brainstorm_text: brainstormText,
           chat_messages: chatMessages,
           critique,
           meta,
@@ -713,6 +816,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     });
   }, [
     activeVersionId,
+    brainstormText,
     chatMessages,
     critique,
     fullText,
@@ -922,32 +1026,74 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           />
         </section>
 
-        <section className={`${mobilePane === "draft" ? "flex" : "hidden"} relative z-[1] min-h-0 min-w-0 flex-1 flex-col gap-2 max-lg:min-h-0 max-lg:flex-1 max-lg:px-0 lg:min-h-0 lg:flex`}>
-          <DraftEditor
-            value={fullText}
-            onChange={setFullText}
-            lineFeedbackByIndex={lineFeedbackByIndex}
-            lineFeedbackAutoShowKey={lineFeedbackAutoShowKey}
-            onMobileSave={isSong ? handleSaveVersion : undefined}
-            mobileSavePending={savePending || newVersionPending}
-            onDraftContextChange={setDraftContext}
-            addToChatEnabled={Boolean(critique)}
-            onAddSelectionToChat={(sel) => {
-              setChatPinnedSelections((prev) => {
-                const key = `${sel.startLine}:${sel.endLine}:${sel.text}`;
-                if (
-                  prev.some(
-                    (p) => `${p.startLine}:${p.endLine}:${p.text}` === key,
-                  )
-                ) {
-                  return prev;
-                }
-                if (prev.length >= 16) return prev;
-                return [...prev, sel];
-              });
-              setMobilePane("chat");
-            }}
-          />
+        <section className={`${mobilePane === "draft" ? "flex" : "hidden"} relative z-[1] min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-y-contain max-lg:min-h-0 max-lg:flex-1 max-lg:px-0 lg:min-h-0 lg:flex`}>
+          {lyricDocPane === "draft" ?
+            <DraftEditor
+              value={fullText}
+              onChange={setFullText}
+              lineFeedbackByIndex={lineFeedbackByIndex}
+              lineFeedbackAutoShowKey={lineFeedbackAutoShowKey}
+              onMobileSave={isSong ? handleSaveVersion : undefined}
+              mobileSavePending={savePending || newVersionPending}
+              onDraftContextChange={setDraftContext}
+              addToChatEnabled={Boolean(critique)}
+              headerLeading={lyricPaneTabs}
+              onAddSelectionToChat={(sel) => {
+                setChatPinnedSelections((prev) => {
+                  const key = `${sel.startLine}:${sel.endLine}:${sel.text}`;
+                  if (
+                    prev.some(
+                      (p) => `${p.startLine}:${p.endLine}:${p.text}` === key,
+                    )
+                  ) {
+                    return prev;
+                  }
+                  if (prev.length >= 16) return prev;
+                  return [...prev, sel];
+                });
+                setMobilePane("chat");
+              }}
+              headerTrailing={
+                <DraftRecordingsPanel
+                  storageMode={isSong ? "cloud" : "local"}
+                  songId={songId ?? undefined}
+                  versionId={activeVersionId ?? undefined}
+                  recordings={meta.draftRecordings ?? []}
+                  onRecordingsChange={(next) =>
+                    setMeta((m) => ({
+                      ...m,
+                      draftRecordings: next.length ? next : undefined,
+                    }))
+                  }
+                  disabled={
+                    savePending ||
+                    deleteVersionPending ||
+                    newVersionPending ||
+                    critiqueLoading
+                  }
+                />
+              }
+            />
+          : <DraftEditor
+              value={brainstormText}
+              onChange={setBrainstormText}
+              lineFeedbackByIndex={EMPTY_LINE_FEEDBACK}
+              lineFeedbackAutoShowKey=""
+              showFeedbackToggle={false}
+              copyButtonIdleLabel="Copy"
+              placeholder="Ideas, word lists, alternate lines…"
+              textInputAriaLabel="Brainstorm notes"
+              headerLeading={lyricPaneTabs}
+              onMobileSave={isSong ? handleSaveVersion : undefined}
+              mobileSavePending={savePending || newVersionPending}
+              bodyPrefix={
+                <p className="px-3 pt-2.5 pb-1 text-xs leading-relaxed text-zinc-500">
+                  Private scratch space for this version. Not sent to the lyric
+                  assistant or critique.
+                </p>
+              }
+            />
+          }
         </section>
 
         <section className={`${mobilePane === "chat" ? "flex" : "hidden"} min-h-0 flex-1 flex-col overflow-hidden border-t border-zinc-800/80 px-4 pt-4 max-lg:px-0 max-lg:pt-0 lg:min-h-0 lg:flex lg:border-l lg:border-t-0 lg:border-zinc-800/80 lg:px-0 lg:pl-5 lg:pt-0 lg:opacity-95`}>

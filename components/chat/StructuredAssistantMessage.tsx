@@ -52,40 +52,38 @@ export function StructuredAssistantMessage({ structured }: Props) {
                 }
               >
                 <div className="whitespace-pre-wrap pl-1 text-zinc-200">{opt}</div>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {isFindRhymes ? null : (
-                    <>
-                      <button
-                        type="button"
-                        disabled
-                        title="Coming soon"
-                        className="rounded border border-zinc-800/80 bg-zinc-900/40 px-2 py-0.5 text-[10px] font-medium text-zinc-600"
-                      >
-                        Replace
-                      </button>
-                      <button
-                        type="button"
-                        disabled
-                        title="Coming soon"
-                        className="rounded border border-zinc-800/80 bg-zinc-900/40 px-2 py-0.5 text-[10px] font-medium text-zinc-600"
-                      >
-                        Insert below
-                      </button>
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => void copyOption(opt, i)}
-                    className="rounded border border-zinc-700/80 bg-zinc-900/60 px-2 py-0.5 text-[10px] font-medium text-zinc-300 transition hover:border-zinc-600 hover:text-zinc-100"
-                  >
-                    {copied === i ? "Copied" : "Copy"}
-                  </button>
-                  {!isFindRhymes && rec ?
-                    <span className="self-center text-[10px] font-medium text-emerald-400/90">
-                      Suggested
-                    </span>
-                  : null}
-                </div>
+                {!isFindRhymes ?
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      disabled
+                      title="Coming soon"
+                      className="rounded border border-zinc-800/80 bg-zinc-900/40 px-2 py-0.5 text-[10px] font-medium text-zinc-600"
+                    >
+                      Replace
+                    </button>
+                    <button
+                      type="button"
+                      disabled
+                      title="Coming soon"
+                      className="rounded border border-zinc-800/80 bg-zinc-900/40 px-2 py-0.5 text-[10px] font-medium text-zinc-600"
+                    >
+                      Insert below
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void copyOption(opt, i)}
+                      className="rounded border border-zinc-700/80 bg-zinc-900/60 px-2 py-0.5 text-[10px] font-medium text-zinc-300 transition hover:border-zinc-600 hover:text-zinc-100"
+                    >
+                      {copied === i ? "Copied" : "Copy"}
+                    </button>
+                    {rec ?
+                      <span className="self-center text-[10px] font-medium text-emerald-400/90">
+                        Suggested
+                      </span>
+                    : null}
+                  </div>
+                : null}
               </li>
             );
           })}

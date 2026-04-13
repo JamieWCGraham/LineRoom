@@ -112,29 +112,34 @@ export const critiqueRequestSchema = z.object({
   priorSongVersionCompared: z.number().int().positive().nullable().optional(),
 });
 
-export const chatRequestSchema = z.object({
-  fullText: z.string(),
-  pieceTitle: z.string().optional(),
-  messages: z.array(chatMessageSchema).max(80),
-  critique: critiqueResultSchema.optional(),
-  critiqueMeta: z
-    .object({
-      title: z.string(),
-      similarArtists: z.string(),
-      genre: z.string(),
-    })
-    .optional(),
-  chatAction: chatActionPayloadSchema.optional(),
+export const draftRecordingMetaSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1).max(120),
+  objectPath: z.string().max(512),
+  mimeType: z.string().min(1).max(120),
+  durationSec: z.number().min(0).max(86_400).optional(),
+  createdAt: z.string().min(1).max(80),
 });
 
 export const critiqueMetaSchema = z.object({
   title: z.string(),
   similarArtists: z.string(),
   genre: z.string(),
+  draftRecordings: z.array(draftRecordingMetaSchema).max(40).optional(),
+});
+
+export const chatRequestSchema = z.object({
+  fullText: z.string(),
+  pieceTitle: z.string().optional(),
+  messages: z.array(chatMessageSchema).max(80),
+  critique: critiqueResultSchema.optional(),
+  critiqueMeta: critiqueMetaSchema.optional(),
+  chatAction: chatActionPayloadSchema.optional(),
 });
 
 export const saveSongVersionPayloadSchema = z.object({
   draft_text: z.string(),
+  brainstorm_text: z.string(),
   chat_messages: z.array(chatMessageSchema).max(120),
   critique: critiqueResultSchema.nullable(),
   meta: critiqueMetaSchema,

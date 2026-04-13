@@ -53,10 +53,22 @@ export type CritiqueResult = {
   comparedToSummary?: string;
 };
 
+/** Voice memo attached to a draft version (Supabase Storage path or local IndexedDB). */
+export type DraftRecordingMeta = {
+  id: string;
+  name: string;
+  /** Bucket-relative path `{userId}/{songId}/{versionId}/{id}.ext`, or empty when stored locally only. */
+  objectPath: string;
+  mimeType: string;
+  durationSec?: number;
+  createdAt: string;
+};
+
 export type CritiqueMeta = {
   title: string;
   similarArtists: string;
   genre: string;
+  draftRecordings?: DraftRecordingMeta[];
 };
 
 export type PriorVersionContext = {

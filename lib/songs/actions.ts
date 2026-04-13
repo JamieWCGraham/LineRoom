@@ -2,9 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import {
+  removeDraftRecordingsForSong,
+  removeExplicitRecordingPaths,
+} from "@/lib/draft-recordings/removeSongRecordings";
 import { requireAuthUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
-import { saveSongVersionPayloadSchema } from "@/lib/validators";
+import {
+  draftRecordingMetaSchema,
+  saveSongVersionPayloadSchema,
+} from "@/lib/validators";
 
 const SONG_TITLE_MAX = 200;
 
@@ -65,12 +72,43 @@ export async function deleteSong(songId: string): Promise<DeleteSongResult> {
 
   const supabase = await createClient();
   const user = await requireAuthUser(supabase);
+  const userId = user.id;
+
+  const { data: owned, error: ownedErr } = await supabase
+    .from("songs")
+    .select("id")
+    .eq("id", songId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (ownedErr || !owned) {
+    return { ok: false, message: "Piece not found." };
+  }
+
+  const { data: versionRows } = await supabase
+    .from("song_versions")
+    .select("meta")
+    .eq("song_id", songId);
+
+  const pathsFromMeta = new Set<string>();
+  for (const row of versionRows ?? []) {
+    const raw = row.meta;
+    if (!raw || typeof raw !== "object") continue;
+    const dr = (raw as { draftRecordings?: unknown }).draftRecordings;
+    if (!Array.isArray(dr)) continue;
+    for (const item of dr) {
+      const p = draftRecordingMetaSchema.safeParse(item);
+      if (p.success && p.data.objectPath.trim()) {
+        pathsFromMeta.add(p.data.objectPath.trim());
+      }
+    }
+  }
 
   const { data, error } = await supabase
     .from("songs")
     .delete()
     .eq("id", songId)
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .select("id");
 
   if (error) {
@@ -78,6 +116,13 @@ export async function deleteSong(songId: string): Promise<DeleteSongResult> {
   }
   if (!data?.length) {
     return { ok: false, message: "Piece not found." };
+  }
+
+  try {
+    await removeExplicitRecordingPaths(pathsFromMeta);
+    await removeDraftRecordingsForSong(userId, songId);
+  } catch (e) {
+    console.error("[draft-recordings] song delete cleanup threw:", e);
   }
 
   revalidatePath("/");
@@ -169,6 +214,7 @@ export async function saveNewSongVersion(
       song_id: songId,
       version_number: nextNumber,
       draft_text: parsed.data.draft_text,
+      brainstorm_text: parsed.data.brainstorm_text,
       chat_messages: parsed.data.chat_messages,
       critique: parsed.data.critique,
       meta: parsed.data.meta,
@@ -297,6 +343,7 @@ export async function updateSongVersionState(
     .from("song_versions")
     .update({
       draft_text: parsed.data.draft_text,
+      brainstorm_text: parsed.data.brainstorm_text,
       chat_messages: parsed.data.chat_messages,
       critique: parsed.data.critique,
       meta: parsed.data.meta,

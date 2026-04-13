@@ -27,9 +27,9 @@ export default async function SongPage({ params, searchParams }: Props) {
         .maybeSingle(),
       supabase
         .from("song_versions")
-        .select(
-          "id, song_id, version_number, draft_text, chat_messages, critique, meta, created_at",
-        )
+        // Use * so the page works before `brainstorm_text` exists; listing columns
+        // would 400 and trigger notFound() until the migration is applied.
+        .select("*")
         .eq("song_id", songId)
         .order("version_number", { ascending: true }),
     ]);
@@ -77,6 +77,7 @@ export default async function SongPage({ params, searchParams }: Props) {
       activeVersionNumber={Number(activeRow.version_number)}
       activeVersionId={activeRow.id}
       initialDraftText={vs.draftText}
+      initialBrainstormText={vs.brainstormText}
       initialChatMessages={vs.chatMessages}
       initialCritique={vs.critique}
       initialMeta={vs.meta}

@@ -308,7 +308,7 @@ export function LyricChatPanel({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/30 max-lg:rounded-none max-lg:border-x-0">
       <div
         ref={mobileHeaderRef}
-        className="shrink-0 border-b border-zinc-800/80 px-3 py-2 max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-[50] max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pt-[max(0.25rem,env(safe-area-inset-top))] max-lg:backdrop-blur-md lg:relative lg:z-auto lg:bg-transparent lg:px-3 lg:pt-0"
+        className="shrink-0 border-b border-zinc-800/80 px-3 py-3 max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-[50] max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pt-[max(0.25rem,env(safe-area-inset-top))] max-lg:backdrop-blur-md lg:relative lg:z-auto lg:bg-transparent lg:px-3 lg:pt-0"
       >
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
@@ -331,11 +331,11 @@ export function LyricChatPanel({
             New Session
           </button>
         </div>
-        <p className="mt-0.5 text-[11px] leading-snug text-zinc-600">
+        <p className="mt-3 py-0.5 text-[11px] leading-relaxed text-zinc-600">
           Highlight lines and use <span className="text-zinc-500">Add to chat</span> to attach
           excerpts. Choose a quick action when starting or from Piece context after you chat.
         </p>
-        <details className="mt-2 rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-2 py-1.5">
+        <details className="mt-3 rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-2 py-1.5">
           <summary className="cursor-pointer select-none text-[11px] font-medium text-zinc-500">
             Piece context (for regenerate)
           </summary>

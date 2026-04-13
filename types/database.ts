@@ -32,6 +32,7 @@ export type SongVersionRow = {
   song_id: string;
   version_number: number;
   draft_text: string;
+  brainstorm_text: string;
   chat_messages: unknown;
   critique: unknown;
   meta: unknown;

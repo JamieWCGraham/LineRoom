@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
   useCallback,
   useDeferredValue,
@@ -33,6 +34,18 @@ type Props = {
   /** When true and user highlights text, show “Add to chat” (requires critique). */
   addToChatEnabled?: boolean;
   onAddSelectionToChat?: (payload: ChatSelectionPayload) => void;
+  /** Shown on the top-right of the draft header (e.g. voice memos). */
+  headerTrailing?: ReactNode;
+  /** Replaces the default “Draft” label (e.g. Draft · Brainstorm tabs). */
+  headerLeading?: ReactNode;
+  /** When false, hides critique highlight toggle (e.g. brainstorm pane). */
+  showFeedbackToggle?: boolean;
+  /** Idle label for the copy button (default “Copy Draft”). */
+  copyButtonIdleLabel?: string;
+  placeholder?: string;
+  /** Rendered between the toolbar and the editor (e.g. short notice). */
+  bodyPrefix?: ReactNode;
+  textInputAriaLabel?: string;
 };
 
 /** Synthetic overlay: hide glyphs in WebKit (caret stays visible); other engines use caret-color + transparent color. */
@@ -53,6 +66,13 @@ export function DraftEditor({
   onDraftContextChange,
   addToChatEnabled = false,
   onAddSelectionToChat,
+  headerTrailing,
+  headerLeading,
+  showFeedbackToggle = true,
+  copyButtonIdleLabel = "Copy Draft",
+  placeholder = "Paste or write your full lyrics/poetry draft…",
+  bodyPrefix,
+  textInputAriaLabel,
 }: Props) {
   type StyleOp = {
     start: number;
@@ -80,7 +100,7 @@ export function DraftEditor({
   const [uiFontSize, setUiFontSize] = useState(DEFAULT_DESKTOP_UI_FONT_PX);
   const [styleOps, setStyleOps] = useState<StyleOp[]>([]);
   const [showHighlights, setShowHighlights] = useState(true);
-  const [copyLabel, setCopyLabel] = useState("Copy Draft");
+  const [copyLabel, setCopyLabel] = useState(copyButtonIdleLabel);
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
   /** `top` = popover bottom Y; `rightX` = selection top-right X (use translate(-100%, -100%)). */
   const [addToChatAnchor, setAddToChatAnchor] = useState<{
@@ -497,12 +517,12 @@ export function DraftEditor({
     try {
       await navigator.clipboard.writeText(value);
       setCopyLabel("Copied");
-      window.setTimeout(() => setCopyLabel("Copy Draft"), 1500);
+      window.setTimeout(() => setCopyLabel(copyButtonIdleLabel), 1500);
     } catch {
       setCopyLabel("Copy failed");
-      window.setTimeout(() => setCopyLabel("Copy Draft"), 1500);
+      window.setTimeout(() => setCopyLabel(copyButtonIdleLabel), 1500);
     }
-  }, [value]);
+  }, [copyButtonIdleLabel, value]);
 
   const controlButtonClasses =
     "rounded-md border border-zinc-800 bg-zinc-900/70 px-2 py-1 text-xs text-zinc-300 hover:border-zinc-700 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50";
@@ -541,23 +561,25 @@ export function DraftEditor({
       >
         U
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          setShowHighlights((prev) => !prev);
-          setTooltip(null);
-        }}
-        className={buttonClassName}
-        aria-label="Show or hide draft feedback highlights"
-      >
-        {showHighlights ? "Hide Feedback" : "Show Feedback"}
-      </button>
+      {showFeedbackToggle ?
+        <button
+          type="button"
+          onClick={() => {
+            setShowHighlights((prev) => !prev);
+            setTooltip(null);
+          }}
+          className={buttonClassName}
+          aria-label="Show or hide draft feedback highlights"
+        >
+          {showHighlights ? "Hide Feedback" : "Show Feedback"}
+        </button>
+      : null}
       <button
         type="button"
         onClick={() => void handleCopyDraft()}
         disabled={!value.length}
         className={buttonClassName}
-        aria-label="Copy full draft text to clipboard"
+        aria-label="Copy full text to clipboard"
       >
         {copyLabel}
       </button>
@@ -571,30 +593,42 @@ export function DraftEditor({
         className="flex shrink-0 flex-col gap-2 border-b border-transparent max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-[50] max-lg:border-zinc-800/60 max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pb-2 max-lg:pt-[max(0.5rem,env(safe-area-inset-top))] max-lg:backdrop-blur-md lg:relative lg:border-b-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0"
       >
         <div className="flex shrink-0 items-center justify-between gap-2">
-          <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-            Draft
-          </label>
-          <div className="flex items-center gap-2 lg:hidden">
-            <button
-              type="button"
-              onClick={() => setMobileControlsOpen((v) => !v)}
-              className="rounded-full border border-zinc-700/70 bg-transparent px-2.5 py-1 text-xs font-medium text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-900/30"
-              aria-label={mobileControlsOpen ? "Hide Tools" : "Show Tools"}
-            >
-              {mobileControlsOpen ? "Hide Tools" : "Show Tools"}
-            </button>
-            {onMobileSave ? (
+          {headerLeading ?? (
+            <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Draft
+            </label>
+          )}
+          <div className="flex min-w-0 shrink-0 items-center gap-2">
+            <div className="order-2 flex items-center gap-2 lg:order-none lg:hidden">
               <button
                 type="button"
-                onClick={onMobileSave}
-                disabled={mobileSavePending}
-                className="rounded-md bg-blue-700/90 px-2.5 py-1.5 text-xs font-medium text-white shadow-[0_1px_3px_rgba(0,0,0,0.35)] transition hover:bg-blue-600/90 disabled:opacity-50"
+                onClick={() => setMobileControlsOpen((v) => !v)}
+                className="rounded-full border border-zinc-700/70 bg-transparent px-2.5 py-1 text-xs font-medium text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-900/30"
+                aria-label={mobileControlsOpen ? "Hide Tools" : "Show Tools"}
               >
-                {mobileSavePending ? "Saving..." : "Save"}
+                {mobileControlsOpen ? "Hide Tools" : "Show Tools"}
               </button>
-            ) : null}
+              {onMobileSave ? (
+                <button
+                  type="button"
+                  onClick={onMobileSave}
+                  disabled={mobileSavePending}
+                  className="rounded-md bg-blue-700/90 px-2.5 py-1.5 text-xs font-medium text-white shadow-[0_1px_3px_rgba(0,0,0,0.35)] transition hover:bg-blue-600/90 disabled:opacity-50"
+                >
+                  {mobileSavePending ? "Saving..." : "Save"}
+                </button>
+              ) : null}
+            </div>
+            {headerTrailing ?
+              <div className="order-1 shrink-0 lg:order-none">
+                {headerTrailing}
+              </div>
+            : null}
           </div>
         </div>
+        {bodyPrefix ?
+          <div className="shrink-0">{bodyPrefix}</div>
+        : null}
         {mobileControlsOpen ? (
           <div
             aria-hidden
@@ -670,7 +704,8 @@ export function DraftEditor({
             fontSize: `${uiFontSize}px`,
             colorScheme: "dark",
           }}
-          placeholder="Paste or write your full lyrics/poetry draft…"
+          placeholder={placeholder}
+          aria-label={textInputAriaLabel}
           spellCheck
         />
       </div>
