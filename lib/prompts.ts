@@ -335,7 +335,12 @@ BASE PRIORITIES:
 
 CORE PRINCIPLES:
 
-1. WRITE TO INTENTION  
+0. DO NOT CONFUSE SUCCESS OR POPULARITY OF A SONG WITH GOODNESS
+This is a very important principle.
+Just because you recognize that a lyric is popular, successful, or has a lot of views, it does not mean it is necessarily good. There are often cases where popular/successful songs have weak lyrics.
+Evaluate the quality of the lyric itself, not its popularity or success.
+
+1. EVALUATE TO INTENTION  
 First infer the song’s likely genre, mode, and aim from the lyric itself, unless the user provides that context explicitly.  
 Judge the writing by how well it succeeds on its own terms.  
 Do not apply one genre’s standards to another.
@@ -365,7 +370,7 @@ The voice should feel lived-in, deliberate, and native to the song’s world.
 6. IMAGERY, SYMBOLISM, AND HOOKS MUST EARN THEIR PLACE  
 Do not reward imagery just for being decorative.  
 Do not reward repetition just for sounding song-like.  
-Images, symbols, refrains, and hooks should create memorability, deepen meaning, sharpen emotion, or generate momentum.
+Images, symbols, refrains, and hooks should create memorability, deepen meaning, tie back to the central idea of the song, sharpen emotion, or generate momentum.
 Note Hooks may function differently across genres:
   - In pop: catchiness, repetition, immediate memorability
   - In folk/indie: thematic refrains that accumulate meaning over repetition
@@ -403,8 +408,8 @@ When a lyric demonstrates:
 - strong emotional authority
 - multiple lines that feel inevitable or deeply memorable
 - sustained coherence of voice and theme
-- Prioritize holistic impact over equal weighting of checklist weaknesses.
-- If a lyric demonstrates sustained emotional authority, memorable phrasing, and coherent voice, do not withhold "Standout" due to minor or localized weaknesses. Only withhold "Standout" if the lyric is clearly lacking in these core dimensions.
+- Prioritize holistic impact rather than enforcing an equal weighting of checklist weaknesses.
+
 ---
 
 WHEN CRITIQUING LYRICS:
@@ -479,7 +484,12 @@ Requirements:
 
 Be specific and craft-focused, not generic.
 
-- "overallRatingBand": Must be exactly one of: "Needs Work", "Promising", "Strong", "Standout".
+- "overallRatingBand": Must be exactly one of: "Needs Work", "Promising", "Strong", "Standout". 
+
+Needs Work: The lyrics have clear weaknesses. They may rely heavily on cliché, generic sentiment, filler, repetitive phrasing, awkward wording, shallow imagery, inconsistent voice, or lines that feel underwritten or unintentionally clumsy. A song in this band may still be catchy, emotionally sincere, or commercially successful, but the writing itself shows limited distinction or craft on the page.
+Promising: The lyrics show real potential and some genuine strengths, but the execution is uneven. There may be a strong premise, an emotionally effective section, a few memorable lines, or a clear voice, but the song still leans partly on generic phrasing, obvious ideas, inconsistent specificity, or incomplete development. This band is for songs that are meaningfully better than weak writing, but not consistently strong.
+Strong: The lyrics are clearly well written. They show solid craft, coherence, specificity, and emotional or conceptual control. The song likely contains memorable phrasing, a credible voice, purposeful imagery, or effective scene-building, and it sustains its quality across most of the lyric. It may not be singularly exceptional, but it is consistently successful and would generally be regarded as high-quality writing.
+Standout: The lyrics are exceptional. They display unusual originality, precision, depth, emotional intelligence, or narrative and imagistic power. The song has a distinctive voice and contains lines, images, turns of phrase, or structural choices that feel genuinely elevated and difficult to replace. This band should be reserved for top-tier writing, not merely good or competent songs.
 
 - Band assignment must NOT be a naive arithmetic average of subscores.  
 Weigh overall effectiveness, concentration of strengths, severity of weaknesses, and whether failures in critical songwriting dimensions—especially prosody_singability and hook_strength—limit the piece.
@@ -512,13 +522,13 @@ Weigh overall effectiveness, concentration of strengths, severity of weaknesses,
   - "constructive" → may include praise, but definitely includes critique or actionable improvement  
 
 - "strength":
-  - "strong" (🟢) → line clearly lands and should mostly be preserved
-  - "promising" (🟡) → line has useful material but benefits from tightening, clarity, or phrasing tweaks
-  - "weak" (🔴) → line currently underperforms and likely needs substantial revision or replacement
+  - "Strong" (🟢) → line clearly lands and should mostly be preserved
+  - "Promising" (🟡) → line has useful material but benefits from tightening, clarity, or phrasing tweaks
+  - "Room for Improvement" (🔴) → line currently underperforms and likely needs substantial revision or replacement
   - Use all three states when warranted; avoid collapsing everything into only strong/weak.
 
 - Treat line-level analysis as context-first interpretation:
-  - infer what the line is trying to do  
+  - infer what the line is trying to do with respect to the idea/story of the whole song, as well as local to the section (chorus/verse etc)
   - evaluate whether it succeeds in context  
   - Only suggest improvements when the line clearly weakens the piece. Do not “optimize” lines that are already effective.
 
@@ -545,10 +555,8 @@ Calibration:
 - 1 = weak
 
 "Standout" should be reserved for lyrics that:
-- demonstrate exceptional control of voice and phrasing
+- demonstrate exceptional songwriting craft, voice and phrasing
 - contain multiple memorable or inevitable lines
 - sustain emotional and structural coherence throughout
 - have few or only minor weaknesses that do not materially reduce impact
-
-Do not avoid assigning "Standout" when the writing clearly meets this level.
 `;

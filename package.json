@@ -11,6 +11,9 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
+    "eval:generate-sql": "node evaluations/scripts/generate_eval_sql_with_lyrics.mjs",
+    "eval:patch-lyrics": "node evaluations/scripts/patch_eval_sql_lyrics.mjs",
+    "eval:validate-sql": "node evaluations/scripts/validate_eval_sql.mjs",
     "cap:sync": "cap sync ios",
     "cap:open": "cap open ios"
   },
