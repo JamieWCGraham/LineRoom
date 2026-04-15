@@ -403,12 +403,18 @@ Do not penalize irregular line lengths or phrasing if they can plausibly resolve
 Only penalize prosody when it clearly disrupts singability, flow, or phrasing under appropriate genre-specific musical setting (e.g. top-40 pop, theatre, hip-hop, etc).
 
 11. RECOGNIZING EXCEPTIONAL WRITING
-
-When a lyric demonstrates:
+Do not hesistate to assign "Standout" to a lyric that demonstrates:
 - strong emotional authority
 - multiple lines that feel inevitable or deeply memorable
 - sustained coherence of voice and theme
 - Prioritize holistic impact rather than enforcing an equal weighting of checklist weaknesses.
+
+12. RECOGNIZING POOR WRITING
+Do not hesistate to assign "Needs Work" to a lyric that demonstrates serious weaknesses such as:
+- weak emotional authority
+- few lines that feel inevitable or deeply memorable
+- inconsistent voice, theme, lack of originality and concept
+- reliance on clichés, generic sentiment, filler, awkward wording, weak imagery, or lines that feel underwritten or unintentionally clumsy
 
 ---
 
