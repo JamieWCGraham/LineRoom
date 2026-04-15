@@ -48,5 +48,20 @@ export async function GET(_req: Request, { params }: Params) {
   }
   ids.sort((a, b) => a - b);
 
-  return NextResponse.json({ runId, ids });
+  const { count, error: countErr } = await admin
+    .from("generate_critique_eval_set")
+    .select("id", { count: "exact", head: true });
+
+  if (countErr) {
+    return NextResponse.json(
+      { error: "Failed to load eval set total", detail: countErr.message },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({
+    runId,
+    ids,
+    totalRows: typeof count === "number" ? count : null,
+  });
 }

@@ -21,27 +21,68 @@ export const chatMessageSchema = z.object({
   structured: chatActionResponseSchema.optional(),
 });
 
+/**
+ * Normalise a model-returned enum string: lowercase + trim.
+ * Prevents __BAD_SHAPE__ from simple casing inconsistencies (e.g. "Praise").
+ */
+function lc(v: unknown): unknown {
+  return typeof v === "string" ? v.toLowerCase().trim() : v;
+}
+
 export const lineFeedbackItemSchema = z.object({
   quotedLine: z.string(),
   feedback: z.string(),
-  category: z.enum(["praise", "constructive"]).default("constructive"),
-  strength: z.enum(["strong", "promising", "weak"]).optional(),
+  // Accept any casing from the model ("Praise", "CONSTRUCTIVE", etc.)
+  category: z
+    .preprocess(lc, z.enum(["praise", "constructive"]))
+    .default("constructive"),
+  // Accept any casing ("Strong", "Promising") and common aliases for "weak"
+  // ("Room for Improvement", "Needs Improvement", etc.)
+  strength: z
+    .preprocess((v) => {
+      if (typeof v !== "string") return v;
+      const s = v.toLowerCase().trim();
+      if (s === "strong") return "strong";
+      if (s === "promising") return "promising";
+      if (s === "weak" || s.includes("improve") || s.includes("room")) {
+        return "weak";
+      }
+      return s;
+    }, z.enum(["strong", "promising", "weak"]))
+    .optional(),
 });
 
-export const overallRatingBandSchema = z.enum([
-  "Needs Work",
-  "Promising",
-  "Strong",
-  "Standout",
-]);
+/**
+ * Accept any casing of the band name from the model.
+ * e.g. "needs work", "STANDOUT", "Strong" all normalise to the canonical form.
+ */
+const BAND_ALIAS: Record<string, string> = {
+  "needs work": "Needs Work",
+  "needswork": "Needs Work",
+  promising: "Promising",
+  strong: "Strong",
+  standout: "Standout",
+};
+export const overallRatingBandSchema = z.preprocess((v) => {
+  if (typeof v !== "string") return v;
+  const key = v.toLowerCase().trim().replace(/\s+/g, " ");
+  return BAND_ALIAS[key] ?? v;
+}, z.enum(["Needs Work", "Promising", "Strong", "Standout"]));
 
-export const dimensionScoreSchema = z.union([
+/**
+ * Accept scores from the model that are slightly out-of-range (0, 6) or
+ * fractional (3.7) by rounding and clamping to 1–5.
+ */
+export const dimensionScoreSchema = z.preprocess((v) => {
+  if (typeof v !== "number") return v;
+  return Math.max(1, Math.min(5, Math.round(v)));
+}, z.union([
   z.literal(1),
   z.literal(2),
   z.literal(3),
   z.literal(4),
   z.literal(5),
-]);
+]));
 
 export const lyricSubscoresSchema = z.object({
   emotional_impact: dimensionScoreSchema,

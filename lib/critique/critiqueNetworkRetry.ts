@@ -21,6 +21,20 @@ export function isRetriableOpenAICritiqueError(error: unknown): boolean {
   return false;
 }
 
+/**
+ * If the error is an OpenAI 400 bad-request (usually a malformed JSON request
+ * body), rethrow it as a clear sentinel string instead of the raw API message.
+ * Call this before the retriable check so the sentinel propagates cleanly.
+ */
+export function rethrowIfBadRequest(error: unknown): void {
+  if (
+    error instanceof APIError &&
+    error.status === 400
+  ) {
+    throw new Error("__BAD_REQUEST__");
+  }
+}
+
 export function sleepMs(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);

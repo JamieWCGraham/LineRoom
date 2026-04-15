@@ -106,6 +106,12 @@ export async function POST(req: Request) {
           { status: 502 },
         );
       }
+      if (message === "__BAD_REQUEST__") {
+        return NextResponse.json(
+          { error: "Request rejected by model API (malformed body)" },
+          { status: 502 },
+        );
+      }
       console.error("[critique]", message);
       return NextResponse.json({ error: "Critique failed" }, { status: 500 });
     }

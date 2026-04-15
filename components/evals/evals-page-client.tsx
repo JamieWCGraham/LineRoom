@@ -71,7 +71,12 @@ export function EvalsPageClient({ email }: Props) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchMessage, setBatchMessage] = useState<string | null>(null);
+  const [batchRunId, setBatchRunId] = useState<string | null>(null);
+  const [batchCompleted, setBatchCompleted] = useState<number>(0);
+  const [batchTotalRows, setBatchTotalRows] = useState<number | null>(null);
   const [fetchingOutput, setFetchingOutput] = useState(false);
+  const [retryBusy, setRetryBusy] = useState(false);
+  const [retryMessage, setRetryMessage] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<EvalRunMetricsResponse | null>(null);
   const [metricsVisible, setMetricsVisible] = useState(false);
   const [metricsLoading, setMetricsLoading] = useState(false);
@@ -111,6 +116,7 @@ export function EvalsPageClient({ email }: Props) {
       );
       const data = (await res.json().catch(() => ({}))) as {
         ids?: number[];
+        totalRows?: number | null;
         error?: string;
       };
       if (cancelled) return;
@@ -124,6 +130,14 @@ export function EvalsPageClient({ email }: Props) {
       }
       const nextIds = data.ids ?? [];
       setIds(nextIds);
+      if (runId && batchRunId === runId) {
+        setBatchCompleted(nextIds.length);
+        setBatchTotalRows(
+          typeof data.totalRows === "number" && Number.isFinite(data.totalRows) ?
+            data.totalRows
+          : null,
+        );
+      }
       setEvalId((prev) =>
         prev != null && nextIds.includes(prev) ? prev : (nextIds[0] ?? null),
       );
@@ -131,7 +145,41 @@ export function EvalsPageClient({ email }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [runId]);
+  }, [batchRunId, runId]);
+
+  useEffect(() => {
+    if (!batchRunId) return;
+    const poll = async () => {
+      const res = await fetch(`/api/evals/runs/${encodeURIComponent(batchRunId)}`);
+      const data = (await res.json().catch(() => ({}))) as {
+        ids?: number[];
+        totalRows?: number | null;
+        error?: string;
+      };
+      if (!res.ok) return;
+      const completed = (data.ids ?? []).length;
+      const total =
+        typeof data.totalRows === "number" && Number.isFinite(data.totalRows) ?
+          data.totalRows
+        : null;
+      setBatchCompleted(completed);
+      setBatchTotalRows(total);
+      if (total != null && total > 0 && completed >= total) {
+        setBatchMessage(`Run ${batchRunId} complete (${completed}/${total}).`);
+        setBatchRunId(null);
+        await refreshRuns();
+      }
+    };
+
+    void poll();
+    const timer = window.setInterval(() => {
+      void poll();
+    }, 2500);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [batchRunId, refreshRuns]);
 
   useEffect(() => {
     setMetrics(null);
@@ -263,9 +311,68 @@ export function EvalsPageClient({ email }: Props) {
         : (data.message ?? "Batch started."),
       );
       await refreshRuns();
-      if (data.runTimestamp) setRunId(data.runTimestamp);
+      if (data.runTimestamp) {
+        setRunId(data.runTimestamp);
+        setBatchRunId(data.runTimestamp);
+        setBatchCompleted(0);
+        setBatchTotalRows(null);
+      }
     } finally {
       setBatchBusy(false);
+    }
+  };
+
+  const retryCurrentRow = async () => {
+    if (!runId || evalId == null || retryBusy) return;
+    setRetryBusy(true);
+    setRetryMessage(null);
+    try {
+      const res = await fetch(
+        `/api/evals/runs/${encodeURIComponent(runId)}/${evalId}`,
+        { method: "POST" },
+      );
+      const data = (await res.json().catch(() => ({}))) as {
+        message?: string;
+        error?: string;
+        detail?: string;
+      };
+      if (!res.ok) {
+        setRetryMessage(
+          typeof data.error === "string" ?
+            data.detail ?
+              `${data.error}: ${data.detail}`
+            : data.error
+          : "Retry failed.",
+        );
+        return;
+      }
+      setRetryMessage(data.message ?? `Retried row ${evalId}.`);
+
+      // Reload selected output and run id list after retry completes.
+      await Promise.all([
+        (async () => {
+          const rowRes = await fetch(
+            `/api/evals/runs/${encodeURIComponent(runId)}/${evalId}`,
+          );
+          const rowData = (await rowRes.json().catch(() => ({}))) as EvalOutputJson & {
+            error?: string;
+          };
+          if (!rowRes.ok) return;
+          setOutput(rowData);
+          const parsed = rowData.critique ?
+              critiqueResultSchema.safeParse(rowData.critique)
+            : null;
+          setCritique(parsed?.success ? parsed.data : null);
+          if (rowData.error && !parsed?.success && rowData.critique) {
+            setLoadError("Critique JSON failed validation.");
+          } else {
+            setLoadError(null);
+          }
+        })(),
+        refreshRuns(),
+      ]);
+    } finally {
+      setRetryBusy(false);
     }
   };
 
@@ -277,6 +384,9 @@ export function EvalsPageClient({ email }: Props) {
   const title = output?.requestPayload?.title?.trim() || "(untitled)";
   const genre = output?.requestPayload?.genre?.trim() || "";
   const similar = output?.requestPayload?.similarArtists?.trim() || "";
+  const progressTotal = batchTotalRows ?? 0;
+  const progressRatio =
+    progressTotal > 0 ? Math.min(batchCompleted / progressTotal, 1) : 0;
 
   const lineFeedbackByIndex = useMemo(() => {
     if (!critique?.lineFeedback?.length || !lyrics.trim()) {
@@ -324,6 +434,24 @@ export function EvalsPageClient({ email }: Props) {
         {batchMessage ?
           <p className="mt-3 text-sm text-zinc-400">{batchMessage}</p>
         : null}
+        {batchRunId ?
+          <div className="mt-3 rounded-lg border border-zinc-800/80 bg-zinc-950/50 p-3">
+            <p className="text-xs uppercase tracking-wide text-zinc-500">
+              Run progress
+            </p>
+            <p className="mt-1 text-sm text-zinc-300">
+              {batchCompleted}
+              {" / "}
+              {batchTotalRows ?? "?"} rows completed
+            </p>
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+              <div
+                className="h-full rounded-full bg-amber-500 transition-all duration-300"
+                style={{ width: `${progressRatio * 100}%` }}
+              />
+            </div>
+          </div>
+        : null}
       </section>
 
       <section className="flex flex-wrap items-end gap-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-4">
@@ -367,6 +495,14 @@ export function EvalsPageClient({ email }: Props) {
           </select>
         </label>
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => void retryCurrentRow()}
+            disabled={!runId || evalId == null || retryBusy}
+            className="rounded-lg border border-amber-800/60 bg-amber-950/30 px-3 py-2 text-sm font-medium text-amber-100 hover:border-amber-600/50 hover:bg-amber-950/45 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {retryBusy ? "Retrying row…" : "Retry this row"}
+          </button>
           <button
             type="button"
             onClick={onMetricsButtonClick}
@@ -620,6 +756,12 @@ export function EvalsPageClient({ email }: Props) {
       {loadError && !output?.error ?
         <p className="rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-2 text-sm text-red-200">
           {loadError}
+        </p>
+      : null}
+
+      {retryMessage ?
+        <p className="rounded-lg border border-amber-900/50 bg-amber-950/30 px-3 py-2 text-sm text-amber-100">
+          {retryMessage}
         </p>
       : null}
 
