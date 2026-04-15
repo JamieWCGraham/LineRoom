@@ -500,26 +500,14 @@ Requirements:
 
 Be specific and craft-focused, not generic.
 
-- "overallRatingBand": Must be exactly one of: "Needs Work", "Promising", "Strong", "Standout". Be critical and rigorous here. Do not be overly generous. We are trying to make the writing stronger, not be sycophantic.
+- "overallRatingBand": Must be exactly one of: "Needs Work", "Promising", "Strong", "Standout". Be critical and conservative here. Do not be overly generous and inflate the rating. We are trying to make the writing stronger, not be sycophantic.
 
-Needs Work: 
-  The lyrics have clear weaknesses and would need significant revision to be strong. May have a weak concept/execution. They may rely heavily on:
-  - generic lines that feel interchangeable with other songs
-  - stock emotional language 
-  - lack of specificity or originality or coherence of lines with respect to the idea/story of the whole song, as well as local to the section (chorus/verse etc)
-  - weak or interchangeable imagery
-  - lines that feel “already heard”
-  A song in this band may still be catchy, emotionally sincere, or commercially successful, but the writing itself shows limited distinction or craft on the page.
+Needs Work: The lyric has clear weaknesses that significantly limit impact. It may be sincere or understandable, but relies too much on generic phrasing, cliché, weak imagery, filler, unclear voice, or underdeveloped craft. Any strengths are isolated rather than sustained.
+Promising: The lyric shows real potential and genuine strengths, such as a good premise, some memorable lines, flashes of voice, or emotionally credible material, but it is still uneven. Strong moments are not yet sustained enough for the lyric to feel fully realized.
+Strong: The lyric is genuinely good as written. It shows clear craft, a distinct enough voice, effective specificity, emotional credibility, and overall consistency. The writing works as a whole and has real artistic weight, even if it does not feel rare or exceptional.
+Standout: The lyric feels exceptional: unusually memorable, distinctive, and artistically forceful. It combines high craft with originality, strong line-level writing, emotional or psychological depth, and sustained excellence across the whole lyric. It feels rare rather than merely good.
 
-Promising: 
-  The lyrics show real potential and some genuine strengths, but the execution is uneven. There may be a strong premise, an emotionally effective section, a few memorable lines, or a clear voice, but the song still leans partly on generic phrasing, obvious ideas, inconsistent specificity, or incomplete development. This band is for songs that are meaningfully better than weak writing, but not consistently strong.
-
-Strong: 
-  The lyrics are clearly well written. They show solid craft, coherence, specificity, and emotional or conceptual control. The song likely contains memorable phrasing, a credible voice, purposeful imagery, or effective scene-building, and it sustains its quality across most of the lyric. It may not be singularly exceptional, but it is consistently successful and would generally be regarded as high-quality writing.
-
-Standout: 
-  The lyrics are exceptional. They display unusual originality, precision, depth, psychological nuance, emotional intelligence, or narrative and imagistic power. The song has a distinctive voice and contains lines, images, turns of phrase, or structural choices that feel genuinely elevated and difficult to replace. This band should be reserved for top-tier writing, not merely good or competent songs.
-
+- Important calibration rules: Judge the lyric as written, not its potential. Do not inflate the rating due to sincerity, concept, or a few strong lines. In borderline cases, choose the lower band unless the higher band is clearly earned.
 - overallRatingBand assignment is NOT be a naive arithmetic average of subscores.  
 Weigh overall effectiveness, concentration of strengths, severity of weaknesses, and alignment within the genre principles.
 Do not be afraid to assign "Needs Work" to a lyric that demonstrates serious weaknesses.
