@@ -16,6 +16,16 @@ export type BandStratumMetrics = {
   accuracy: number | null;
 };
 
+export type GroundTruthRowMetrics = {
+  id: number;
+  title: string;
+  artist: string;
+  /** Raw / display value from `generate_critique_eval_set.overall_score`. */
+  overallScore: string;
+  isCorrect: boolean;
+  predictedOverallScore: string | null;
+};
+
 export type EvalRunMetricsResult = {
   runId: string;
   totalCompared: number;
@@ -23,6 +33,9 @@ export type EvalRunMetricsResult = {
   /** Exact-match accuracy over rows with valid gold + prediction. */
   totalAccuracy: number | null;
   byOverallScore: Record<CanonicalRatingBand, BandStratumMetrics>;
+  /** Rows = ground truth band, columns = predicted band (counts of eval rows). */
+  confusionMatrix: Record<CanonicalRatingBand, Record<CanonicalRatingBand, number>>;
+  groundTruthRows: GroundTruthRowMetrics[];
   skipped: {
     missingOutput: number[];
     missingPrediction: number[];
@@ -34,10 +47,33 @@ function emptyStratum(): BandStratumMetrics {
   return { count: 0, correct: 0, accuracy: null };
 }
 
+function emptyConfusionRow(): Record<CanonicalRatingBand, number> {
+  return Object.fromEntries(
+    CANONICAL_RATING_BANDS.map((p) => [p, 0]),
+  ) as Record<CanonicalRatingBand, number>;
+}
+
+function displayCell(raw: unknown): string {
+  if (raw == null) return "";
+  if (typeof raw === "string") return raw;
+  if (Array.isArray(raw)) {
+    return raw
+      .filter((x): x is string => typeof x === "string")
+      .join(", ");
+  }
+  return String(raw);
+}
+
 type RowWorkItem = { id: number; gold: CanonicalRatingBand };
 
 type RowMetricOutcome =
-  | { kind: "compared"; gold: CanonicalRatingBand; correct: boolean }
+  | {
+      kind: "compared";
+      id: number;
+      gold: CanonicalRatingBand;
+      predicted: CanonicalRatingBand;
+      correct: boolean;
+    }
   | { kind: "missingOutput"; id: number }
   | { kind: "missingPrediction"; id: number };
 
@@ -71,7 +107,9 @@ async function measureOneRow(
 
   return {
     kind: "compared",
+    id,
     gold,
+    predicted,
     correct: predicted === gold,
   };
 }
@@ -94,7 +132,7 @@ export async function computeEvalRunMetrics(
 
   const { data: rows, error: tableErr } = await client
     .from("generate_critique_eval_set")
-    .select("id, overall_score")
+    .select("id, title, artist, overall_score")
     .order("id", { ascending: true });
 
   if (tableErr) {
@@ -105,6 +143,10 @@ export async function computeEvalRunMetrics(
   const byOverallScore = Object.fromEntries(
     CANONICAL_RATING_BANDS.map((b) => [b, emptyStratum()]),
   ) as Record<CanonicalRatingBand, BandStratumMetrics>;
+
+  const confusionMatrix = Object.fromEntries(
+    CANONICAL_RATING_BANDS.map((g) => [g, emptyConfusionRow()]),
+  ) as Record<CanonicalRatingBand, Record<CanonicalRatingBand, number>>;
 
   const missingOutput: number[] = [];
   const missingPrediction: number[] = [];
@@ -130,6 +172,11 @@ export async function computeEvalRunMetrics(
     outcomes.push(outcome);
   });
 
+  const outcomeById = new Map<number, RowMetricOutcome>();
+  for (const o of outcomes) {
+    outcomeById.set(o.id, o);
+  }
+
   let totalCompared = 0;
   let totalCorrect = 0;
 
@@ -147,11 +194,39 @@ export async function computeEvalRunMetrics(
     const stratum = byOverallScore[o.gold];
     stratum.count += 1;
     if (o.correct) stratum.correct += 1;
+    confusionMatrix[o.gold][o.predicted] += 1;
   }
 
   for (const b of CANONICAL_RATING_BANDS) {
     const s = byOverallScore[b];
     s.accuracy = s.count > 0 ? s.correct / s.count : null;
+  }
+
+  const groundTruthRows: GroundTruthRowMetrics[] = [];
+  for (const row of rows ?? []) {
+    const id = typeof row.id === "number" ? row.id : Number.NaN;
+    if (!Number.isInteger(id) || id < 1) continue;
+
+    const title = displayCell(row.title);
+    const artist = displayCell(row.artist);
+    const overallScore = displayCell(row.overall_score);
+
+    const o = outcomeById.get(id);
+    let isCorrect = false;
+    let predictedOverallScore: string | null = null;
+    if (o?.kind === "compared") {
+      predictedOverallScore = o.predicted;
+      isCorrect = o.correct;
+    }
+
+    groundTruthRows.push({
+      id,
+      title,
+      artist,
+      overallScore,
+      isCorrect,
+      predictedOverallScore,
+    });
   }
 
   return {
@@ -160,6 +235,8 @@ export async function computeEvalRunMetrics(
     totalCorrect,
     totalAccuracy: totalCompared > 0 ? totalCorrect / totalCompared : null,
     byOverallScore,
+    confusionMatrix,
+    groundTruthRows,
     skipped: {
       missingOutput: missingOutput.sort((a, c) => a - c),
       missingPrediction: missingPrediction.sort((a, c) => a - c),

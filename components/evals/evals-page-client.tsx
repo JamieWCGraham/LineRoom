@@ -40,6 +40,15 @@ type EvalRunMetricsResponse = {
   totalCorrect: number;
   totalAccuracy: number | null;
   byOverallScore: Record<string, BandStratumMetrics>;
+  confusionMatrix: Record<string, Record<string, number>>;
+  groundTruthRows: Array<{
+    id: number;
+    title: string;
+    artist: string;
+    overallScore: string;
+    isCorrect: boolean;
+    predictedOverallScore: string | null;
+  }>;
   skipped: {
     missingOutput: number[];
     missingPrediction: number[];
@@ -472,6 +481,133 @@ export function EvalsPageClient({ email }: Props) {
               </p>
             );
           })()}
+
+          {metrics.confusionMatrix ?
+            <div className="mt-8">
+              <h3 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Confusion matrix
+              </h3>
+              <p className="mt-1 text-xs text-zinc-500">
+                Rows = ground truth (
+                <code className="text-zinc-400">overall_score</code> in Supabase).
+                Columns = model prediction (
+                <code className="text-zinc-400">overallRatingBand</code>).
+              </p>
+              <div className="mt-3 overflow-x-auto">
+                <table className="border-collapse text-center text-xs">
+                  <thead>
+                    <tr>
+                      <th
+                        scope="col"
+                        className="border border-zinc-700 bg-zinc-950/80 px-2 py-2 text-left font-medium text-zinc-500"
+                      >
+                        GT / Pred
+                      </th>
+                      {CANONICAL_RATING_BANDS.map((pred) => (
+                        <th
+                          key={pred}
+                          scope="col"
+                          className="max-w-[5.5rem] border border-zinc-700 bg-zinc-950/80 px-1.5 py-2 align-bottom text-[10px] font-medium leading-tight text-zinc-400"
+                          title={pred}
+                        >
+                          {pred}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {CANONICAL_RATING_BANDS.map((gold) => (
+                      <tr key={gold}>
+                        <th
+                          scope="row"
+                          className="max-w-[6rem] border border-zinc-700 bg-zinc-950/50 px-2 py-2 text-left text-[10px] font-medium leading-tight text-zinc-400"
+                          title={gold}
+                        >
+                          {gold}
+                        </th>
+                        {CANONICAL_RATING_BANDS.map((pred) => {
+                          const cell =
+                            metrics.confusionMatrix[gold]?.[pred] ?? 0;
+                          const diag = gold === pred;
+                          return (
+                            <td
+                              key={pred}
+                              className={`min-w-[2.5rem] border border-zinc-700 px-2 py-2 font-mono tabular-nums text-sm ${
+                                diag ?
+                                  "bg-emerald-950/35 text-emerald-100"
+                                : "text-zinc-200"
+                              }`}
+                            >
+                              {cell}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          : null}
+
+          {metrics.groundTruthRows && metrics.groundTruthRows.length > 0 ?
+            <div className="mt-8">
+              <h3 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Ground truth records
+              </h3>
+              <p className="mt-1 text-xs text-zinc-500">
+                All rows from <code className="text-zinc-400">generate_critique_eval_set</code>{" "}
+                for this comparison.
+              </p>
+              <div className="mt-3 max-h-[min(50vh,28rem)] overflow-auto rounded-lg border border-zinc-800">
+                <table className="w-full min-w-[42rem] border-collapse text-left text-xs">
+                  <thead className="sticky top-0 z-10 bg-zinc-950/95 backdrop-blur">
+                    <tr className="border-b border-zinc-700 text-[10px] uppercase tracking-wide text-zinc-500">
+                      <th className="px-2 py-2 font-medium">ID</th>
+                      <th className="px-2 py-2 font-medium">Title</th>
+                      <th className="px-2 py-2 font-medium">Artist</th>
+                      <th className="px-2 py-2 font-medium">overall_score</th>
+                      <th className="px-2 py-2 font-medium">IS_CORRECT</th>
+                      <th className="px-2 py-2 font-medium">
+                        PREDICTED_OVERALL_SCORE
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {metrics.groundTruthRows.map((r) => (
+                      <tr
+                        key={r.id}
+                        className="border-b border-zinc-800/80 text-zinc-300"
+                      >
+                        <td className="whitespace-nowrap px-2 py-1.5 font-mono text-zinc-400">
+                          {r.id}
+                        </td>
+                        <td className="max-w-[10rem] truncate px-2 py-1.5" title={r.title}>
+                          {r.title || "—"}
+                        </td>
+                        <td className="max-w-[8rem] truncate px-2 py-1.5" title={r.artist}>
+                          {r.artist || "—"}
+                        </td>
+                        <td className="max-w-[8rem] truncate px-2 py-1.5">
+                          {r.overallScore || "—"}
+                        </td>
+                        <td className="whitespace-nowrap px-2 py-1.5 font-medium">
+                          {r.isCorrect ?
+                            <span className="text-emerald-400">true</span>
+                          : <span className="text-zinc-500">false</span>}
+                        </td>
+                        <td className="px-2 py-1.5">
+                          {r.predictedOverallScore ?? (
+                            <span className="text-zinc-600">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          : null}
         </section>
       : null}
 
