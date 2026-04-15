@@ -6,6 +6,7 @@ import { PiecesBrowser } from "@/components/dashboard/pieces-browser";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { normalizeAuthUserToProfile } from "@/lib/auth/profile";
 import { getAuthUser } from "@/lib/auth/guards";
+import { isBillingBypassed } from "@/lib/billing/config";
 import { createClient } from "@/lib/supabase/server";
 import type { SongRow, SongVersionRow } from "@/types/database";
 
@@ -203,6 +204,7 @@ export default async function HomePage({ searchParams }: Props) {
     );
   }
   const { email } = normalizeAuthUserToProfile(user);
+  const showEvalsNav = isBillingBypassed(email);
 
   const { data: songsRaw } = await supabase
     .from("songs")
@@ -276,6 +278,14 @@ export default async function HomePage({ searchParams }: Props) {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
+          {showEvalsNav ?
+            <Link
+              href="/evals"
+              className="rounded-lg border border-amber-800/50 bg-amber-950/25 px-4 py-2 text-sm text-amber-100 hover:border-amber-600/60 hover:bg-amber-950/40"
+            >
+              Evals
+            </Link>
+          : null}
           <Link
             href="/account"
             className="rounded-lg border border-zinc-600 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-900"

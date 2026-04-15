@@ -1,53 +1,12 @@
 import { NextResponse } from "next/server";
-import {
-  runWithLangfuseTrace,
-  scheduleLangfuseFlush,
-} from "@/lib/langfuse-server";
 import { getCritiqueAccessForUser } from "@/lib/billing/access";
 import { getFreeCritiqueQuota } from "@/lib/billing/config";
 import type { CritiqueAccessState } from "@/lib/billing/types";
 import { getAuthUser } from "@/lib/auth/guards";
-import { createBaseOpenAI, getChatModel } from "@/lib/openai";
-import {
-  buildCritiqueUserPayload,
-  CRITIQUE_JSON_INSTRUCTIONS,
-} from "@/lib/prompts";
+import { runCritiqueModel } from "@/lib/critique/runCritiqueModel";
 import type { CritiqueResult } from "@/lib/types";
-import { critiqueRequestSchema, critiqueResultSchema } from "@/lib/validators";
+import { critiqueRequestSchema } from "@/lib/validators";
 import { createClient } from "@/lib/supabase/server";
-
-function attachSongVersionContext(
-  critique: CritiqueResult,
-  payload: {
-    analyzedSongVersion?: number;
-    priorSongVersionCompared?: number | null;
-    regenerate?: boolean;
-  },
-): CritiqueResult {
-  const out = { ...critique };
-  if (typeof payload.analyzedSongVersion === "number") {
-    out.analyzedSongVersion = payload.analyzedSongVersion;
-  } else {
-    delete out.analyzedSongVersion;
-    delete out.priorSongVersionCompared;
-    delete out.comparedToSummary;
-    return out;
-  }
-
-  if (payload.priorSongVersionCompared !== undefined) {
-    out.priorSongVersionCompared = payload.priorSongVersionCompared;
-  }
-
-  if (payload.priorSongVersionCompared != null) {
-    out.comparedToSummary = `Full saved lyrics draft and critique from version ${payload.priorSongVersionCompared} were included for comparison.`;
-  } else if (payload.regenerate) {
-    out.comparedToSummary = `Compared to the previous critique and the saved lyrics draft for version ${payload.analyzedSongVersion} from when this page was loaded (before your latest edits).`;
-  } else {
-    delete out.comparedToSummary;
-  }
-
-  return out;
-}
 
 function paywallResponse(access: CritiqueAccessState) {
   return NextResponse.json(
@@ -117,61 +76,10 @@ export async function POST(req: Request) {
       slotReserved = true;
     }
 
-    scheduleLangfuseFlush();
-
     const payload = parsed.data;
-    const userContent = buildCritiqueUserPayload(payload);
-
     let critique: CritiqueResult;
     try {
-      critique = await runWithLangfuseTrace(
-        {
-          traceName: "LineRoom",
-          rootObservationName: "lineroom-critique",
-          tags: ["lineroom", "critique"],
-          langfuseConfig: {
-            traceName: "LineRoom",
-            generationName: "lyric-critique",
-            tags: ["lineroom", "critique"],
-          },
-        },
-        async ({ createTracedOpenAI, setTraceIO }) => {
-          const openai = createTracedOpenAI(createBaseOpenAI());
-          const completion = await openai.chat.completions.create({
-            model: getChatModel(),
-            response_format: { type: "json_object" },
-            messages: [
-              { role: "system", content: CRITIQUE_JSON_INSTRUCTIONS },
-              { role: "user", content: userContent },
-            ],
-          });
-
-          const raw = completion.choices[0]?.message?.content?.trim();
-          if (!raw) {
-            throw new Error("__EMPTY_MODEL__");
-          }
-
-          let json: unknown;
-          try {
-            json = JSON.parse(raw) as unknown;
-          } catch {
-            throw new Error("__BAD_JSON__");
-          }
-
-          const validated = critiqueResultSchema.safeParse(json);
-          if (!validated.success) {
-            throw new Error("__BAD_SHAPE__");
-          }
-
-          const c = attachSongVersionContext(validated.data, payload);
-
-          setTraceIO({
-            input: { messages: payload },
-            output: c,
-          });
-          return c;
-        },
-      );
+      ({ critique } = await runCritiqueModel(payload));
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unknown error";
       if (message === "OPENAI_API_KEY is not set") {

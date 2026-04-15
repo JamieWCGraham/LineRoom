@@ -1,0 +1,14 @@
+export SEC='your-secret'
+export BASE='http://localhost:3000'
+
+# From eval table row id
+curl -sS "$BASE/api/dev/generate-critique-eval" \
+  -H "Authorization: Bearer $SEC" \
+  -H "Content-Type: application/json" \
+  -d '{"id": 1}' | jq .
+
+# Full inline payload (same shape as the app)
+curl -sS "$BASE/api/dev/generate-critique-eval" \
+  -H "Authorization: Bearer $SEC" \
+  -H "Content-Type: application/json" \
+  -d '{"fullText":"line one\nline two","title":"T","similarArtists":"A","genre":"G"}' | jq .

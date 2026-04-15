@@ -23,6 +23,8 @@ type Props = {
   onRegenerate: () => void;
   lyricsEmpty: boolean;
   quotaBadge?: string | null;
+  /** Hide regenerate / quota footer (e.g. eval results viewer). */
+  readOnly?: boolean;
 };
 
 export function CritiqueDisplayPanel({
@@ -31,6 +33,7 @@ export function CritiqueDisplayPanel({
   onRegenerate,
   lyricsEmpty,
   quotaBadge,
+  readOnly = false,
 }: Props) {
   const mobileHeaderRef = useRef<HTMLDivElement>(null);
   const mobileFooterRef = useRef<HTMLDivElement>(null);
@@ -235,46 +238,50 @@ export function CritiqueDisplayPanel({
             Refreshing critique... this may take up to 1-2 minutes.
           </p>
         ) : null}
-        <div
-          className="shrink-0 lg:hidden"
-          style={{ height: mobileFooterInsetPx }}
-          aria-hidden
-        />
+        {!readOnly ?
+          <div
+            className="shrink-0 lg:hidden"
+            style={{ height: mobileFooterInsetPx }}
+            aria-hidden
+          />
+        : null}
       </div>
 
-      <div
-        ref={mobileFooterRef}
-        className="shrink-0 border-t border-zinc-800/80 p-3 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom))] max-lg:z-[50] max-lg:border-zinc-800/80 max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pb-3 max-lg:pt-2 max-lg:shadow-[0_-12px_32px_rgba(0,0,0,0.45)] max-lg:backdrop-blur-md lg:relative lg:bottom-auto lg:z-auto lg:bg-transparent lg:shadow-none"
-      >
-        {quotaBadge ?
-          <p className="mb-2 text-center text-[11px] font-medium text-zinc-500">
-            {quotaBadge}
-          </p>
-        : null}
-        <button
-          type="button"
-          onClick={onRegenerate}
-          disabled={loading || !critique || lyricsEmpty}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-900/50 px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:border-amber-800/50 hover:bg-zinc-800/50 disabled:cursor-not-allowed disabled:opacity-40"
+      {!readOnly ?
+        <div
+          ref={mobileFooterRef}
+          className="shrink-0 border-t border-zinc-800/80 p-3 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom))] max-lg:z-[50] max-lg:border-zinc-800/80 max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pb-3 max-lg:pt-2 max-lg:shadow-[0_-12px_32px_rgba(0,0,0,0.45)] max-lg:backdrop-blur-md lg:relative lg:bottom-auto lg:z-auto lg:bg-transparent lg:shadow-none"
         >
+          {quotaBadge ?
+            <p className="mb-2 text-center text-[11px] font-medium text-zinc-500">
+              {quotaBadge}
+            </p>
+          : null}
+          <button
+            type="button"
+            onClick={onRegenerate}
+            disabled={loading || !critique || lyricsEmpty}
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-900/50 px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:border-amber-800/50 hover:bg-zinc-800/50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {loading ? (
+              <span className="inline-flex items-center gap-2">
+                <span
+                  className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-500/40 border-t-zinc-300"
+                  aria-hidden
+                />
+                Regenerating critique...
+              </span>
+            ) : (
+              "Regenerate Critique"
+            )}
+          </button>
           {loading ? (
-            <span className="inline-flex items-center gap-2">
-              <span
-                className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-500/40 border-t-zinc-300"
-                aria-hidden
-              />
-              Regenerating critique...
-            </span>
-          ) : (
-            "Regenerate Critique"
-          )}
-        </button>
-        {loading ? (
-          <p className="mt-2 text-center text-[11px] text-zinc-500">
-            Regenerating critique can take up to 1-2 minutes.
-          </p>
-        ) : null}
-      </div>
+            <p className="mt-2 text-center text-[11px] text-zinc-500">
+              Regenerating critique can take up to 1-2 minutes.
+            </p>
+          ) : null}
+        </div>
+      : null}
     </div>
   );
 }

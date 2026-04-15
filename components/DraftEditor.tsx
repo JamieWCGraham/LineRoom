@@ -40,6 +40,8 @@ type Props = {
   headerLeading?: ReactNode;
   /** When false, hides critique highlight toggle (e.g. brainstorm pane). */
   showFeedbackToggle?: boolean;
+  /** Read-only text; keeps line feedback highlights and hover tooltips. */
+  readOnly?: boolean;
   /** Idle label for the copy button (default “Copy Draft”). */
   copyButtonIdleLabel?: string;
   placeholder?: string;
@@ -69,6 +71,7 @@ export function DraftEditor({
   headerTrailing,
   headerLeading,
   showFeedbackToggle = true,
+  readOnly = false,
   copyButtonIdleLabel = "Copy Draft",
   placeholder = "Paste or write your full lyrics/poetry draft…",
   bodyPrefix,
@@ -545,22 +548,26 @@ export function DraftEditor({
       >
         A+
       </button>
-      <button
-        type="button"
-        onClick={() => applyToggleStyle("bold")}
-        className={buttonClassName}
-        aria-label="Toggle bold for selected draft text"
-      >
-        B
-      </button>
-      <button
-        type="button"
-        onClick={() => applyToggleStyle("underline")}
-        className={buttonClassName}
-        aria-label="Toggle underline for selected draft text"
-      >
-        U
-      </button>
+      {!readOnly ?
+        <>
+          <button
+            type="button"
+            onClick={() => applyToggleStyle("bold")}
+            className={buttonClassName}
+            aria-label="Toggle bold for selected draft text"
+          >
+            B
+          </button>
+          <button
+            type="button"
+            onClick={() => applyToggleStyle("underline")}
+            className={buttonClassName}
+            aria-label="Toggle underline for selected draft text"
+          >
+            U
+          </button>
+        </>
+      : null}
       {showFeedbackToggle ?
         <button
           type="button"
@@ -666,8 +673,11 @@ export function DraftEditor({
         </div>
         <textarea
           ref={taRef}
+          readOnly={readOnly}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            if (!readOnly) onChange(e.target.value);
+          }}
           onInput={reportDraftContext}
           onSelect={reportDraftContext}
           onKeyUp={reportDraftContext}
@@ -677,6 +687,7 @@ export function DraftEditor({
           onMouseMove={(e) => updateTooltip(e.clientX, e.clientY)}
           onMouseLeave={() => setTooltip(null)}
           onKeyDown={(e) => {
+            if (readOnly) return;
             const meta = e.metaKey || e.ctrlKey;
             const key = (e.key ?? "").toLowerCase();
             if (meta && key === "b") {
