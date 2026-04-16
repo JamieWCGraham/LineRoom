@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { createBaseOpenAI } from "@/lib/openai";
 import { runMultinodeCritiqueEngine } from "@/lib/critique_engine/runMultinodeCritiqueEngine";
 import { critiqueResultSchema } from "@/lib/validators";
-import { useMultinodeCritiqueEngine } from "@/lib/critique_engine/config/critique_engine_config";
+import { isMultinodeCritiqueEngineEnabled } from "@/lib/critique_engine/config/critique_engine_config";
 import { lineFeedbackAnnotationBounds } from "@/lib/critique_engine/schemas/line_feedback";
 import { segmentLyrics } from "@/lib/critique_engine/utils/lyric_segmentation";
 
@@ -44,7 +44,7 @@ The night don't ask who we were before
 It only asks what we're running for`;
 
 const hasKey = () => Boolean(process.env.OPENAI_API_KEY?.trim());
-const shouldRunE2E = () => hasKey() && useMultinodeCritiqueEngine();
+const shouldRunE2E = () => hasKey() && isMultinodeCritiqueEngineEnabled();
 
 describe("multinode critique engine (e2e)", () => {
   (shouldRunE2E() ? it : it.skip)(

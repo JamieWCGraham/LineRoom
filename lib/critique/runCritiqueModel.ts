@@ -10,7 +10,7 @@ import {
 } from "@/lib/critique/critiqueNetworkRetry";
 import { runCritiqueModelLegacy } from "@/lib/critique/runCritiqueModelLegacy";
 import { createBaseOpenAI } from "@/lib/openai";
-import { useMultinodeCritiqueEngine } from "@/lib/critique_engine/config/critique_engine_config";
+import { isMultinodeCritiqueEngineEnabled } from "@/lib/critique_engine/config/critique_engine_config";
 import { runMultinodeCritiqueEngine } from "@/lib/critique_engine/runMultinodeCritiqueEngine";
 import type { CritiqueResult } from "@/lib/types";
 import { critiqueRequestSchema } from "@/lib/validators";
@@ -69,7 +69,7 @@ export async function runCritiqueModel(
 ): Promise<{ critique: CritiqueResult; userContent: string }> {
   scheduleLangfuseFlush();
 
-  if (!useMultinodeCritiqueEngine()) {
+  if (!isMultinodeCritiqueEngineEnabled()) {
     return runCritiqueModelLegacy(payload, options);
   }
 

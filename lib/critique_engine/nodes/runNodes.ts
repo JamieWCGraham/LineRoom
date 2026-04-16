@@ -192,7 +192,7 @@ ${JSON.stringify(synthesis)}
       schema,
     });
     return data as LineFeedbackOutput;
-  } catch (first) {
+  } catch {
     const retryHint =
       "Your previous answer failed validation or was incomplete. Return a JSON object with an \"annotations\" array containing AT LEAST the minimum count from the system instructions. Each quotedText must match the numbered lyric lines exactly; lineIndexStart must match a [n] index.";
     const { data } = await runOpenAiJsonNode({

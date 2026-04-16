@@ -68,7 +68,7 @@ export const PROMPT_VERSIONS = {
   lineFeedback: "v1",
 } as const;
 
-export function useMultinodeCritiqueEngine(): boolean {
+export function isMultinodeCritiqueEngineEnabled(): boolean {
   const v = process.env.USE_MULTINODE_CRITIQUE_ENGINE?.trim().toLowerCase();
   if (!v) return true;
   return v === "1" || v === "true" || v === "yes";

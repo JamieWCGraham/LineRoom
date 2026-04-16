@@ -109,7 +109,7 @@ export function mergeCritiqueNodeOutputs(params: {
   lineAnnotations: LineFeedbackItem[];
   segmented: SegmentedLyric;
 }): CritiqueResult {
-  const { payload, genre, calibration, synthesis, lineAnnotations, segmented } = params;
+  const { genre, calibration, synthesis, lineAnnotations, segmented } = params;
 
   const prioritiesBlock =
     synthesis.revisionPriorities.length > 0 ?
