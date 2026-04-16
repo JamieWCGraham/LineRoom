@@ -50,6 +50,7 @@ export function evalRowToCritiquePayload(
     title: row.title?.trim() ?? "",
     similarArtists: row.artist?.trim() ?? "",
     genre: row.genre?.trim() ?? "",
+    mode: "deep",
   };
 }
 

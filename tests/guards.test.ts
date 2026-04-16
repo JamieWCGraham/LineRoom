@@ -21,7 +21,7 @@ describe("getAuthUser", () => {
       auth: {
         getUser: async () => ({ data: { user }, error: null }),
       },
-    } as Pick<SupabaseClient, "auth">;
+    } as unknown as Pick<SupabaseClient, "auth">;
 
     await expect(getAuthUser(supabase)).resolves.toBe(user);
   });
@@ -31,7 +31,7 @@ describe("getAuthUser", () => {
       auth: {
         getUser: async () => ({ data: { user: null }, error: null }),
       },
-    } as Pick<SupabaseClient, "auth">;
+    } as unknown as Pick<SupabaseClient, "auth">;
 
     await expect(getAuthUser(supabase)).resolves.toBeNull();
   });
@@ -48,7 +48,7 @@ describe("requireAuthUser", () => {
       auth: {
         getUser: async () => ({ data: { user }, error: null }),
       },
-    } as Pick<SupabaseClient, "auth">;
+    } as unknown as Pick<SupabaseClient, "auth">;
 
     await expect(requireAuthUser(supabase)).resolves.toBe(user);
     expect(redirectMock).not.toHaveBeenCalled();
@@ -59,7 +59,7 @@ describe("requireAuthUser", () => {
       auth: {
         getUser: async () => ({ data: { user: null }, error: null }),
       },
-    } as Pick<SupabaseClient, "auth">;
+    } as unknown as Pick<SupabaseClient, "auth">;
 
     await expect(requireAuthUser(supabase)).rejects.toThrow(
       "REDIRECT:/login",

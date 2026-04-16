@@ -1,4 +1,8 @@
 import type { ChatActionPayload } from "@/types/chat";
+import type { z } from "zod";
+import { critiqueRequestSchema } from "@/lib/validators";
+
+export type CritiqueRequestPayload = z.infer<typeof critiqueRequestSchema>;
 
 export const LYRIC_CHAT_SYSTEM = `You are a thoughtful writing collaborator for lyrics and poetry. The user is working on a draft shown below under "Current draft".
 
@@ -22,7 +26,7 @@ Guidelines:
 
 The draft may update between messages; always treat the latest "Current draft" as source of truth.`;
 
-function formatCritiqueSnapshotForPrompt(critique: {
+export function formatCritiqueSnapshotForPrompt(critique: {
   overallRatingBand: string;
   subscores: {
     emotional_impact: number;
@@ -170,59 +174,27 @@ ${fullText}
 ---`;
 }
 
-export function buildCritiqueUserPayload(input: {
-  fullText: string;
-  title: string;
-  similarArtists: string;
-  genre: string;
-  analyzedSongVersion?: number;
-  priorSongVersionCompared?: number | null;
-  regenerate?: boolean;
-  priorCritique?: {
-    overallRatingBand: string;
-    subscores: {
-      emotional_impact: 1 | 2 | 3 | 4 | 5;
-      imagery_specificity: 1 | 2 | 3 | 4 | 5;
-      originality_voice: 1 | 2 | 3 | 4 | 5;
-      prosody_singability: 1 | 2 | 3 | 4 | 5;
-      structure_cohesion: 1 | 2 | 3 | 4 | 5;
-      lyrical_economy: 1 | 2 | 3 | 4 | 5;
-      hook_strength: 1 | 2 | 3 | 4 | 5;
-    };
-    overallStrengths: string[];
-    overallWeaknesses: string[];
-    lineFeedback: Array<{
-      quotedLine: string;
-      feedback: string;
-      category: "praise" | "constructive";
-      strength?: "strong" | "promising" | "weak";
-    }>;
-  };
-  priorVersions?: Array<{
-    versionNumber: number;
-    draftText: string;
-    critique: {
-      overallRatingBand: string;
-      subscores: {
-        emotional_impact: 1 | 2 | 3 | 4 | 5;
-        imagery_specificity: 1 | 2 | 3 | 4 | 5;
-        originality_voice: 1 | 2 | 3 | 4 | 5;
-        prosody_singability: 1 | 2 | 3 | 4 | 5;
-        structure_cohesion: 1 | 2 | 3 | 4 | 5;
-        lyrical_economy: 1 | 2 | 3 | 4 | 5;
-        hook_strength: 1 | 2 | 3 | 4 | 5;
-      };
-      overallStrengths: string[];
-      overallWeaknesses: string[];
-      lineFeedback: Array<{
-        quotedLine: string;
-        feedback: string;
-        category: "praise" | "constructive";
-        strength?: "strong" | "promising" | "weak";
-      }>;
-    } | null;
-  }>;
-}): string {
+export function buildCritiqueUserPayload(input: CritiqueRequestPayload): string {
+  const regenPreamble =
+    input.regenerate ?
+      "Regeneration mode is active; follow the system instructions for overallBandRationale.\n\n"
+    : "";
+
+  return `${regenPreamble}Analyze this draft (lyrics and/or poetry) and produce your JSON response.
+
+Piece title: ${input.title || "(untitled)"}
+Genre (user-provided): ${input.genre || "(unspecified)"}
+Similar writers or artists / voice reference (user-provided): ${input.similarArtists || "(none)"}
+${buildCritiqueEngineContextBlocks(input)}
+
+Lyrics/poetry (preserve line breaks; your quotedLine values must copy lines exactly from this block):
+---
+${input.fullText}
+---`;
+}
+
+/** Versioning / prior-draft / regeneration blocks shared by monolithic and multi-node critique. */
+export function buildCritiqueEngineContextBlocks(input: CritiqueRequestPayload): string {
   const versionContextSection =
     typeof input.analyzedSongVersion === "number" ?
       `\n\nSong version context:
@@ -294,25 +266,7 @@ Previous critique (replaced by this run):
 ${formatCritiqueSnapshotForPrompt(input.priorCritique)}`
     : "";
 
-  const regenPreamble =
-    input.regenerate ?
-      "Regeneration mode is active; follow the system instructions for overallBandRationale.\n\n"
-    : "";
-
-  return `${regenPreamble}Analyze this draft (lyrics and/or poetry) and produce your JSON response.
-
-Piece title: ${input.title || "(untitled)"}
-Genre (user-provided): ${input.genre || "(unspecified)"}
-Similar writers or artists / voice reference (user-provided): ${input.similarArtists || "(none)"}
-${versionContextSection}
-${changeSummarySection}
-${priorVersionsSection}
-${regenerationSection}
-
-Lyrics/poetry (preserve line breaks; your quotedLine values must copy lines exactly from this block):
----
-${input.fullText}
----`;
+  return `${versionContextSection}${changeSummarySection}${priorVersionsSection}${regenerationSection}`;
 }
 
 export const CRITIQUE_JSON_INSTRUCTIONS = `

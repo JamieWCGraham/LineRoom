@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
+    "test:critique-e2e": "vitest run tests/e2e/multinode_critique.test.ts",
     "eval:generate-sql": "node evaluations/scripts/generate_eval_sql_with_lyrics.mjs",
     "eval:patch-lyrics": "node evaluations/scripts/patch_eval_sql_lyrics.mjs",
     "eval:validate-sql": "node evaluations/scripts/validate_eval_sql.mjs",
@@ -18,6 +19,8 @@
     "cap:open": "cap open ios"
   },
   "dependencies": {
+    "@langchain/core": "^1.1.40",
+    "@langchain/langgraph": "^1.2.8",
     "@langfuse/core": "^5.0.1",
     "@langfuse/openai": "^5.0.1",
     "@langfuse/otel": "^5.0.1",

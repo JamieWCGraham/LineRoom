@@ -94,6 +94,12 @@ export const lyricSubscoresSchema = z.object({
   hook_strength: dimensionScoreSchema,
 });
 
+export const critiqueDiagnosticsSchema = z.object({
+  diagnosticSummaryShort: z.string(),
+  calibrationConfidence: z.number(),
+  subscoreRationales: z.record(z.string()),
+});
+
 export const critiqueResultSchema = z.object({
   genrePrinciples: z.string(),
   overallRatingBand: overallRatingBandSchema,
@@ -102,6 +108,7 @@ export const critiqueResultSchema = z.object({
   overallStrengths: z.array(z.string()),
   overallWeaknesses: z.array(z.string()),
   lineFeedback: z.array(lineFeedbackItemSchema),
+  diagnostics: critiqueDiagnosticsSchema.optional(),
   analyzedSongVersion: z.number().int().positive().optional(),
   priorSongVersionCompared: z.number().int().positive().nullable().optional(),
   comparedToSummary: z.string().optional(),
@@ -133,6 +140,8 @@ export const critiqueRequestSchema = z.object({
   title: z.string(),
   similarArtists: z.string(),
   genre: z.string(),
+  /** `fast` skips line-level node when the multi-node engine is enabled. */
+  mode: z.enum(["fast", "deep"]).optional().default("deep"),
   /** True when replacing an existing critique (UI: Regenerate Critique). */
   regenerate: z.boolean().optional(),
   /** Critique in effect before regeneration; used for comparative rationale. */
