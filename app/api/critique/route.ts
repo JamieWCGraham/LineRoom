@@ -79,7 +79,7 @@ export async function POST(req: Request) {
     const payload = parsed.data;
     let critique: CritiqueResult;
     try {
-      ({ critique } = await runCritiqueModel(payload));
+      ({ critique } = await runCritiqueModel(payload, { userId: user.id }));
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unknown error";
       if (message === "OPENAI_API_KEY is not set") {
