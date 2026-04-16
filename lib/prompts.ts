@@ -494,7 +494,8 @@ A) "genrePrinciples": 2–4 short paragraphs structured as:
   Be specific and craft-focused, not generic.
 
 B) overallRatingBand  
-  Choose exactly one: "Needs Work" | "Promising" | "Strong" | "Standout"
+  Here you will decide on exactly one rating band that best describes this draft: "Needs Work" | "Promising" | "Strong" | "Standout"
+  Assume "Promising" by default. Only move up with sustained strengths. In borderline cases, choose the lower band.
 
   Needs Work  
   - Clear weaknesses limit impact  
@@ -507,19 +508,14 @@ B) overallRatingBand
   - Strengths are not yet sustained  
 
   Strong  
-  - Genuinely good as written  
+  - Genuinely strong as-is.
   - Consistent craft, specificity, and voice  
-  - Works as a whole with only moderate limitations  
+  - Works as a whole with only moderate limitations / minor improvements needed.  
 
   Standout  
   - Exceptional and rare  
   - Distinctive voice, high craft, multiple memorable lines  
   - Sustained excellence with minimal meaningful weaknesses  
-
-  Standout should be rare and require:
-  - multiple memorable/inevitable lines  
-  - strong voice and phrasing  
-  - sustained coherence and impact  
 
   Calibration rules:
   - Judge the lyric as written, not its potential  
@@ -527,6 +523,10 @@ B) overallRatingBand
   - In borderline cases, choose the lower band  
   - Do not derive this from subscore averages  
   - Weigh overall effectiveness, consistency, and severity of weaknesses  
+
+  Distribution Guidance:
+  - Most real-world lyrics fall into "Needs Work" or "Promising".
+  - "Strong" is less common. "Standout" is rare, and requires multiple memorable/inevitable lines, strong voice and phrasing, and sustained coherence and impact.
 
 C) "subscores": You will provide a granular breakdown of the lyric's strengths and weaknesses across all 7 of the following dimensions. 
  Each subscore must reflect concrete evidence in the text, not general impression.
