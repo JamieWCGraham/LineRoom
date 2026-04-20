@@ -494,86 +494,115 @@ A) "genrePrinciples": 2–4 short paragraphs structured as:
 
 B) overallRatingBand  
   Here you will decide on exactly one rating band that best describes this draft: "Needs Work" | "Promising" | "Strong" | "Standout"
-  Assume "Promising" by default. Only move up with sustained strengths. Move down to "Needs Work" if there are many/clearly meaningful issues. In borderline cases, choose the lower band.
-  Evaluate this based on the intrinsic writing quality of the lyric itself, not based on its popularity or success in the market. 
 
-  ### Needs Work  
-  - Clear weaknesses across multiple lines or sections  
-  - Generic phrasing, weak imagery, filler, unclear voice, or clumsy writing  
-  - Concept may be weak, unclear, or overdone  
-  - Lack of specificity, craft, or control  
-  - Weaknesses significantly limit overall impact  
-  - A lyric may still be Needs Work even if it has a clear chorus, emotional intent, or catchy structure. If the wording is mostly generic, filler-heavy, vague, clichéd, or indistinct, do not promote it to Promising.
+  Assume "Promising" by default. Only move up when strengths are sustained and clearly demonstrated in the writing itself. Move down to "Needs Work" when weaknesses are frequent, foundational, or clearly meaningful. In borderline cases, choose the lower band.
 
-  ### Promising  
-  - Real potential with at least a few strong elements (concept, lines, voice, etc.)  
-  - Uneven execution; quality varies across the lyric  
-  - Strong moments are not sustained  
-  - Requires meaningful revision to reach "Strong"  
+  Evaluate based on the intrinsic writing quality of the lyric itself, not popularity, cultural status, familiarity, melody, production, or performance.
+
+  ### Needs Work
+    - Clear weaknesses across multiple lines or sections.
+    - Writing is dominated by generic phrasing, weak imagery, filler, vague abstraction, clumsy writing, unclear voice, or low-control execution.
+    - Concept may be weak, overdone, thinly developed, or too dependent on stock sentiment.
+    - Lack of specificity, distinctive perspective, craft, or control meaningfully limits impact.
+    - A lyric may still be Needs Work even if it has a clear chorus, emotional intent, catchy structure, or decent prosody.
+    - If the lyric mostly reads like placeholder songwriting, slogan-writing, broad emotional summary, or filler around a hook, do not promote it to Promising.
+
+    Common signals of Needs Work
+    - Broad statements substituted for dramatized feeling
+    - Cliché doing most of the work
+    - Generic uplift/devastation language
+    - No memorable line outside the hook, or hook is the only real asset
+    - Structure functions, but the actual wording remains underwritten
+
+  ### Promising
+    - Real potential with some genuine strengths (concept, voice, hook, moments, imagery, attitude, or structure).
+    - The lyric clearly functions, but the quality is still meaningfully uneven, limited, or under-realized.
+    - Strong moments are present but not sufficiently sustained.
+    - The piece may have a good concept, clear emotion, or effective hook architecture, but line-level execution is not yet consistently strong.
+    - Requires meaningful revision or stronger sustained execution to reach Strong.
+
+    Requirements
+    - At least some real craft is visible beyond mere catchiness or structure.
+    - There is at least some distinctiveness in voice, perspective, imagery, or execution.
+    - The lyric works as more than pure placeholder writing, even if it remains uneven.
 
     Disqualifiers
-    - Clear lack of craft, specificity, control, and/or distinctive voice. 
-    - Very generic lyrics/phrasing or overdone/unoriginal concept / execution. 
-    - Note that merely strong hook / catchiness + strong prosody + structure is not sufficient to rate "Promising", even in pop. A clear and compelling concept and some quality line-level execution, voice/originality or imagery/specificity are still required in order to be "Promising", otherwise opt for "Needs Work".
-    - A lyric should not rise above Promising based mainly on chorus effectiveness, cultural impact, or broad emotional relatability if the actual wording/execution/concept remains generic or uneven.
+    - Clear lack of craft, specificity, control, and/or distinctive voice.
+    - Very generic phrasing, filler-heavy writing, or an overdone concept executed in a stock way.
+    - A strong hook, strong prosody, emotional clarity, or clear structure alone is not enough to justify Promising.
+    - Do not promote to Promising if the wording is mostly generic, vague, clichéd, or interchangeable, even if the song would likely work in performance.
 
-    Hard ceiling rule:
-    - If the lyric is seriously uneven in strength OR contains clearly multiple weak/generic sections, it MUST NOT be rated above "Promising"
-
+    Hard ceiling rule
+    - If the lyric is seriously uneven in strength or contains multiple clearly weak/generic sections, it MUST NOT be rated above "Promising".
 
   ### Strong
     - Genuinely strong as written; the lyric works well across most of the piece and demonstrates clear songwriting ability.
-    - Shows solid craft through some combination of specificity, control, structure, emotional effectiveness, and/or distinctive voice.
-    - Sustains its effect across sections; the quality is broadly consistent rather than carried by only a few peak lines.
+    - Shows sustained craft through some combination of specificity, control, structure, emotional effectiveness, tonal coherence, perspective, and/or distinctive voice.
+    - The lyric’s strengths are distributed across the piece rather than resting mainly on a hook, a few peak lines, or general atmosphere.
     - Weaknesses, if present, are limited and do not materially reduce the lyric’s overall impact.
-    - The piece does not need to be rare, brilliant, or flawless, but it must demonstrate enough real songwriting craft to clearly exceed "Promising".
+    - The piece does not need to be rare, brilliant, or flawless, but it must clearly exceed "Promising" through sustained writing quality.
 
     Requirements
     - Quality is broadly consistent across the lyric, and the piece sustains its intended effect across sections.
-    - There is meaningful line-level strength across the piece, even if not every line is equally memorable.
-    - Strong may be achieved through different routes: vivid line-level writing, or exceptional control/economy/voice within a simpler idiom.
-    - Simplicity, repetition, or plainspoken language are not weaknesses by themselves if they feel controlled, genre-appropriate, and emotionally effective.
-    - Any weaker moments are minor rather than defining, or are acceptable within the norms of the genre. (For example, uneven prosody may be a serious issue in tightly melodic top-40 pop, while being more acceptable in indie art rock.)
+    - There is meaningful writing strength across the piece, even if not every line is equally memorable or quotable.
+    - Strong may be achieved through different routes:
+      1) vivid, striking, line-level writing, OR
+      2) exceptional control, economy, voice, dramatic framing, tonal coherence, or cumulative emotional effect within a simpler idiom.
+    - Simplicity, repetition, directness, or plainspoken language are not weaknesses by themselves if they feel controlled, genre-appropriate, and emotionally effective.
+    - Conversational, contemporary, or restrained writing should not be downgraded merely for being less ornate, less literary, or less immediately quotable.
+    - The lyric must show sustained writing quality beyond mere hook effectiveness, emotional clarity, chantability, atmosphere, or familiarity.
+    - Any weaker moments are minor rather than defining, or acceptable within the norms of the genre.
 
     Disqualifiers
-    - Over-reliance on recurring weak, generic, filler, or placeholder phrasing.
-    - Multiple genre-specific failure modes recurring across sections. (For example, serious prosodic clumsiness in a form that depends on clean singability.)
-    - Inconsistency substantial enough that the lyric’s overall impact is meaningfully lowered.
-    - The piece depends mostly on isolated strong lines, a single effective hook, or general vibe rather than sustained writing quality.
+    - Over-reliance on recurring weak, generic, filler, slogan-like, or placeholder phrasing.
+    - The lyric’s main strengths are hook impact, chantability, atmosphere, emotional obviousness, or familiarity, while the rest of the writing remains only moderately developed.
+    - The chorus or hook clearly outclasses the rest of the lyric, and the verses are mostly functional rather than strongly written.
+    - Multiple genre-specific failure modes recur across sections.
+    - Inconsistency is substantial enough that the lyric’s impact is meaningfully lowered.
+    - The piece depends mostly on a single hook, a few isolated strong lines, broad vibe, or emotional familiarity rather than sustained writing quality.
     - Weaknesses are noticeable enough that the lyric still reads as meaningfully uneven overall; if so, do not assign "Strong".
 
-  ### Standout  
-  - Exceptional and truly rare lyric writing; sustained excellence across the entire lyric as a whole. 
-  - Distinctive voice, high craft, multiple memorable/inevitable lines. 
-  - Truly compelling concept executed with precision and craft.  
-  - Do not assign Standout merely because the lyric is highly quotable, emotionally famous, or culturally revered. Standout requires rare consistency and exceptional execution across the whole lyric.
+    Important distinction
+    - Do not withhold Strong merely because the lyric is not dazzling, highly literary, or constantly showy.
+    - Do not assign Strong merely because the lyric is emotionally effective, structurally clean, hooky, or culturally familiar.
+    - Strong requires sustained craft across the piece, but not perfection.
 
-    Requirements (all must hold):
-    - Excellence is sustained, not intermittent  
-    - Multiple lines/moments are very memorable, striking, or deeply impactful.  
-    - Weaknesses are negligible / acceptable within the scope of the genre.
-    - The piece is not merely a collection of strong lines, but a cohesive whole with a clear concept and voice, working on both the line-level and the overall piece-level.
+  ### Standout
+    - Exceptional and truly rare lyric writing; sustained excellence across the lyric as a whole.
+    - Distinctive voice, high craft, strong conceptual execution, and multiple memorable / inevitable lines or moments.
+    - The lyric works at both the line level and whole-piece level with unusual precision, force, or originality.
+    - Standout is not just “very good,” “very famous,” “very quotable,” or “emotionally beloved.” It requires rare consistency and exceptional execution across the whole lyric.
 
-    Disqualifiers:
-    - Sustained strong craft is demonstrated, but piece lacks exceptional execution + concept, opt for Strong.
-    - Noticeable unevenness in quality or recurrent generic phrasing across sections, If present, do NOT assign "Standout"
-    - The failure modes of the piece are not acceptable within the scope of the genre. (e.g. uneven syllables/prosody are a serious failure mode in top 40 pop, but they are generally acceptable in indie art rock)
-  
+    Requirements (all must hold)
+    - Excellence is sustained, not intermittent.
+    - Multiple lines/moments are very memorable, striking, inevitable, or deeply affecting.
+    - The piece is cohesive as a whole, not merely a collection of strong moments.
+    - Weaknesses are negligible, or clearly acceptable within the norms of the genre.
+    - The lyric demonstrates not just strong craft, but exceptional execution, concept, control, or originality.
 
-  Consistency Rule:
+    Disqualifiers
+    - The lyric is highly memorable, quotable, prestigious, or emotionally famous, but not exceptional across the full piece.
+    - The piece is strongly crafted overall, but lacks the rare level of execution needed for Standout; in that case, choose Strong.
+    - Noticeable unevenness, recurrent generic phrasing, or sections that are merely functional rather than exceptional.
+    - The lyric earns admiration mostly through isolated peaks, cultural reverence, or performance association rather than sustained writing excellence.
+
+  Consistency Rule
   Ratings are based on overall consistency, not peaks.
   A few strong lines do not justify a higher band.
+  A catchy hook or emotionally effective chorus does not by itself justify a higher band.
 
-  Calibration Rules:
-  - Judge the lyric as written, not its potential  
-  - Do not reward sincerity, concept, or isolated strong moments  
-  - Do not derive from subscore averages  
-  - Weigh consistency and severity of weaknesses more than isolated strengths  
+  Calibration Rules
+  - Judge the lyric as written, not its potential.
+  - Do not reward popularity, prestige, cultural familiarity, or market success.
+  - Do not reward sincerity, concept, vibe, hook power, or isolated strong moments on their own.
+  - Do not derive the overall band from subscore averages.
+  - Weigh consistency, quality of execution, and severity/frequency of weaknesses more than isolated strengths.
+  - Consider genre norms, but do not let genre excuse underwritten or generic writing.
 
-  Distribution Guidance:
-  - Most lyrics fall into "Needs Work" or "Promising"  
-  - "Strong" is uncommon and requires consistency  
-  - "Standout" is rare and requires sustained excellence  
+  Distribution Guidance
+  - Most lyrics fall into "Needs Work" or "Promising".
+  - "Strong" is uncommon and requires sustained quality, but not flawlessness.
+  - "Standout" is rare and requires sustained excellence rather than simply being very good or very memorable.
 
 C) "subscores": You will provide a granular breakdown of the lyric's strengths and weaknesses across all 7 of the following dimensions. 
  Each subscore must reflect concrete evidence in the text, not general impression.
