@@ -119,6 +119,10 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   /** After a tap to show line feedback, ignore scroll-driven tooltip clears briefly (iOS scrolls to caret). */
   const touchTooltipScrollGuardUntilRef = useRef(0);
+  const lastTextareaScrollRef = useRef<{ left: number; top: number }>({
+    left: 0,
+    top: 0,
+  });
   const [mobileToolbarInsetPx, setMobileToolbarInsetPx] = useState(56);
   const [tooltip, setTooltip] = useState<{
     anchorX: number;
@@ -277,6 +281,10 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
   useLayoutEffect(() => {
     const el = taRef.current;
     if (!el) return;
+    lastTextareaScrollRef.current = {
+      left: el.scrollLeft,
+      top: el.scrollTop,
+    };
     const mq = window.matchMedia("(max-width: 1023px)");
     const COMMIT_PX = 10;
     let axisLock: "x" | "y" | null = null;
@@ -295,11 +303,20 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
       }
     };
 
+    const SCROLL_CLEAR_EPS_PX = 5;
+
     const onScroll = () => {
       enforceAxis();
+      const sl = el.scrollLeft;
+      const st = el.scrollTop;
+      const prev = lastTextareaScrollRef.current;
+      const delta = Math.abs(sl - prev.left) + Math.abs(st - prev.top);
+      lastTextareaScrollRef.current = { left: sl, top: st };
+
       applyBackdropScroll(el);
       updateAddToChatAnchorRef.current();
       if (performance.now() < touchTooltipScrollGuardUntilRef.current) return;
+      if (delta < SCROLL_CLEAR_EPS_PX) return;
       setTooltip((t) => (t ? null : t));
     };
 
@@ -465,16 +482,11 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
         setTooltip(null);
         return;
       }
-      const ss = el.selectionStart ?? 0;
-      const se = el.selectionEnd ?? 0;
-      const collapsed = ss === se;
-
+      /** Always map the viewport point first (touch/mouse), not selection state — iOS often leaves a non-collapsed range while tapping. */
       let idx: number | null = null;
-      if (collapsed) {
-        const caretOff = caretOffsetAtViewportPoint(el, clientX, clientY);
-        if (caretOff !== null) {
-          idx = value.slice(0, caretOff).split("\n").length - 1;
-        }
+      const caretOff = caretOffsetAtViewportPoint(el, clientX, clientY);
+      if (caretOff !== null) {
+        idx = value.slice(0, caretOff).split("\n").length - 1;
       }
       if (idx === null) {
         const rect = el.getBoundingClientRect();
@@ -820,16 +832,24 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
             const t = e.changedTouches[0];
             const dx = t.clientX - start.x;
             const dy = t.clientY - start.y;
-            if (dx * dx + dy * dy > 12 * 12) return;
+            /** Generous slop so light taps still count after iOS hit-test / focus jitter. */
+            const TAP_SLOP_PX = 26;
+            if (dx * dx + dy * dy > TAP_SLOP_PX * TAP_SLOP_PX) return;
             const cx = t.clientX;
             const cy = t.clientY;
-            touchTooltipScrollGuardUntilRef.current = performance.now() + 400;
-            requestAnimationFrame(() => {
+            touchTooltipScrollGuardUntilRef.current = performance.now() + 1000;
+            const run = () => {
               updateTooltip(cx, cy);
-              requestAnimationFrame(() => {
-                updateTooltip(cx, cy);
-              });
+            };
+            run();
+            requestAnimationFrame(run);
+            requestAnimationFrame(() => {
+              requestAnimationFrame(run);
             });
+            queueMicrotask(run);
+            window.setTimeout(run, 0);
+            window.setTimeout(run, 24);
+            window.setTimeout(run, 72);
           }}
           placeholder={placeholder}
           aria-label={textInputAriaLabel}

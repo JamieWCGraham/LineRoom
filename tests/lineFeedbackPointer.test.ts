@@ -48,9 +48,9 @@ describe("lineIndexFromContentY", () => {
     expect(lineIndexFromContentY(79.9, 20, 5)).toBe(3);
   });
 
-  it("returns null for out-of-range Y", () => {
-    expect(lineIndexFromContentY(-1, 20, 5)).toBeNull();
-    expect(lineIndexFromContentY(100, 20, 5)).toBeNull();
+  it("clamps out-of-range Y to the nearest line", () => {
+    expect(lineIndexFromContentY(-1, 20, 5)).toBe(0);
+    expect(lineIndexFromContentY(100, 20, 5)).toBe(4);
   });
 
   it("returns null for invalid inputs", () => {
