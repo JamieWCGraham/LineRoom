@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import {
   useCallback,
-  useDeferredValue,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -11,6 +10,11 @@ import {
   useState,
 } from "react";
 import type { LineAnnotation } from "@/lib/lineAnnotations";
+import {
+  caretOffsetAtViewportPoint,
+  clampTooltipToViewport,
+  lineIndexFromContentY,
+} from "@/lib/draft/lineFeedbackPointer";
 import { getSelectionTopRightAnchor } from "@/lib/draft/selectionPopupAnchor";
 import type { ChatSelectionPayload, DraftEditorContext } from "@/types/chat";
 
@@ -52,7 +56,7 @@ type Props = {
 
 /** Synthetic overlay: hide glyphs in WebKit (caret stays visible); other engines use caret-color + transparent color. */
 const TEXTAREA_CLASSES =
-  "box-border h-full min-h-[min(50dvh,28rem)] w-full flex-1 resize-none rounded-lg border-0 bg-transparent p-4 text-sm font-sans leading-relaxed whitespace-pre caret-zinc-100 outline-none [touch-action:pan-x_pan-y] overscroll-none [-webkit-text-fill-color:transparent] [color:rgb(244_244_245)] sm:min-h-[min(56dvh,32rem)] sm:resize-y lg:min-h-0 lg:text-base";
+  "box-border h-full min-h-[min(50dvh,28rem)] w-full flex-1 resize-none rounded-lg border-0 bg-transparent p-4 max-lg:pt-8 text-sm font-sans leading-[1.625] whitespace-pre caret-zinc-100 outline-none [touch-action:pan-x_pan-y] overscroll-none [-webkit-text-fill-color:transparent] [color:rgb(244_244_245)] sm:min-h-[min(56dvh,32rem)] sm:resize-y lg:min-h-0 lg:text-base";
 
 type LineHighlightTier = "weak" | "promising" | "strong";
 
@@ -93,10 +97,12 @@ export function DraftEditor({
   const taRef = useRef<HTMLTextAreaElement>(null);
   const backdropInnerRef = useRef<HTMLDivElement>(null);
   const mobileToolbarRef = useRef<HTMLDivElement>(null);
+  const tooltipPopoverRef = useRef<HTMLDivElement>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const [mobileToolbarInsetPx, setMobileToolbarInsetPx] = useState(56);
   const [tooltip, setTooltip] = useState<{
-    x: number;
-    y: number;
+    anchorX: number;
+    anchorY: number;
     tier: LineHighlightTier;
     entries: TooltipFeedbackEntry[];
   } | null>(null);
@@ -113,12 +119,9 @@ export function DraftEditor({
   const addToChatPopoverRef = useRef<HTMLDivElement>(null);
   const updateAddToChatAnchorRef = useRef<() => void>(() => {});
 
-  const deferredBackdropText = useDeferredValue(value);
   const lines = useMemo(() => value.split("\n"), [value]);
-  const backdropLines = useMemo(
-    () => deferredBackdropText.split("\n"),
-    [deferredBackdropText],
-  );
+  /** Must stay in lockstep with `value`: the textarea glyphs are transparent, so this layer is what users read while typing. */
+  const backdropLines = useMemo(() => value.split("\n"), [value]);
   const totalChars = value.length;
 
   const getStyleAt = useCallback(
@@ -267,6 +270,7 @@ export function DraftEditor({
       enforceAxis();
       applyBackdropScroll(el);
       updateAddToChatAnchorRef.current();
+      setTooltip((t) => (t ? null : t));
     };
 
     const onTouchStart = (e: TouchEvent) => {
@@ -314,7 +318,33 @@ export function DraftEditor({
   useLayoutEffect(() => {
     const el = taRef.current;
     if (el) applyBackdropScroll(el);
-  }, [value, deferredBackdropText, applyBackdropScroll]);
+  }, [value, applyBackdropScroll]);
+
+  useLayoutEffect(() => {
+    const node = tooltipPopoverRef.current;
+    if (!tooltip || !node) return;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const margin = 8;
+    const offsetX = 14;
+    const offsetY = 14;
+    node.style.left = `${tooltip.anchorX + offsetX}px`;
+    node.style.top = `${tooltip.anchorY + offsetY}px`;
+    const rect = node.getBoundingClientRect();
+    const { left, top } = clampTooltipToViewport({
+      popW: rect.width,
+      popH: rect.height,
+      vw,
+      vh,
+      anchorX: tooltip.anchorX,
+      anchorY: tooltip.anchorY,
+      offsetX,
+      offsetY,
+      margin,
+    });
+    node.style.left = `${left}px`;
+    node.style.top = `${top}px`;
+  }, [tooltip]);
 
   useLayoutEffect(() => {
     const mq = window.matchMedia("(max-width: 1023px)");
@@ -402,22 +432,23 @@ export function DraftEditor({
         setTooltip(null);
         return;
       }
-      const rect = el.getBoundingClientRect();
-      const style = getComputedStyle(el);
-      const padTop = parseFloat(style.paddingTop) || 0;
-      let lh = parseFloat(style.lineHeight);
-      if (Number.isNaN(lh) || lh <= 0) {
-        const fs = parseFloat(style.fontSize) || 15;
-        lh = fs * 1.25;
+      const caretOff = caretOffsetAtViewportPoint(el, clientX, clientY);
+      let idx: number | null = null;
+      if (caretOff !== null) {
+        idx = value.slice(0, caretOff).split("\n").length - 1;
+      } else {
+        const rect = el.getBoundingClientRect();
+        const style = getComputedStyle(el);
+        const padTop = parseFloat(style.paddingTop) || 0;
+        let lh = parseFloat(style.lineHeight);
+        if (Number.isNaN(lh) || lh <= 0) {
+          const fs = parseFloat(style.fontSize) || 15;
+          lh = fs * 1.625;
+        }
+        const yIn = clientY - rect.top + el.scrollTop - padTop;
+        idx = lineIndexFromContentY(yIn, lh, lines.length);
       }
-      const yIn = clientY - rect.top + el.scrollTop - padTop;
-      if (yIn < 0) {
-        setTooltip(null);
-        return;
-      }
-      // Bias to line center so the tooltip triggers on the highlighted line itself.
-      const idx = Math.floor((yIn + lh * 0.5) / lh);
-      if (idx < 0 || idx >= lines.length) {
+      if (idx === null) {
         setTooltip(null);
         return;
       }
@@ -438,13 +469,13 @@ export function DraftEditor({
         return { label, feedback: note.feedback };
       });
       setTooltip({
-        x: clientX,
-        y: clientY,
+        anchorX: clientX,
+        anchorY: clientY,
         tier,
         entries,
       });
     },
-    [lineFeedbackByIndex, lines.length, showHighlights],
+    [lineFeedbackByIndex, lines.length, showHighlights, value],
   );
 
   const highlightLayer = useMemo(() => {
@@ -663,9 +694,10 @@ export function DraftEditor({
         >
           <div
             ref={backdropInnerRef}
-            className="inline-block min-w-full whitespace-pre p-4 text-left text-sm font-sans leading-relaxed text-zinc-100 will-change-transform lg:text-base"
+            className="inline-block min-w-full whitespace-pre p-4 max-lg:pt-8 text-left text-sm font-sans leading-[1.625] text-zinc-100 will-change-transform lg:text-base"
             style={{
               fontSize: `${uiFontSize}px`,
+              lineHeight: 1.625,
             }}
           >
             {highlightLayer}
@@ -713,7 +745,30 @@ export function DraftEditor({
           className={`pointer-events-auto relative z-20 flex-1 overflow-auto ${TEXTAREA_CLASSES}`}
           style={{
             fontSize: `${uiFontSize}px`,
+            lineHeight: 1.625,
             colorScheme: "dark",
+          }}
+          onTouchStart={(e) => {
+            if (e.touches.length !== 1) return;
+            const t = e.touches[0];
+            touchStartRef.current = { x: t.clientX, y: t.clientY };
+          }}
+          onTouchCancel={() => {
+            touchStartRef.current = null;
+          }}
+          onTouchEnd={(e) => {
+            const start = touchStartRef.current;
+            touchStartRef.current = null;
+            if (!start || e.changedTouches.length !== 1) return;
+            const t = e.changedTouches[0];
+            const dx = t.clientX - start.x;
+            const dy = t.clientY - start.y;
+            if (dx * dx + dy * dy > 12 * 12) return;
+            const cx = t.clientX;
+            const cy = t.clientY;
+            requestAnimationFrame(() => {
+              updateTooltip(cx, cy);
+            });
           }}
           placeholder={placeholder}
           aria-label={textInputAriaLabel}
@@ -722,12 +777,12 @@ export function DraftEditor({
       </div>
       {tooltip ? (
         <div
+          ref={tooltipPopoverRef}
           className={`pointer-events-none fixed z-[100] max-h-64 max-w-sm overflow-y-auto rounded-lg border-2 bg-zinc-900/95 p-3 text-xs leading-relaxed text-zinc-200 shadow-xl backdrop-blur-sm ${
             tooltip.tier === "weak" ? "border-pink-600/75"
             : tooltip.tier === "promising" ? "border-yellow-500/75"
             : "border-green-600/75"
           }`}
-          style={{ left: tooltip.x + 14, top: tooltip.y + 14 }}
         >
           {tooltip.entries.map((entry, i) => (
             <div
