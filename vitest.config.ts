@@ -1,10 +1,13 @@
 import path from "path";
+import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  plugins: [react()],
   test: {
     environment: "node",
     globals: true,
+    setupFiles: ["./tests/setupTests.ts"],
   },
   resolve: {
     alias: {

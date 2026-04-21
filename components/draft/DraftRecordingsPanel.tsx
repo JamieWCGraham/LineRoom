@@ -65,6 +65,10 @@ type Props = {
   recordings: DraftRecordingMeta[];
   onRecordingsChange: (next: DraftRecordingMeta[]) => void;
   disabled?: boolean;
+  /** On narrow screens, hide the inline mic button and show a floating mic instead. */
+  useMobileVoiceFab?: boolean;
+  /** When using the FAB, whether it is shown (e.g. only while the draft tab is active). */
+  mobileFabVisible?: boolean;
 };
 
 export function DraftRecordingsPanel({
@@ -74,6 +78,8 @@ export function DraftRecordingsPanel({
   recordings,
   onRecordingsChange,
   disabled = false,
+  useMobileVoiceFab = false,
+  mobileFabVisible = true,
 }: Props) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -919,7 +925,11 @@ export function DraftRecordingsPanel({
 
   return (
     <>
-      <div className="flex shrink-0 items-center gap-2 overflow-visible">
+      <div
+        className={`flex shrink-0 items-center gap-2 overflow-visible ${
+          useMobileVoiceFab ? "hidden lg:flex" : ""
+        }`}
+      >
         <span className="hidden whitespace-nowrap text-xs font-medium uppercase tracking-wide text-zinc-500 lg:block">
           Record
         </span>
@@ -962,6 +972,48 @@ export function DraftRecordingsPanel({
           : null}
         </button>
       </div>
+      {mounted && useMobileVoiceFab && mobileFabVisible ?
+        createPortal(
+          <button
+            type="button"
+            onClick={() => setPanelOpen(true)}
+            disabled={disabled}
+            title="Voice notes"
+            aria-label={
+              count > 0 ?
+                `Voice notes, ${count} saved`
+              : "Open voice notes"
+            }
+            className="relative fixed z-[55] flex h-14 w-14 touch-manipulation items-center justify-center rounded-full border border-amber-800/55 bg-amber-950/90 text-amber-100 shadow-lg shadow-black/40 transition hover:border-amber-600/60 hover:bg-amber-900/95 disabled:cursor-not-allowed disabled:opacity-40 lg:hidden"
+            style={{
+              right: "max(1rem, env(safe-area-inset-right, 0px))",
+              bottom:
+                "calc(4.75rem + env(safe-area-inset-bottom, 0px) + 0.75rem)",
+            }}
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Z" />
+              <path d="M19 11a7 7 0 0 1-14 0M12 18v3M8 22h8" />
+            </svg>
+            {count > 0 ?
+              <span className="absolute right-1 top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold text-white ring-2 ring-zinc-950">
+                {count > 99 ? "99+" : count}
+              </span>
+            : null}
+          </button>,
+          document.body,
+        )
+      : null}
       {overlay}
       {deleteDialog}
     </>

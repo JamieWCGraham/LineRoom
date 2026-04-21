@@ -112,13 +112,13 @@ ${critiqueBlock.trim()}
 
   const actionRules =
     payload.action === "diagnose" ?
-      `Action: DIAGNOSE (is it landing?)
-Return 2-4 concise bullets in "diagnosis" on whether the scoped lyrics land, what works, and what could improve (imagery, clarity, emotion, prosody, memorability). Be honest and practical. Omit "options" or use [].`
+      `Action: THESAURUS (synonyms / near-synonyms)
+Infer the target word or phrase from the user's message and the scoped lyrics. Return 12-22 synonym or near-synonym options in "options" (single words or very short phrases; include shades of meaning where helpful). Include a brief "summary" naming the head word you are expanding. Omit "diagnosis" or use [].`
     : payload.action === "suggest_rewrites" ?
       `Action: SUGGEST REWRITES / ALTERNATIVES
 Return exactly 3 full rewrite candidates in "options" that improve prosody and flow while preserving meaning and voice. Match approximate length of the scoped text. Optional: 1-2 short "diagnosis" points. You may set "recommendedOption" to 0, 1, or 2 if one is clearly strongest.`
-    : `Action: FIND RHYMES
-Infer the target word or ending sound from the user's message and the scoped lyrics. Return 10-18 rhyme suggestions in "options" (single words or very short phrases; group by slant/near rhymes if useful). Include a brief "summary" on the rhyme sound you're using. Omit "diagnosis" or use [].`;
+    : `Action: RHYME
+Infer the target word or ending sound from the user's message and the scoped lyrics. Return 14-24 rhyme suggestions in "options" (single words or very short phrases; include slant/near rhymes). Include a brief "summary" on the rhyme sound you're using. Omit "diagnosis" or use [].`;
 
   return `You are a songwriting collaborator. The user chose a scoped chat action in their writing tool.
 

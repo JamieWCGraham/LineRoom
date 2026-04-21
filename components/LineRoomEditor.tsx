@@ -826,7 +826,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   ]);
 
   return (
-    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-zinc-950">
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden overscroll-y-contain bg-zinc-950">
       <div className="hidden lg:block">
         <Header showDashboardLink={isSong} />
       </div>
@@ -1015,18 +1015,33 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           </aside>
         </div>
       ) : null}
-      <main className="mx-auto flex min-h-0 w-full max-w-[1920px] flex-1 flex-col overflow-hidden gap-6 p-4 pb-4 max-lg:gap-0 max-lg:overscroll-none max-lg:p-0 max-lg:pb-[calc(4.75rem+env(safe-area-inset-bottom))] max-lg:pt-2 lg:grid lg:grid-cols-[minmax(260px,320px)_minmax(0,1.35fr)_minmax(240px,320px)] lg:gap-6 lg:p-6 lg:pb-6">
+      <main className="mx-auto flex min-h-0 w-full max-w-[1920px] flex-1 flex-col overflow-hidden overscroll-y-contain gap-6 p-4 pb-4 max-lg:gap-0 max-lg:overscroll-none max-lg:p-0 max-lg:pb-[calc(4.75rem+env(safe-area-inset-bottom))] max-lg:pt-2 lg:grid lg:grid-cols-[minmax(260px,320px)_minmax(0,1.35fr)_minmax(240px,320px)] lg:gap-6 lg:p-6 lg:pb-6">
         <section className={`${mobilePane === "critique" ? "flex" : "hidden"} min-h-0 flex-1 flex-col overflow-hidden border-t border-zinc-800/80 px-4 pt-4 max-lg:px-0 max-lg:pt-0 lg:min-h-0 lg:flex lg:border-r lg:border-t-0 lg:border-zinc-800/80 lg:px-0 lg:pr-5 lg:pt-0`}>
-          <CritiqueDisplayPanel
-            critique={critique}
-            loading={critiqueLoading}
-            onRegenerate={() => requestCritique({ regenerate: true })}
-            lyricsEmpty={lyricsEmpty}
-            quotaBadge={quotaBadge}
-          />
+          {critique || critiqueLoading ?
+            <CritiqueDisplayPanel
+              critique={critique}
+              loading={critiqueLoading}
+              onRegenerate={() => requestCritique({ regenerate: true })}
+              lyricsEmpty={lyricsEmpty}
+              quotaBadge={quotaBadge}
+            />
+          : <CritiqueSetupPanel
+              similarArtists={meta.similarArtists}
+              genre={meta.genre}
+              onSimilarArtistsChange={(similarArtists) =>
+                setMeta((m) => ({ ...m, similarArtists }))
+              }
+              onGenreChange={(genre) => setMeta((m) => ({ ...m, genre }))}
+              onGenerate={() => requestCritique()}
+              loading={critiqueLoading}
+              error={critiqueError}
+              lyricsEmpty={lyricsEmpty}
+              quotaBadge={quotaBadge}
+            />
+          }
         </section>
 
-        <section className={`${mobilePane === "draft" ? "flex" : "hidden"} relative z-[1] min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-y-contain max-lg:min-h-0 max-lg:flex-1 max-lg:px-0 lg:min-h-0 lg:flex`}>
+        <section className={`${mobilePane === "draft" ? "flex" : "hidden"} relative z-[1] min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden overscroll-y-contain max-lg:min-h-0 max-lg:flex-1 max-lg:px-0 lg:min-h-0 lg:flex`}>
           {lyricDocPane === "draft" ?
             <DraftEditor
               value={fullText}
@@ -1036,7 +1051,43 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
               onMobileSave={isSong ? handleSaveVersion : undefined}
               mobileSavePending={savePending || newVersionPending}
               onDraftContextChange={setDraftContext}
-              addToChatEnabled={Boolean(critique)}
+              addToChatEnabled
+              mobileTopRow={
+                <div className="flex w-full min-w-0 items-center gap-2">
+                  <Link
+                    href={isSong ? "/" : "/lineroom"}
+                    prefetch
+                    aria-label={isSong ? "Back to dashboard" : "Back to LineRoom"}
+                    className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-zinc-700/80 bg-zinc-900/60 text-base leading-none text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800/80"
+                  >
+                    <span aria-hidden>←</span>
+                  </Link>
+                  <div className="min-w-0 flex-1">
+                    {isSong && props.mode === "song" ?
+                      <SongTitleEditor
+                        songId={props.songId}
+                        initialTitle={pieceTitle}
+                        onTitleSaved={setPieceTitle}
+                        compact
+                      />
+                    : <p className="truncate text-sm font-semibold text-zinc-100">
+                        {pieceTitle}
+                      </p>}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMobileMenuOpen(true)}
+                    className="inline-flex shrink-0 touch-manipulation items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900/70 px-2.5 py-2 text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800/80"
+                    aria-label="Open mobile controls menu"
+                  >
+                    <span className="inline-flex flex-col gap-1" aria-hidden>
+                      <span className="h-0.5 w-4 rounded bg-zinc-200" />
+                      <span className="h-0.5 w-4 rounded bg-zinc-200" />
+                      <span className="h-0.5 w-4 rounded bg-zinc-200" />
+                    </span>
+                  </button>
+                </div>
+              }
               headerLeading={lyricPaneTabs}
               onAddSelectionToChat={(sel) => {
                 setChatPinnedSelections((prev) => {
@@ -1065,6 +1116,10 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                       draftRecordings: next.length ? next : undefined,
                     }))
                   }
+                  useMobileVoiceFab
+                  mobileFabVisible={
+                    mobilePane === "draft" && lyricDocPane === "draft"
+                  }
                   disabled={
                     savePending ||
                     deleteVersionPending ||
@@ -1083,6 +1138,42 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
               copyButtonIdleLabel="Copy"
               placeholder="Ideas, word lists, alternate lines…"
               textInputAriaLabel="Brainstorm notes"
+              mobileTopRow={
+                <div className="flex w-full min-w-0 items-center gap-2">
+                  <Link
+                    href={isSong ? "/" : "/lineroom"}
+                    prefetch
+                    aria-label={isSong ? "Back to dashboard" : "Back to LineRoom"}
+                    className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-zinc-700/80 bg-zinc-900/60 text-base leading-none text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800/80"
+                  >
+                    <span aria-hidden>←</span>
+                  </Link>
+                  <div className="min-w-0 flex-1">
+                    {isSong && props.mode === "song" ?
+                      <SongTitleEditor
+                        songId={props.songId}
+                        initialTitle={pieceTitle}
+                        onTitleSaved={setPieceTitle}
+                        compact
+                      />
+                    : <p className="truncate text-sm font-semibold text-zinc-100">
+                        {pieceTitle}
+                      </p>}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMobileMenuOpen(true)}
+                    className="inline-flex shrink-0 touch-manipulation items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900/70 px-2.5 py-2 text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800/80"
+                    aria-label="Open mobile controls menu"
+                  >
+                    <span className="inline-flex flex-col gap-1" aria-hidden>
+                      <span className="h-0.5 w-4 rounded bg-zinc-200" />
+                      <span className="h-0.5 w-4 rounded bg-zinc-200" />
+                      <span className="h-0.5 w-4 rounded bg-zinc-200" />
+                    </span>
+                  </button>
+                </div>
+              }
               headerLeading={lyricPaneTabs}
               onMobileSave={isSong ? handleSaveVersion : undefined}
               mobileSavePending={savePending || newVersionPending}
@@ -1097,77 +1188,48 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
         </section>
 
         <section className={`${mobilePane === "chat" ? "flex" : "hidden"} min-h-0 flex-1 flex-col overflow-hidden border-t border-zinc-800/80 px-4 pt-4 max-lg:px-0 max-lg:pt-0 lg:min-h-0 lg:flex lg:border-l lg:border-t-0 lg:border-zinc-800/80 lg:px-0 lg:pl-5 lg:pt-0 lg:opacity-95`}>
-          {critique ?
-            <LyricChatPanel
-              fullText={fullText}
-              pieceTitle={pieceTitle}
-              messages={chatMessages}
-              onMessagesChange={setChatMessages}
-              onClearMessages={() => setChatMessages([])}
-              critique={critique}
-              critiqueMeta={meta}
-              onCritiqueMetaChange={setMeta}
-              draftContext={draftContext}
-              pinnedSelections={chatPinnedSelections}
-              onClearPinnedSelections={() => setChatPinnedSelections([])}
-              onRemovePinnedSelection={(index) =>
-                setChatPinnedSelections((prev) =>
-                  prev.filter((_, i) => i !== index),
-                )
-              }
-            />
-          : <CritiqueSetupPanel
-              similarArtists={meta.similarArtists}
-              genre={meta.genre}
-              onSimilarArtistsChange={(similarArtists) =>
-                setMeta((m) => ({ ...m, similarArtists }))
-              }
-              onGenreChange={(genre) => setMeta((m) => ({ ...m, genre }))}
-              onGenerate={() => requestCritique()}
-              loading={critiqueLoading}
-              error={critiqueError}
-              lyricsEmpty={lyricsEmpty}
-              quotaBadge={quotaBadge}
-            />
-          }
+          <LyricChatPanel
+            fullText={fullText}
+            pieceTitle={pieceTitle}
+            messages={chatMessages}
+            onMessagesChange={setChatMessages}
+            onClearMessages={() => setChatMessages([])}
+            critique={critique}
+            critiqueMeta={meta}
+            onCritiqueMetaChange={setMeta}
+            draftContext={draftContext}
+            pinnedSelections={chatPinnedSelections}
+            onClearPinnedSelections={() => setChatPinnedSelections([])}
+            onRemovePinnedSelection={(index) =>
+              setChatPinnedSelections((prev) =>
+                prev.filter((_, i) => i !== index),
+              )
+            }
+          />
         </section>
       </main>
       <div className="fixed inset-x-0 bottom-0 z-[50] shrink-0 border-t border-zinc-800/80 bg-zinc-950/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md lg:hidden">
-        <div className="mx-auto flex w-full max-w-[1920px] items-center justify-between gap-3">
-          <div className="grid flex-1 grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => setMobilePane("critique")}
-              className={mobilePane === "critique" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
-            >
-              Critique
-            </button>
-            <button
-              type="button"
-              onClick={() => setMobilePane("draft")}
-              className={mobilePane === "draft" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
-            >
-              Draft
-            </button>
-            <button
-              type="button"
-              onClick={() => setMobilePane("chat")}
-              className={mobilePane === "chat" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
-            >
-              Chat
-            </button>
-          </div>
+        <div className="mx-auto grid w-full max-w-[1920px] grid-cols-3 gap-2">
           <button
             type="button"
-            onClick={() => setMobileMenuOpen(true)}
-            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900/70 px-3 py-2 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800/80"
-            aria-label="Open mobile controls menu"
+            onClick={() => setMobilePane("critique")}
+            className={mobilePane === "critique" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
           >
-            <span className="inline-flex flex-col gap-1" aria-hidden>
-              <span className="h-0.5 w-4 rounded bg-zinc-200" />
-              <span className="h-0.5 w-4 rounded bg-zinc-200" />
-              <span className="h-0.5 w-4 rounded bg-zinc-200" />
-            </span>
+            Critique
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobilePane("draft")}
+            className={mobilePane === "draft" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
+          >
+            Draft
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobilePane("chat")}
+            className={mobilePane === "chat" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
+          >
+            Chat
           </button>
         </div>
       </div>

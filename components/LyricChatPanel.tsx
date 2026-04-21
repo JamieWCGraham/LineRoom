@@ -28,20 +28,20 @@ const CHAT_ACTIONS: {
 }[] = [
   {
     id: "find_rhymes",
-    title: "Find rhymes",
-    example: "e.g. Find words that rhyme with “flat”",
+    title: "Rhyme",
+    example: "e.g. Words that rhyme with your ending sound (shown in a grid)",
   },
   {
     id: "suggest_rewrites",
-    title: "Suggest rewrites",
+    title: "Suggestions",
     example:
       "e.g. Suggest rewrites or alternatives to this line improving prosody while retaining meaning",
   },
   {
     id: "diagnose",
-    title: "Diagnose",
+    title: "Thesaurus",
     example:
-      "e.g. Is this selection landing? Let me know if it could be better.",
+      "e.g. Give me other words that mean something similar to this word",
   },
 ];
 
@@ -51,7 +51,8 @@ type Props = {
   messages: ChatMessage[];
   onMessagesChange: (next: ChatMessage[]) => void;
   onClearMessages: () => void;
-  critique: CritiqueResult;
+  /** When null (before the first critique), chat still works; structured critique context is omitted. */
+  critique: CritiqueResult | null;
   critiqueMeta: CritiqueMeta;
   onCritiqueMetaChange: (next: CritiqueMeta) => void;
   draftContext: DraftEditorContext;
@@ -202,7 +203,7 @@ export function LyricChatPanel({
         action: selectedChatAction,
         scope: chatScope,
         draft: fullText,
-        critique,
+        critique: critique ?? undefined,
         selections: hasPinned ? trimmedPins : null,
         section: sectionBlock,
         userMessage: trimmed,
@@ -226,7 +227,7 @@ export function LyricChatPanel({
           fullText,
           pieceTitle,
           messages: nextHistory,
-          critique,
+          ...(critique ? { critique } : {}),
           critiqueMeta,
           ...(chatActionPayload ? { chatAction: chatActionPayload } : {}),
         }),

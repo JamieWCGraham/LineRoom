@@ -52,6 +52,8 @@ type Props = {
   /** Rendered between the toolbar and the editor (e.g. short notice). */
   bodyPrefix?: ReactNode;
   textInputAriaLabel?: string;
+  /** Extra row at top of the fixed mobile toolbar (e.g. back, title, menu). */
+  mobileTopRow?: ReactNode;
 };
 
 /** Synthetic overlay: hide glyphs in WebKit (caret stays visible); other engines use caret-color + transparent color. */
@@ -80,6 +82,7 @@ export function DraftEditor({
   placeholder = "Paste or write your full lyrics/poetry draft…",
   bodyPrefix,
   textInputAriaLabel,
+  mobileTopRow,
 }: Props) {
   type StyleOp = {
     start: number;
@@ -110,7 +113,6 @@ export function DraftEditor({
   const [styleOps, setStyleOps] = useState<StyleOp[]>([]);
   const [showHighlights, setShowHighlights] = useState(true);
   const [copyLabel, setCopyLabel] = useState(copyButtonIdleLabel);
-  const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
   /** `top` = popover bottom Y; `rightX` = selection top-right X (use translate(-100%, -100%)). */
   const [addToChatAnchor, setAddToChatAnchor] = useState<{
     top: number;
@@ -369,7 +371,7 @@ export function DraftEditor({
       ro.disconnect();
       mq.removeEventListener("change", update);
     };
-  }, [mobileControlsOpen]);
+  }, []);
 
   useEffect(() => {
     if (lineFeedbackAutoShowKey) {
@@ -630,6 +632,11 @@ export function DraftEditor({
         ref={mobileToolbarRef}
         className="flex shrink-0 flex-col gap-2 border-b border-transparent max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-[50] max-lg:border-zinc-800/60 max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pb-2 max-lg:pt-[max(0.5rem,env(safe-area-inset-top))] max-lg:backdrop-blur-md lg:relative lg:border-b-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0"
       >
+        {mobileTopRow ? (
+          <div className="flex shrink-0 flex-col gap-2 border-b border-zinc-800/40 pb-2 lg:hidden">
+            {mobileTopRow}
+          </div>
+        ) : null}
         <div className="flex shrink-0 items-center justify-between gap-2">
           {headerLeading ?? (
             <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
@@ -638,14 +645,6 @@ export function DraftEditor({
           )}
           <div className="flex min-w-0 shrink-0 items-center gap-2">
             <div className="order-2 flex items-center gap-2 lg:order-none lg:hidden">
-              <button
-                type="button"
-                onClick={() => setMobileControlsOpen((v) => !v)}
-                className="rounded-full border border-zinc-700/70 bg-transparent px-2.5 py-1 text-xs font-medium text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-900/30"
-                aria-label={mobileControlsOpen ? "Hide Tools" : "Show Tools"}
-              >
-                {mobileControlsOpen ? "Hide Tools" : "Show Tools"}
-              </button>
               {onMobileSave ? (
                 <button
                   type="button"
@@ -658,29 +657,19 @@ export function DraftEditor({
               ) : null}
             </div>
             {headerTrailing ?
-              <div className="order-1 shrink-0 lg:order-none">
-                {headerTrailing}
-              </div>
+              <div className="order-1 shrink-0 lg:order-none">{headerTrailing}</div>
             : null}
           </div>
         </div>
         {bodyPrefix ?
           <div className="shrink-0">{bodyPrefix}</div>
         : null}
-        {mobileControlsOpen ? (
-          <div
-            aria-hidden
-            className="hidden max-lg:block max-lg:shrink-0 max-lg:h-px max-lg:w-auto max-lg:-mx-4 max-lg:bg-zinc-500 max-lg:shadow-[0_1px_0_0_rgba(255,255,255,0.08)]"
-          />
-        ) : null}
         <div className="hidden shrink-0 flex-wrap items-center gap-2 lg:flex">
           {renderControls(controlButtonClasses)}
         </div>
-        {mobileControlsOpen ? (
-          <div className="flex shrink-0 flex-wrap items-center gap-2 lg:hidden">
-            {renderControls(controlButtonClasses)}
-          </div>
-        ) : null}
+        <div className="flex shrink-0 flex-wrap items-center gap-2 lg:hidden">
+          {renderControls(controlButtonClasses)}
+        </div>
       </div>
       <div
         className="shrink-0 lg:hidden"

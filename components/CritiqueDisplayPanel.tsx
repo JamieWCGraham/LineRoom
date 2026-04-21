@@ -71,13 +71,6 @@ export function CritiqueDisplayPanel({
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-none px-3 pt-3 [touch-action:pan-y] lg:pb-3 max-lg:pb-0">
-        {!critique && !loading ? (
-          <p className="text-center text-sm leading-relaxed text-zinc-600">
-            Your critique will appear here after you click{" "}
-            <span className="text-zinc-500">Generate Critique</span> in the Chat panel.
-          </p>
-        ) : null}
-
         {loading && !critique ? (
           <p className="inline-flex items-center gap-2 text-sm text-zinc-500">
             <span

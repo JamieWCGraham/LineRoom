@@ -9,12 +9,15 @@ type Props = {
   initialTitle: string;
   /** Called after a successful save with the normalized title (before refresh). */
   onTitleSaved?: (title: string) => void;
+  /** Tighter layout for mobile toolbars (tap title to edit). */
+  compact?: boolean;
 };
 
 export function SongTitleEditor({
   songId,
   initialTitle,
   onTitleSaved,
+  compact = false,
 }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -65,6 +68,23 @@ export function SongTitleEditor({
     "shrink-0 rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-900 hover:bg-white disabled:opacity-40";
 
   if (!editing) {
+    if (compact) {
+      return (
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <button
+            type="button"
+            onClick={beginEdit}
+            title="Edit title"
+            className="min-w-0 truncate text-left text-sm font-semibold text-zinc-100 transition hover:text-amber-100/90"
+          >
+            {initialTitle.trim() || "Untitled piece"}
+          </button>
+          {error ?
+            <p className="truncate text-[10px] text-red-400">{error}</p>
+          : null}
+        </div>
+      );
+    }
     return (
       <div className="flex min-w-0 max-w-xl flex-col gap-1">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -87,8 +107,20 @@ export function SongTitleEditor({
   }
 
   return (
-    <div className="flex min-w-0 max-w-xl flex-col gap-2">
-      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+    <div
+      className={
+        compact ?
+          "flex min-w-0 flex-1 flex-col gap-1.5"
+        : "flex min-w-0 max-w-xl flex-col gap-2"
+      }
+    >
+      <div
+        className={
+          compact ?
+            "flex min-w-0 flex-col gap-1.5"
+          : "flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center"
+        }
+      >
         <label className="sr-only" htmlFor={`song-title-${songId}`}>
           Piece title
         </label>
@@ -108,16 +140,20 @@ export function SongTitleEditor({
             }
           }}
           maxLength={200}
-          className={inputClass}
+          className={
+            compact ?
+              `${inputClass} py-1 text-xs`
+            : inputClass
+          }
           placeholder="Piece title"
           autoFocus
         />
-        <div className="flex shrink-0 flex-wrap gap-2">
+        <div className="flex shrink-0 flex-wrap gap-1.5">
           <button
             type="button"
             onClick={cancelEdit}
             disabled={pending}
-            className={btnSecondary}
+            className={compact ? `${btnSecondary} px-2 py-0.5 text-[10px]` : btnSecondary}
           >
             Cancel
           </button>
@@ -125,7 +161,7 @@ export function SongTitleEditor({
             type="button"
             onClick={save}
             disabled={!dirty || pending}
-            className={btnPrimary}
+            className={compact ? `${btnPrimary} px-2 py-0.5 text-[10px]` : btnPrimary}
           >
             {pending ? "Saving…" : "Save title"}
           </button>

@@ -60,13 +60,13 @@ export function prefillChatAction(
     case "diagnose": {
       if (scope === "selection") {
         return multi ?
-            "Are these excerpts landing? Let me know if they could be better."
-          : "Is this selection landing? Let me know if it could be better.";
+            "Give me other words that mean something similar to the main word or phrase in these excerpts."
+          : "Give me other words that mean something similar to the main word or phrase in this selection.";
       }
       if (scope === "section") {
-        return "Is this section landing? Let me know if it could be better.";
+        return "Give me other words that mean something similar to the main word or phrase in this section.";
       }
-      return "Does this draft land? Let me know what could be stronger.";
+      return "Give me other words that mean something similar to the main word or phrase in this draft.";
     }
   }
 }
