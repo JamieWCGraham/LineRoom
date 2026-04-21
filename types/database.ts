@@ -37,6 +37,8 @@ export type SongVersionRow = {
   critique: unknown;
   meta: unknown;
   created_at: string;
+  /** Increments on each successful server persist for this version row (optimistic concurrency). */
+  save_sub_revision?: number;
 };
 
 /** Stripe subscription statuses we persist in the `subscriptions` table. */

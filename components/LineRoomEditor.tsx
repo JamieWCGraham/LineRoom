@@ -14,8 +14,14 @@ import type { CritiqueAccessState } from "@/lib/billing/types";
 import { UpgradeModal } from "@/components/billing/UpgradeModal";
 import { CritiqueDisplayPanel } from "@/components/CritiqueDisplayPanel";
 import { CritiqueSetupPanel } from "@/components/CritiqueSetupPanel";
-import { DraftRecordingsPanel } from "@/components/draft/DraftRecordingsPanel";
-import { DraftEditor } from "@/components/DraftEditor";
+import {
+  DraftRecordingsPanel,
+  type DraftRecordingsPanelHandle,
+} from "@/components/draft/DraftRecordingsPanel";
+import {
+  DraftEditor,
+  type DraftEditorHandle,
+} from "@/components/DraftEditor";
 import { Header } from "@/components/Header";
 import { LyricChatPanel } from "@/components/LyricChatPanel";
 import { SongTitleEditor } from "@/components/songs/song-title-editor";
@@ -118,6 +124,7 @@ type SongProps = {
   initialChatMessages: ChatMessage[];
   initialCritique: CritiqueResult | null;
   initialMeta: CritiqueMeta;
+  initialSaveSubRevision: number;
 };
 
 export type LineRoomEditorProps = LocalProps | SongProps;
@@ -141,8 +148,8 @@ function SongVersionBar(props: {
   deleteVersionError: string | null;
   canDeleteActiveVersion: boolean;
   editorBusy: boolean;
+  persistInFlight: boolean;
 }) {
-  const active = props.versions.find((v) => v.id === props.activeVersionId);
   return (
     <div className="shrink-0 border-b border-zinc-800/80 bg-zinc-950/95 px-4 py-3 backdrop-blur-sm">
       <div className="mx-auto flex max-w-[1920px] flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -152,11 +159,6 @@ function SongVersionBar(props: {
             initialTitle={props.initialSongTitle}
             onTitleSaved={props.onPieceTitleSaved}
           />
-          <p className="mt-2 text-xs text-zinc-500">
-            {active ?
-              `Version ${active.versionNumber} · ${new Date(active.createdAt).toLocaleString()}`
-            : "Versions"}
-          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <label className="flex shrink-0 items-center gap-2 text-xs text-zinc-400">
@@ -166,6 +168,7 @@ function SongVersionBar(props: {
               onChange={(e) => props.onSelectVersion(e.target.value)}
               disabled={
                 props.deleteVersionPending ||
+                props.persistInFlight ||
                 props.savePending ||
                 props.newVersionPending ||
                 props.editorBusy
@@ -188,10 +191,11 @@ function SongVersionBar(props: {
             disabled={
               props.savePending ||
               props.deleteVersionPending ||
+              props.persistInFlight ||
               props.newVersionPending ||
               props.editorBusy
             }
-            title="Save draft, chat, and critique to the selected version. Does not create a new version."
+            title="Save draft, chat, and critique to the selected version now. Also happens automatically while you work."
             className="shrink-0 rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-400 disabled:opacity-50"
           >
             {props.savePending ? "Saving…" : "Save"}
@@ -201,6 +205,7 @@ function SongVersionBar(props: {
             onClick={props.onNewVersion}
             disabled={
               props.savePending ||
+              props.persistInFlight ||
               props.deleteVersionPending ||
               props.newVersionPending ||
               props.editorBusy
@@ -217,6 +222,7 @@ function SongVersionBar(props: {
               !props.canDeleteActiveVersion ||
               props.deleteVersionPending ||
               props.savePending ||
+              props.persistInFlight ||
               props.newVersionPending ||
               props.editorBusy
             }
@@ -269,10 +275,14 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   const [deleteVersionError, setDeleteVersionError] = useState<string | null>(
     null,
   );
-  const [savePending, startSaveTransition] = useTransition();
   const [newVersionPending, startNewVersionTransition] = useTransition();
   const [deleteVersionPending, startDeleteVersionTransition] = useTransition();
+  const [savePending, startSaveTransition] = useTransition();
   const [autosaveError, setAutosaveError] = useState<string | null>(null);
+  const [serverSubRevision, setServerSubRevision] = useState(
+    isSong ? props.initialSaveSubRevision : 0,
+  );
+  const [persistInFlightCount, setPersistInFlightCount] = useState(0);
   const [mobilePane, setMobilePane] = useState<MobilePane>("draft");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileTitleEditorOpen, setMobileTitleEditorOpen] = useState(false);
@@ -299,10 +309,21 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
    * previous snapshot after saveNewSongVersion inserts a new row).
    */
   const versionRowPersistLockRef = useRef(false);
+  const serverSubRevisionRef = useRef(serverSubRevision);
+  const lastPersistedPayloadRef = useRef<string | null>(null);
+  const persistPausedRef = useRef(false);
+  const latestPayloadRef = useRef("");
+  const persistDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const persistChainRef = useRef(Promise.resolve());
+  const lyricDraftEditorRef = useRef<DraftEditorHandle>(null);
+  const voiceNotesRef = useRef<DraftRecordingsPanelHandle>(null);
 
   useEffect(() => {
     activeVersionIdRef.current = activeVersionId;
   }, [activeVersionId]);
+  useEffect(() => {
+    serverSubRevisionRef.current = serverSubRevision;
+  }, [serverSubRevision]);
   const priorVersionsContext = useMemo(
     () => (props.mode === "song" ? props.priorVersionsContext : []),
     [props],
@@ -534,13 +555,46 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     [brainstormText, chatMessages, critique, fullText, meta],
   );
 
+  useEffect(() => {
+    latestPayloadRef.current = autosavePayload;
+  }, [autosavePayload]);
+
+  if (isSong && lastPersistedPayloadRef.current === null) {
+    lastPersistedPayloadRef.current = autosavePayload;
+  }
+
+  const songLocalCacheKey = useMemo(() => {
+    if (!isSong || !songId || !activeVersionId) return null;
+    return `lineroom_song_version_cache_${songId}_${activeVersionId}`;
+  }, [activeVersionId, isSong, songId]);
+
+  useEffect(() => {
+    if (!songLocalCacheKey) return;
+    try {
+      localStorage.setItem(songLocalCacheKey, autosavePayload);
+    } catch {
+      /* ignore */
+    }
+  }, [autosavePayload, songLocalCacheKey]);
+
   const persistSongState = useCallback(
     async (nextCritique?: CritiqueResult | null) => {
-      if (!isSong) return;
-      if (versionRowPersistLockRef.current) return;
+      if (!isSong) {
+        return {
+          ok: false as const,
+          message: "persistSongState called outside song mode",
+        };
+      }
+      if (versionRowPersistLockRef.current) {
+        return { ok: false as const, message: "locked" };
+      }
       const versionIdAtStart = activeVersionIdRef.current;
-      if (!songId || !versionIdAtStart) return;
-      setAutosaveError(null);
+      if (!songId || !versionIdAtStart) {
+        return { ok: false as const, message: "missing" };
+      }
+      if (persistPausedRef.current) {
+        return { ok: false as const, message: "paused" };
+      }
       const payload = {
         draft_text: fullText,
         brainstorm_text: brainstormText,
@@ -548,35 +602,106 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
         critique: nextCritique === undefined ? critique : nextCritique,
         meta,
       };
-      if (versionRowPersistLockRef.current) return;
-      if (activeVersionIdRef.current !== versionIdAtStart) return;
-      const result = await updateSongVersionState(
-        songId,
-        versionIdAtStart,
-        payload,
-      );
+      const payloadStr = JSON.stringify({
+        draft_text: payload.draft_text,
+        brainstorm_text: payload.brainstorm_text,
+        chat_messages: payload.chat_messages,
+        critique: payload.critique,
+        meta: payload.meta,
+      });
+      if (versionRowPersistLockRef.current) {
+        return { ok: false as const, message: "locked" };
+      }
+      if (activeVersionIdRef.current !== versionIdAtStart) {
+        return { ok: false as const, message: "version switched" };
+      }
+      const expected = serverSubRevisionRef.current;
+      const result = await updateSongVersionState(songId, versionIdAtStart, payload, {
+        expectedSubRevision: expected,
+      });
       if (
         versionRowPersistLockRef.current ||
         activeVersionIdRef.current !== versionIdAtStart
       ) {
-        return;
+        return { ok: false as const, message: "aborted" };
       }
       if (!result.ok) {
-        setAutosaveError(result.message);
+        if (result.reason === "stale") {
+          persistPausedRef.current = true;
+          if (typeof result.currentSubRevision === "number") {
+            setServerSubRevision(result.currentSubRevision);
+            serverSubRevisionRef.current = result.currentSubRevision;
+          }
+        }
+        return result;
       }
+      lastPersistedPayloadRef.current = payloadStr;
+      setServerSubRevision(result.newSubRevision);
+      serverSubRevisionRef.current = result.newSubRevision;
+      return result;
     },
     [brainstormText, chatMessages, critique, fullText, isSong, meta, songId],
   );
 
+  const flushPersist = useCallback(() => {
+    if (!isSong) return;
+    persistChainRef.current = persistChainRef.current.then(async () => {
+      if (persistPausedRef.current || versionRowPersistLockRef.current) return;
+      if (persistDebounceRef.current) {
+        clearTimeout(persistDebounceRef.current);
+        persistDebounceRef.current = null;
+      }
+      const snap = latestPayloadRef.current;
+      if (snap === lastPersistedPayloadRef.current) return;
+      setPersistInFlightCount((c) => c + 1);
+      setAutosaveError(null);
+      try {
+        const result = await persistSongState();
+        if (!result.ok && result.message !== "aborted" && result.message !== "locked") {
+          if ("message" in result) setAutosaveError(result.message);
+        } else {
+          setAutosaveError(null);
+        }
+      } catch {
+        setAutosaveError("Could not reach the server to save.");
+      } finally {
+        setPersistInFlightCount((c) => c - 1);
+      }
+    }).catch(() => {});
+  }, [isSong, persistSongState]);
+
   useEffect(() => {
     if (!isSong) return;
+    if (persistPausedRef.current || versionRowPersistLockRef.current) return;
+    if (autosavePayload === lastPersistedPayloadRef.current) return;
 
-    const t = setTimeout(() => {
-      void persistSongState();
-    }, 1000);
+    if (persistDebounceRef.current) clearTimeout(persistDebounceRef.current);
+    persistDebounceRef.current = setTimeout(() => {
+      persistDebounceRef.current = null;
+      void flushPersist();
+    }, 800);
 
-    return () => clearTimeout(t);
-  }, [autosavePayload, isSong, persistSongState]);
+    return () => {
+      if (persistDebounceRef.current) {
+        clearTimeout(persistDebounceRef.current);
+        persistDebounceRef.current = null;
+      }
+    };
+  }, [autosavePayload, flushPersist, isSong]);
+
+  useEffect(() => {
+    if (!isSong) return;
+    const onVis = () => {
+      if (document.visibilityState === "hidden") void flushPersist();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [flushPersist, isSong]);
+
+  useEffect(() => {
+    if (!isSong) return;
+    void flushPersist();
+  }, [flushPersist, isSong, mobilePane, lyricDocPane]);
 
   const runCritique = useCallback(
     async (options?: { regenerate?: boolean }) => {
@@ -669,12 +794,22 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
             songId,
             activeVersionId,
             payload,
+            { expectedSubRevision: serverSubRevisionRef.current },
           );
           if (!saveCurrentResult.ok) {
             versionRowPersistLockRef.current = false;
             setSaveError(saveCurrentResult.message);
             return;
           }
+          setServerSubRevision(saveCurrentResult.newSubRevision);
+          serverSubRevisionRef.current = saveCurrentResult.newSubRevision;
+          lastPersistedPayloadRef.current = JSON.stringify({
+            draft_text: payload.draft_text,
+            brainstorm_text: payload.brainstorm_text,
+            chat_messages: payload.chat_messages,
+            critique: payload.critique,
+            meta: payload.meta,
+          });
           const bumpResult = await saveNewSongVersion(songId, payload);
           if (!bumpResult.ok) {
             versionRowPersistLockRef.current = false;
@@ -683,8 +818,11 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           }
           router.replace(`/song/${songId}?v=${bumpResult.versionId}`);
           await router.refresh();
-        } else {
-          await persistSongState(nextCritique);
+        } else if (isSong) {
+          const persistResult = await persistSongState(nextCritique);
+          if (!persistResult.ok && persistResult.message !== "locked") {
+            setSaveError(persistResult.message);
+          }
         }
       } catch {
         setCritiqueError("Network error.");
@@ -757,17 +895,42 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     if (!songId || !activeVersionId) return;
     setSaveError(null);
     startSaveTransition(async () => {
-      const result = await updateSongVersionState(songId, activeVersionId, {
+      await new Promise<void>((resolve) => {
+        persistChainRef.current = persistChainRef.current.then(() => {
+          resolve();
+        });
+      });
+      const payload = {
         draft_text: fullText,
         brainstorm_text: brainstormText,
         chat_messages: chatMessages,
         critique,
         meta,
+      };
+      const result = await updateSongVersionState(songId, activeVersionId, payload, {
+        expectedSubRevision: serverSubRevisionRef.current,
       });
       if (!result.ok) {
         setSaveError(result.message);
+        if (result.reason === "stale") {
+          persistPausedRef.current = true;
+          if (typeof result.currentSubRevision === "number") {
+            setServerSubRevision(result.currentSubRevision);
+            serverSubRevisionRef.current = result.currentSubRevision;
+          }
+        }
         return;
       }
+      setServerSubRevision(result.newSubRevision);
+      serverSubRevisionRef.current = result.newSubRevision;
+      lastPersistedPayloadRef.current = JSON.stringify({
+        draft_text: payload.draft_text,
+        brainstorm_text: payload.brainstorm_text,
+        chat_messages: payload.chat_messages,
+        critique: payload.critique,
+        meta: payload.meta,
+      });
+      setAutosaveError(null);
       await router.refresh();
     });
   }, [
@@ -779,6 +942,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     meta,
     router,
     songId,
+    startSaveTransition,
   ]);
 
   const handleNewVersion = useCallback(() => {
@@ -798,11 +962,21 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           songId,
           activeVersionId,
           payload,
+          { expectedSubRevision: serverSubRevisionRef.current },
         );
         if (!saveCurrentResult.ok) {
           setSaveError(saveCurrentResult.message);
           return;
         }
+        setServerSubRevision(saveCurrentResult.newSubRevision);
+        serverSubRevisionRef.current = saveCurrentResult.newSubRevision;
+        lastPersistedPayloadRef.current = JSON.stringify({
+          draft_text: payload.draft_text,
+          brainstorm_text: payload.brainstorm_text,
+          chat_messages: payload.chat_messages,
+          critique: payload.critique,
+          meta: payload.meta,
+        });
         const bumpResult = await saveNewSongVersion(songId, payload);
         if (!bumpResult.ok) {
           setSaveError(bumpResult.message);
@@ -824,6 +998,8 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     router,
     songId,
   ]);
+
+  const persistInFlight = persistInFlightCount > 0;
 
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden overscroll-y-contain bg-zinc-950">
@@ -848,13 +1024,17 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           deleteVersionPending={deleteVersionPending}
           deleteVersionError={deleteVersionError}
           canDeleteActiveVersion={props.versions.length > 1}
-          editorBusy={critiqueLoading || newVersionPending}
+          editorBusy={critiqueLoading || newVersionPending || savePending}
+          persistInFlight={persistInFlight}
         />
         </div>
       : null}
       {isSong && autosaveError ? (
-        <div className="border-b border-red-900/40 bg-red-950/20 px-4 py-2 text-xs text-red-300">
-          Autosave failed: {autosaveError}
+        <div
+          role="alert"
+          className="shrink-0 border-b border-red-900/50 bg-red-950/35 px-4 py-2 text-center text-xs text-red-200/95"
+        >
+          {autosaveError}
         </div>
       ) : null}
       {mobileMenuOpen ? (
@@ -943,6 +1123,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                     disabled={
                       deleteVersionPending ||
                       savePending ||
+                      persistInFlight ||
                       newVersionPending ||
                       critiqueLoading
                     }
@@ -968,13 +1149,14 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                     }}
                     disabled={
                       savePending ||
+                      persistInFlight ||
                       deleteVersionPending ||
                       newVersionPending ||
                       critiqueLoading
                     }
                     className="w-full rounded-lg bg-blue-700 px-4 py-3 text-base font-medium text-white shadow-sm transition hover:bg-blue-600 active:bg-blue-700/90 disabled:opacity-50"
                   >
-                    {savePending ? "Saving..." : "Save"}
+                    {savePending ? "Saving…" : "Save now"}
                   </button>
                   <button
                     type="button"
@@ -984,6 +1166,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                     }}
                     disabled={
                       savePending ||
+                      persistInFlight ||
                       deleteVersionPending ||
                       newVersionPending ||
                       critiqueLoading
@@ -1002,6 +1185,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                       props.versions.length <= 1 ||
                       deleteVersionPending ||
                       savePending ||
+                      persistInFlight ||
                       newVersionPending ||
                       critiqueLoading
                     }
@@ -1044,16 +1228,17 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
         <section className={`${mobilePane === "draft" ? "flex" : "hidden"} relative z-[1] min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden overscroll-y-contain max-lg:min-h-0 max-lg:flex-1 max-lg:px-0 lg:min-h-0 lg:flex`}>
           {lyricDocPane === "draft" ?
             <DraftEditor
+              ref={lyricDraftEditorRef}
               value={fullText}
               onChange={setFullText}
               lineFeedbackByIndex={lineFeedbackByIndex}
               lineFeedbackAutoShowKey={lineFeedbackAutoShowKey}
-              onMobileSave={isSong ? handleSaveVersion : undefined}
-              mobileSavePending={savePending || newVersionPending}
+              onPersistFlush={isSong ? flushPersist : undefined}
+              externalMobileToolsTrigger={isSong}
               onDraftContextChange={setDraftContext}
               addToChatEnabled
               mobileTopRow={
-                <div className="flex w-full min-w-0 items-center gap-2">
+                <div className="flex w-full min-w-0 items-center gap-1.5">
                   <Link
                     href={isSong ? "/" : "/lineroom"}
                     prefetch
@@ -1074,10 +1259,33 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                         {pieceTitle}
                       </p>}
                   </div>
+                  {isSong && props.mode === "song" ?
+                    <button
+                      type="button"
+                      onClick={() => lyricDraftEditorRef.current?.toggleMobileTools()}
+                      className="inline-flex h-[42px] min-h-[42px] min-w-[42px] shrink-0 touch-manipulation items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900/70 px-2.5 py-2 text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800/80"
+                      aria-label="Open or close draft tools"
+                    >
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden
+                      >
+                        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    </button>
+                  : null}
                   <button
                     type="button"
                     onClick={() => setMobileMenuOpen(true)}
-                    className="inline-flex shrink-0 touch-manipulation items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900/70 px-2.5 py-2 text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800/80"
+                    className="inline-flex h-[42px] min-h-[42px] min-w-[42px] shrink-0 touch-manipulation items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900/70 px-2.5 py-2 text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800/80"
                     aria-label="Open mobile controls menu"
                   >
                     <span className="inline-flex flex-col gap-1" aria-hidden>
@@ -1106,6 +1314,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
               }}
               headerTrailing={
                 <DraftRecordingsPanel
+                  ref={voiceNotesRef}
                   storageMode={isSong ? "cloud" : "local"}
                   songId={songId ?? undefined}
                   versionId={activeVersionId ?? undefined}
@@ -1117,11 +1326,13 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                     }))
                   }
                   useMobileVoiceFab
+                  suppressMobileFloatingFab={isSong}
                   mobileFabVisible={
                     mobilePane === "draft" && lyricDocPane === "draft"
                   }
                   disabled={
                     savePending ||
+                    persistInFlight ||
                     deleteVersionPending ||
                     newVersionPending ||
                     critiqueLoading
@@ -1130,6 +1341,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
               }
             />
           : <DraftEditor
+              ref={lyricDraftEditorRef}
               value={brainstormText}
               onChange={setBrainstormText}
               lineFeedbackByIndex={EMPTY_LINE_FEEDBACK}
@@ -1138,8 +1350,10 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
               copyButtonIdleLabel="Copy"
               placeholder="Ideas, word lists, alternate lines…"
               textInputAriaLabel="Brainstorm notes"
+              onPersistFlush={isSong ? flushPersist : undefined}
+              externalMobileToolsTrigger={isSong}
               mobileTopRow={
-                <div className="flex w-full min-w-0 items-center gap-2">
+                <div className="flex w-full min-w-0 items-center gap-1.5">
                   <Link
                     href={isSong ? "/" : "/lineroom"}
                     prefetch
@@ -1160,10 +1374,33 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                         {pieceTitle}
                       </p>}
                   </div>
+                  {isSong && props.mode === "song" ?
+                    <button
+                      type="button"
+                      onClick={() => lyricDraftEditorRef.current?.toggleMobileTools()}
+                      className="inline-flex h-[42px] min-h-[42px] min-w-[42px] shrink-0 touch-manipulation items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900/70 px-2.5 py-2 text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800/80"
+                      aria-label="Open or close draft tools"
+                    >
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden
+                      >
+                        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    </button>
+                  : null}
                   <button
                     type="button"
                     onClick={() => setMobileMenuOpen(true)}
-                    className="inline-flex shrink-0 touch-manipulation items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900/70 px-2.5 py-2 text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800/80"
+                    className="inline-flex h-[42px] min-h-[42px] min-w-[42px] shrink-0 touch-manipulation items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900/70 px-2.5 py-2 text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800/80"
                     aria-label="Open mobile controls menu"
                   >
                     <span className="inline-flex flex-col gap-1" aria-hidden>
@@ -1175,8 +1412,6 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                 </div>
               }
               headerLeading={lyricPaneTabs}
-              onMobileSave={isSong ? handleSaveVersion : undefined}
-              mobileSavePending={savePending || newVersionPending}
               bodyPrefix={
                 <p className="px-3 pt-2.5 pb-1 text-xs leading-relaxed text-zinc-500">
                   Private scratch space for this version. Not sent to the lyric
@@ -1208,29 +1443,86 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           />
         </section>
       </main>
-      <div className="fixed inset-x-0 bottom-0 z-[50] shrink-0 border-t border-zinc-800/80 bg-zinc-950/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md lg:hidden">
-        <div className="mx-auto grid w-full max-w-[1920px] grid-cols-3 gap-2">
+      <div className="fixed inset-x-0 bottom-0 z-[50] shrink-0 border-t border-zinc-800/80 bg-zinc-950/95 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md lg:hidden">
+        <div className="mx-auto flex w-full max-w-[1920px] items-stretch gap-1.5">
           <button
             type="button"
             onClick={() => setMobilePane("critique")}
-            className={mobilePane === "critique" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
+            className={
+              mobilePane === "critique" ?
+                "min-w-0 flex-1 rounded-lg bg-zinc-100 px-2 py-2 text-sm font-medium text-zinc-900"
+              : "min-w-0 flex-1 rounded-lg border border-zinc-800 bg-zinc-900/50 px-2 py-2 text-sm text-zinc-300"
+            }
           >
             Critique
           </button>
           <button
             type="button"
             onClick={() => setMobilePane("draft")}
-            className={mobilePane === "draft" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
+            className={
+              mobilePane === "draft" ?
+                "min-w-0 flex-1 rounded-lg bg-zinc-100 px-2 py-2 text-sm font-medium text-zinc-900"
+              : "min-w-0 flex-1 rounded-lg border border-zinc-800 bg-zinc-900/50 px-2 py-2 text-sm text-zinc-300"
+            }
           >
             Draft
           </button>
           <button
             type="button"
             onClick={() => setMobilePane("chat")}
-            className={mobilePane === "chat" ? "rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900" : "rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"}
+            className={
+              mobilePane === "chat" ?
+                "min-w-0 flex-1 rounded-lg bg-zinc-100 px-2 py-2 text-sm font-medium text-zinc-900"
+              : "min-w-0 flex-1 rounded-lg border border-zinc-800 bg-zinc-900/50 px-2 py-2 text-sm text-zinc-300"
+            }
           >
             Chat
           </button>
+          {isSong &&
+          props.mode === "song" &&
+          mobilePane === "draft" &&
+          lyricDocPane === "draft" ?
+            <button
+              type="button"
+              onClick={() => voiceNotesRef.current?.openVoicePanel()}
+              disabled={
+                savePending ||
+                persistInFlight ||
+                deleteVersionPending ||
+                newVersionPending ||
+                critiqueLoading
+              }
+              title="Voice notes"
+              aria-label={
+                (meta.draftRecordings?.length ?? 0) > 0 ?
+                  `Voice notes, ${meta.draftRecordings?.length ?? 0} saved`
+                : "Open voice notes"
+              }
+              className="relative inline-flex shrink-0 touch-manipulation items-center justify-center rounded-lg border border-amber-800/50 bg-amber-950/40 px-2.5 py-2 text-amber-100/95 transition hover:border-amber-600/50 hover:bg-amber-950/55 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Z" />
+                <path d="M19 11a7 7 0 0 1-14 0M12 18v3M8 22h8" />
+              </svg>
+              {(meta.draftRecordings?.length ?? 0) > 0 ?
+                <span className="absolute -right-0.5 -top-0.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-emerald-600 px-0.5 text-[9px] font-bold leading-none text-white ring-1 ring-zinc-950">
+                  {(meta.draftRecordings?.length ?? 0) > 99 ?
+                    "99+"
+                  : (meta.draftRecordings?.length ?? 0)}
+                </span>
+              : null}
+            </button>
+          : null}
         </div>
       </div>
       <UpgradeModal

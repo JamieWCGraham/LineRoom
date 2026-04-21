@@ -2,8 +2,10 @@
 
 import type { ReactNode } from "react";
 import {
+  forwardRef,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -26,14 +28,18 @@ const MAX_SEGMENT_FONT_PX = 32;
 const DEFAULT_MOBILE_UI_FONT_PX = 14;
 const DEFAULT_DESKTOP_UI_FONT_PX = 16;
 
-type Props = {
+export type DraftEditorHandle = {
+  toggleMobileTools: () => void;
+};
+
+export type DraftEditorProps = {
   value: string;
   onChange: (value: string) => void;
   lineFeedbackByIndex: Map<number, LineAnnotation[]>;
   /** Changes only when critique line feedback content changes (new generation), not when the draft text edits. */
   lineFeedbackAutoShowKey?: string;
-  onMobileSave?: () => void;
-  mobileSavePending?: boolean;
+  /** When set, flushes debounced server persistence (e.g. song mode autosave) on editor blur. */
+  onPersistFlush?: () => void;
   onDraftContextChange?: (ctx: DraftEditorContext) => void;
   /** When true and user highlights text, show “Add to chat” (requires critique). */
   addToChatEnabled?: boolean;
@@ -54,6 +60,11 @@ type Props = {
   textInputAriaLabel?: string;
   /** Extra row at top of the fixed mobile toolbar (e.g. back, title, menu). */
   mobileTopRow?: ReactNode;
+  /**
+   * When true (e.g. song mobile), the draft tools toggle is not shown in the tab row;
+   * call `ref.toggleMobileTools()` from the parent top bar instead.
+   */
+  externalMobileToolsTrigger?: boolean;
 };
 
 /** Synthetic overlay: hide glyphs in WebKit (caret stays visible); other engines use caret-color + transparent color. */
@@ -64,26 +75,30 @@ type LineHighlightTier = "weak" | "promising" | "strong";
 
 type TooltipFeedbackEntry = { label: string; feedback: string };
 
-export function DraftEditor({
-  value,
-  onChange,
-  lineFeedbackByIndex,
-  lineFeedbackAutoShowKey = "",
-  onMobileSave,
-  mobileSavePending = false,
-  onDraftContextChange,
-  addToChatEnabled = false,
-  onAddSelectionToChat,
-  headerTrailing,
-  headerLeading,
-  showFeedbackToggle = true,
-  readOnly = false,
-  copyButtonIdleLabel = "Copy Draft",
-  placeholder = "Paste or write your full lyrics/poetry draft…",
-  bodyPrefix,
-  textInputAriaLabel,
-  mobileTopRow,
-}: Props) {
+export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
+  function DraftEditor(
+    {
+      value,
+      onChange,
+      lineFeedbackByIndex,
+      lineFeedbackAutoShowKey = "",
+      onPersistFlush,
+      onDraftContextChange,
+      addToChatEnabled = false,
+      onAddSelectionToChat,
+      headerTrailing,
+      headerLeading,
+      showFeedbackToggle = true,
+      readOnly = false,
+      copyButtonIdleLabel = "Copy Draft",
+      placeholder = "Paste or write your full lyrics/poetry draft…",
+      bodyPrefix,
+      textInputAriaLabel,
+      mobileTopRow,
+      externalMobileToolsTrigger = false,
+    },
+    ref,
+  ) {
   type StyleOp = {
     start: number;
     end: number;
@@ -113,6 +128,16 @@ export function DraftEditor({
   const [styleOps, setStyleOps] = useState<StyleOp[]>([]);
   const [showHighlights, setShowHighlights] = useState(true);
   const [copyLabel, setCopyLabel] = useState(copyButtonIdleLabel);
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      toggleMobileTools: () => setMobileToolsOpen((o) => !o),
+    }),
+    [],
+  );
+
   /** `top` = popover bottom Y; `rightX` = selection top-right X (use translate(-100%, -100%)). */
   const [addToChatAnchor, setAddToChatAnchor] = useState<{
     top: number;
@@ -330,22 +355,31 @@ export function DraftEditor({
     const margin = 8;
     const offsetX = 14;
     const offsetY = 14;
-    node.style.left = `${tooltip.anchorX + offsetX}px`;
-    node.style.top = `${tooltip.anchorY + offsetY}px`;
-    const rect = node.getBoundingClientRect();
-    const { left, top } = clampTooltipToViewport({
-      popW: rect.width,
-      popH: rect.height,
-      vw,
-      vh,
-      anchorX: tooltip.anchorX,
-      anchorY: tooltip.anchorY,
-      offsetX,
-      offsetY,
-      margin,
+
+    const apply = () => {
+      node.style.left = `${tooltip.anchorX + offsetX}px`;
+      node.style.top = `${tooltip.anchorY + offsetY}px`;
+      const rect = node.getBoundingClientRect();
+      const { left, top } = clampTooltipToViewport({
+        popW: rect.width,
+        popH: rect.height,
+        vw,
+        vh,
+        anchorX: tooltip.anchorX,
+        anchorY: tooltip.anchorY,
+        offsetX,
+        offsetY,
+        margin,
+      });
+      node.style.left = `${left}px`;
+      node.style.top = `${top}px`;
+    };
+
+    apply();
+    const id = requestAnimationFrame(() => {
+      apply();
     });
-    node.style.left = `${left}px`;
-    node.style.top = `${top}px`;
+    return () => cancelAnimationFrame(id);
   }, [tooltip]);
 
   useLayoutEffect(() => {
@@ -644,30 +678,46 @@ export function DraftEditor({
             </label>
           )}
           <div className="flex min-w-0 shrink-0 items-center gap-2">
-            <div className="order-2 flex items-center gap-2 lg:order-none lg:hidden">
-              {onMobileSave ? (
+            {!externalMobileToolsTrigger ?
+              <div className="order-2 flex items-center gap-1 lg:order-none lg:hidden">
                 <button
                   type="button"
-                  onClick={onMobileSave}
-                  disabled={mobileSavePending}
-                  className="rounded-md bg-blue-700/90 px-2.5 py-1.5 text-xs font-medium text-white shadow-[0_1px_3px_rgba(0,0,0,0.35)] transition hover:bg-blue-600/90 disabled:opacity-50"
+                  onClick={() => setMobileToolsOpen((o) => !o)}
+                  className="inline-flex size-9 shrink-0 touch-manipulation items-center justify-center rounded-md border border-zinc-700/80 bg-zinc-900/60 text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800/80"
+                  aria-expanded={mobileToolsOpen}
+                  aria-label={mobileToolsOpen ? "Close draft tools" : "Open draft tools"}
                 >
-                  {mobileSavePending ? "Saving..." : "Save"}
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
                 </button>
-              ) : null}
-            </div>
+              </div>
+            : null}
             {headerTrailing ?
               <div className="order-1 shrink-0 lg:order-none">{headerTrailing}</div>
             : null}
           </div>
         </div>
+        {mobileToolsOpen ?
+          <div className="flex shrink-0 flex-wrap items-center gap-2 pt-0.5 pb-1 lg:hidden">
+            {renderControls(controlButtonClasses)}
+          </div>
+        : null}
         {bodyPrefix ?
           <div className="shrink-0">{bodyPrefix}</div>
         : null}
         <div className="hidden shrink-0 flex-wrap items-center gap-2 lg:flex">
-          {renderControls(controlButtonClasses)}
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2 lg:hidden">
           {renderControls(controlButtonClasses)}
         </div>
       </div>
@@ -704,7 +754,10 @@ export function DraftEditor({
           onKeyUp={reportDraftContext}
           onClick={reportDraftContext}
           onFocus={reportDraftContext}
-          onBlur={reportDraftContext}
+          onBlur={() => {
+            reportDraftContext();
+            onPersistFlush?.();
+          }}
           onMouseMove={(e) => updateTooltip(e.clientX, e.clientY)}
           onMouseLeave={() => setTooltip(null)}
           onKeyDown={(e) => {
@@ -767,7 +820,7 @@ export function DraftEditor({
       {tooltip ? (
         <div
           ref={tooltipPopoverRef}
-          className={`pointer-events-none fixed z-[100] max-h-64 max-w-sm overflow-y-auto rounded-lg border-2 bg-zinc-900/95 p-3 text-xs leading-relaxed text-zinc-200 shadow-xl backdrop-blur-sm ${
+          className={`pointer-events-none fixed z-[100] max-h-64 max-w-sm min-w-0 overflow-y-auto rounded-lg border-2 bg-zinc-900/95 p-3 text-xs leading-relaxed text-zinc-200 shadow-xl backdrop-blur-sm ${
             tooltip.tier === "weak" ? "border-pink-600/75"
             : tooltip.tier === "promising" ? "border-yellow-500/75"
             : "border-green-600/75"
@@ -778,9 +831,10 @@ export function DraftEditor({
               key={i}
               className={i > 0 ? "mt-3 border-t border-zinc-600/40 pt-3" : undefined}
             >
-              <strong className="font-semibold text-zinc-100">{entry.label}</strong>
-              {": "}
-              {entry.feedback}
+              <div className="font-semibold text-zinc-100">{entry.label}</div>
+              <div className="mt-1 whitespace-pre-wrap break-words text-zinc-200/95">
+                {entry.feedback}
+              </div>
             </div>
           ))}
         </div>
@@ -810,4 +864,6 @@ export function DraftEditor({
       : null}
     </div>
   );
-}
+});
+
+DraftEditor.displayName = "DraftEditor";

@@ -48,6 +48,9 @@ export default async function SongPage({ params, searchParams }: Props) {
   }
 
   const vs = versionStateFromRow(activeRow);
+  const initialSaveSubRevision = Number(
+    (activeRow as { save_sub_revision?: unknown }).save_sub_revision ?? 0,
+  );
   const priorVersionsContext = versions
     .filter((r) => Number(r.version_number) < Number(activeRow.version_number))
     .sort((a, b) => Number(b.version_number) - Number(a.version_number))
@@ -81,6 +84,7 @@ export default async function SongPage({ params, searchParams }: Props) {
       initialChatMessages={vs.chatMessages}
       initialCritique={vs.critique}
       initialMeta={vs.meta}
+      initialSaveSubRevision={initialSaveSubRevision}
     />
   );
 }

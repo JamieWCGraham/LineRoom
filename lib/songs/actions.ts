@@ -172,8 +172,13 @@ export type SaveSongVersionResult =
   | { ok: false; message: string };
 
 export type UpdateSongVersionResult =
-  | { ok: true }
-  | { ok: false; message: string };
+  | { ok: true; newSubRevision: number }
+  | {
+      ok: false;
+      message: string;
+      reason?: "stale" | "not_found" | "not_authenticated";
+      currentSubRevision?: number;
+    };
 
 export async function saveNewSongVersion(
   songId: string,
@@ -218,6 +223,7 @@ export async function saveNewSongVersion(
       chat_messages: parsed.data.chat_messages,
       critique: parsed.data.critique,
       meta: parsed.data.meta,
+      save_sub_revision: 0,
     })
     .select("id")
     .single();
@@ -319,6 +325,7 @@ export async function updateSongVersionState(
   songId: string,
   versionId: string,
   payload: unknown,
+  options: { expectedSubRevision: number },
 ): Promise<UpdateSongVersionResult> {
   const parsed = saveSongVersionPayloadSchema.safeParse(payload);
   if (!parsed.success) {
@@ -326,47 +333,65 @@ export async function updateSongVersionState(
   }
 
   const supabase = await createClient();
-  const user = await requireAuthUser(supabase);
+  await requireAuthUser(supabase);
 
-  const { data: song, error: songError } = await supabase
-    .from("songs")
-    .select("id")
-    .eq("id", songId)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const { data: rpcResult, error: rpcError } = await supabase.rpc(
+    "apply_song_version_state_update",
+    {
+      p_song_id: songId,
+      p_version_id: versionId,
+      p_expected_sub_revision: options.expectedSubRevision,
+      p_draft_text: parsed.data.draft_text,
+      p_brainstorm_text: parsed.data.brainstorm_text,
+      p_chat_messages: parsed.data.chat_messages as unknown,
+      p_critique: parsed.data.critique as unknown,
+      p_meta: parsed.data.meta as unknown,
+    },
+  );
 
-  if (songError || !song) {
-    return { ok: false, message: "Piece not found." };
-  }
-
-  const { data: updatedRow, error: updateError } = await supabase
-    .from("song_versions")
-    .update({
-      draft_text: parsed.data.draft_text,
-      brainstorm_text: parsed.data.brainstorm_text,
-      chat_messages: parsed.data.chat_messages,
-      critique: parsed.data.critique,
-      meta: parsed.data.meta,
-    })
-    .eq("id", versionId)
-    .eq("song_id", songId)
-    .select("id")
-    .maybeSingle();
-
-  if (updateError || !updatedRow) {
+  if (rpcError) {
     return {
       ok: false,
-      message: updateError?.message ?? "Could not update current version.",
+      message: rpcError.message ?? "Could not update current version.",
     };
   }
 
-  await supabase
-    .from("songs")
-    .update({ updated_at: new Date().toISOString() })
-    .eq("id", songId);
+  const row = rpcResult as unknown;
+  if (!row || typeof row !== "object") {
+    return { ok: false, message: "Unexpected save response." };
+  }
 
-  revalidatePath("/");
-  revalidatePath(`/song/${songId}`);
+  const obj = row as Record<string, unknown>;
+  if (obj.ok === true && typeof obj.newSubRevision === "number") {
+    revalidatePath("/");
+    revalidatePath(`/song/${songId}`);
+    return { ok: true, newSubRevision: obj.newSubRevision };
+  }
 
-  return { ok: true };
+  const reason = typeof obj.reason === "string" ? obj.reason : "";
+  if (reason === "stale") {
+    const currentSubRevision =
+      typeof obj.currentSubRevision === "number" ?
+        obj.currentSubRevision
+      : undefined;
+    return {
+      ok: false,
+      message:
+        "This version was saved elsewhere. Reload the page to continue safely.",
+      reason: "stale",
+      currentSubRevision,
+    };
+  }
+  if (reason === "not_found") {
+    return { ok: false, message: "Version not found.", reason: "not_found" };
+  }
+  if (reason === "not_authenticated") {
+    return {
+      ok: false,
+      message: "You must be signed in to save.",
+      reason: "not_authenticated",
+    };
+  }
+
+  return { ok: false, message: "Could not update current version." };
 }

@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  forwardRef,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -58,7 +60,11 @@ function sanitizeDownloadFilenameBase(name: string): string {
   return s.length ? s : "voice-memo";
 }
 
-type Props = {
+export type DraftRecordingsPanelHandle = {
+  openVoicePanel: () => void;
+};
+
+export type DraftRecordingsPanelProps = {
   storageMode: "local" | "cloud";
   songId?: string;
   versionId?: string;
@@ -69,19 +75,36 @@ type Props = {
   useMobileVoiceFab?: boolean;
   /** When using the FAB, whether it is shown (e.g. only while the draft tab is active). */
   mobileFabVisible?: boolean;
+  /** When true with useMobileVoiceFab, the floating mic is omitted (e.g. tab bar opens the panel). */
+  suppressMobileFloatingFab?: boolean;
 };
 
-export function DraftRecordingsPanel({
-  storageMode,
-  songId,
-  versionId,
-  recordings,
-  onRecordingsChange,
-  disabled = false,
-  useMobileVoiceFab = false,
-  mobileFabVisible = true,
-}: Props) {
+export const DraftRecordingsPanel = forwardRef<
+  DraftRecordingsPanelHandle,
+  DraftRecordingsPanelProps
+>(function DraftRecordingsPanel(
+  {
+    storageMode,
+    songId,
+    versionId,
+    recordings,
+    onRecordingsChange,
+    disabled = false,
+    useMobileVoiceFab = false,
+    mobileFabVisible = true,
+    suppressMobileFloatingFab = false,
+  },
+  ref,
+) {
   const [panelOpen, setPanelOpen] = useState(false);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      openVoicePanel: () => setPanelOpen(true),
+    }),
+    [],
+  );
   const [mounted, setMounted] = useState(false);
   const [anchor, setAnchor] = useState<{ top: number; right: number } | null>(
     null,
@@ -972,7 +995,10 @@ export function DraftRecordingsPanel({
           : null}
         </button>
       </div>
-      {mounted && useMobileVoiceFab && mobileFabVisible ?
+      {mounted &&
+      useMobileVoiceFab &&
+      mobileFabVisible &&
+      !suppressMobileFloatingFab ?
         createPortal(
           <button
             type="button"
@@ -984,11 +1010,12 @@ export function DraftRecordingsPanel({
                 `Voice notes, ${count} saved`
               : "Open voice notes"
             }
-            className="relative fixed z-[55] flex h-14 w-14 touch-manipulation items-center justify-center rounded-full border border-amber-800/55 bg-amber-950/90 text-amber-100 shadow-lg shadow-black/40 transition hover:border-amber-600/60 hover:bg-amber-900/95 disabled:cursor-not-allowed disabled:opacity-40 lg:hidden"
+            className="relative fixed z-[60] flex h-14 w-14 touch-manipulation items-center justify-center rounded-full border border-amber-800/55 bg-amber-950/90 text-amber-100 shadow-lg shadow-black/40 transition hover:border-amber-600/60 hover:bg-amber-900/95 disabled:cursor-not-allowed disabled:opacity-40 lg:hidden"
             style={{
-              right: "max(1rem, env(safe-area-inset-right, 0px))",
+              right:
+                "calc(100% / 6 - 1.75rem + max(0px, env(safe-area-inset-right, 0px)))",
               bottom:
-                "calc(4.75rem + env(safe-area-inset-bottom, 0px) + 0.75rem)",
+                "calc(4.75rem + env(safe-area-inset-bottom, 0px) + 0.5rem)",
             }}
           >
             <svg
@@ -1018,4 +1045,6 @@ export function DraftRecordingsPanel({
       {deleteDialog}
     </>
   );
-}
+});
+
+DraftRecordingsPanel.displayName = "DraftRecordingsPanel";
