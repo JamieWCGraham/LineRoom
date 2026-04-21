@@ -13,7 +13,6 @@ import {
 } from "react";
 import type { LineAnnotation } from "@/lib/lineAnnotations";
 import {
-  caretOffsetAtViewportPoint,
   clampTooltipToViewport,
   lineIndexFromContentY,
 } from "@/lib/draft/lineFeedbackPointer";
@@ -482,24 +481,22 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
         setTooltip(null);
         return;
       }
-      /** Always map the viewport point first (touch/mouse), not selection state — iOS often leaves a non-collapsed range while tapping. */
-      let idx: number | null = null;
-      const caretOff = caretOffsetAtViewportPoint(el, clientX, clientY);
-      if (caretOff !== null) {
-        idx = value.slice(0, caretOff).split("\n").length - 1;
+      /**
+       * Map pointer Y into a logical line index. Do not use caretPositionFromPoint /
+       * caretRangeFromPoint on `<textarea>`: Chromium and WebKit often report offset 0 for
+       * almost every hit, which pins the tooltip to the first line (or hides it when line 0
+       * has no feedback). Geometry matches the highlight layer for typical short lines.
+       */
+      const rect = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      const padTop = parseFloat(style.paddingTop) || 0;
+      let lh = parseFloat(style.lineHeight);
+      if (Number.isNaN(lh) || lh <= 0) {
+        const fs = parseFloat(style.fontSize) || 15;
+        lh = fs * 1.625;
       }
-      if (idx === null) {
-        const rect = el.getBoundingClientRect();
-        const style = getComputedStyle(el);
-        const padTop = parseFloat(style.paddingTop) || 0;
-        let lh = parseFloat(style.lineHeight);
-        if (Number.isNaN(lh) || lh <= 0) {
-          const fs = parseFloat(style.fontSize) || 15;
-          lh = fs * 1.625;
-        }
-        const yIn = clientY - rect.top + el.scrollTop - padTop;
-        idx = lineIndexFromContentY(yIn, lh, lines.length);
-      }
+      const yIn = clientY - rect.top + el.scrollTop - padTop;
+      const idx = lineIndexFromContentY(yIn, lh, lines.length);
       if (idx === null) {
         setTooltip(null);
         return;
@@ -527,7 +524,7 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
         entries,
       });
     },
-    [lineFeedbackByIndex, lines.length, showHighlights, value],
+    [lineFeedbackByIndex, lines.length, showHighlights],
   );
 
   const highlightLayer = useMemo(() => {
