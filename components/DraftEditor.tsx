@@ -69,7 +69,7 @@ export type DraftEditorProps = {
 
 /** Synthetic overlay: hide glyphs in WebKit (caret stays visible); other engines use caret-color + transparent color. */
 const TEXTAREA_CLASSES =
-  "box-border h-full min-h-[min(50dvh,28rem)] w-full flex-1 resize-none rounded-lg border-0 bg-transparent p-4 max-lg:pt-8 text-sm font-sans leading-[1.625] whitespace-pre caret-zinc-100 outline-none [touch-action:pan-x_pan-y] overscroll-none [-webkit-text-fill-color:transparent] [color:rgb(244_244_245)] sm:min-h-[min(56dvh,32rem)] sm:resize-y lg:min-h-0 lg:text-base";
+  "box-border h-full min-h-[min(50dvh,28rem)] w-full flex-1 resize-none rounded-lg border-0 bg-transparent p-4 max-lg:pl-5 max-lg:pt-8 text-sm font-sans leading-[1.625] whitespace-pre caret-zinc-100 outline-none [touch-action:pan-x_pan-y] overscroll-none [-webkit-text-fill-color:transparent] [color:rgb(244_244_245)] placeholder:text-zinc-500/45 placeholder:[-webkit-text-fill-color:rgb(161_161_170_/_0.45)] sm:min-h-[min(56dvh,32rem)] sm:resize-y lg:min-h-0 lg:text-base";
 
 type LineHighlightTier = "weak" | "promising" | "strong";
 
@@ -91,7 +91,7 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
       showFeedbackToggle = true,
       readOnly = false,
       copyButtonIdleLabel = "Copy Draft",
-      placeholder = "Paste or write your full lyrics/poetry draft…",
+      placeholder = "Write your lyrics here...",
       bodyPrefix,
       textInputAriaLabel,
       mobileTopRow,
@@ -117,6 +117,8 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
   const mobileToolbarRef = useRef<HTMLDivElement>(null);
   const tooltipPopoverRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  /** After a tap to show line feedback, ignore scroll-driven tooltip clears briefly (iOS scrolls to caret). */
+  const touchTooltipScrollGuardUntilRef = useRef(0);
   const [mobileToolbarInsetPx, setMobileToolbarInsetPx] = useState(56);
   const [tooltip, setTooltip] = useState<{
     anchorX: number;
@@ -297,6 +299,7 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
       enforceAxis();
       applyBackdropScroll(el);
       updateAddToChatAnchorRef.current();
+      if (performance.now() < touchTooltipScrollGuardUntilRef.current) return;
       setTooltip((t) => (t ? null : t));
     };
 
@@ -464,15 +467,16 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
       }
       const ss = el.selectionStart ?? 0;
       const se = el.selectionEnd ?? 0;
-      if (ss !== se) {
-        setTooltip(null);
-        return;
-      }
-      const caretOff = caretOffsetAtViewportPoint(el, clientX, clientY);
+      const collapsed = ss === se;
+
       let idx: number | null = null;
-      if (caretOff !== null) {
-        idx = value.slice(0, caretOff).split("\n").length - 1;
-      } else {
+      if (collapsed) {
+        const caretOff = caretOffsetAtViewportPoint(el, clientX, clientY);
+        if (caretOff !== null) {
+          idx = value.slice(0, caretOff).split("\n").length - 1;
+        }
+      }
+      if (idx === null) {
         const rect = el.getBoundingClientRect();
         const style = getComputedStyle(el);
         const padTop = parseFloat(style.paddingTop) || 0;
@@ -733,13 +737,23 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
         >
           <div
             ref={backdropInnerRef}
-            className="inline-block min-w-full whitespace-pre p-4 max-lg:pt-8 text-left text-sm font-sans leading-[1.625] text-zinc-100 will-change-transform lg:text-base"
+            className="inline-block min-w-full whitespace-pre p-4 max-lg:pl-5 max-lg:pt-8 text-left text-sm font-sans leading-[1.625] text-zinc-100 will-change-transform lg:text-base"
             style={{
               fontSize: `${uiFontSize}px`,
               lineHeight: 1.625,
             }}
           >
-            {highlightLayer}
+            {value.length === 0 && placeholder ?
+              <span
+                className="pointer-events-none block whitespace-pre-wrap break-words text-zinc-400/50"
+                style={{
+                  fontSize: `${uiFontSize}px`,
+                  lineHeight: 1.625,
+                }}
+              >
+                {placeholder}
+              </span>
+            : highlightLayer}
           </div>
         </div>
         <textarea
@@ -794,6 +808,7 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
             if (e.touches.length !== 1) return;
             const t = e.touches[0];
             touchStartRef.current = { x: t.clientX, y: t.clientY };
+            setTooltip(null);
           }}
           onTouchCancel={() => {
             touchStartRef.current = null;
@@ -808,8 +823,12 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
             if (dx * dx + dy * dy > 12 * 12) return;
             const cx = t.clientX;
             const cy = t.clientY;
+            touchTooltipScrollGuardUntilRef.current = performance.now() + 400;
             requestAnimationFrame(() => {
               updateTooltip(cx, cy);
+              requestAnimationFrame(() => {
+                updateTooltip(cx, cy);
+              });
             });
           }}
           placeholder={placeholder}

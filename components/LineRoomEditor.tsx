@@ -52,6 +52,10 @@ const LS_CHAT = "lineroom_chat_messages";
 const LS_CRITIQUE = "lineroom_critique";
 const LS_META = "lineroom_critique_meta";
 
+/** Mobile song header: back, tools, settings — equal compact controls */
+const MOBILE_DOC_HEADER_ICON_BTN =
+  "inline-flex size-8 shrink-0 touch-manipulation items-center justify-center rounded-md border border-zinc-700/80 bg-zinc-900/60 text-sm leading-none text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800/80";
+
 function parseCritique(raw: string | null): CritiqueResult | null {
   if (raw === null) return null;
   try {
@@ -1243,11 +1247,11 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                     href={isSong ? "/" : "/lineroom"}
                     prefetch
                     aria-label={isSong ? "Back to dashboard" : "Back to LineRoom"}
-                    className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-zinc-700/80 bg-zinc-900/60 text-base leading-none text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800/80"
+                    className={MOBILE_DOC_HEADER_ICON_BTN}
                   >
                     <span aria-hidden>←</span>
                   </Link>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 pl-1.5">
                     {isSong && props.mode === "song" ?
                       <SongTitleEditor
                         songId={props.songId}
@@ -1263,12 +1267,12 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                     <button
                       type="button"
                       onClick={() => lyricDraftEditorRef.current?.toggleMobileTools()}
-                      className="inline-flex h-[42px] min-h-[42px] min-w-[42px] shrink-0 touch-manipulation items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900/70 px-2.5 py-2 text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800/80"
+                      className={MOBILE_DOC_HEADER_ICON_BTN}
                       aria-label="Open or close draft tools"
                     >
                       <svg
-                        width="18"
-                        height="18"
+                        width="16"
+                        height="16"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -1285,13 +1289,13 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                   <button
                     type="button"
                     onClick={() => setMobileMenuOpen(true)}
-                    className="inline-flex h-[42px] min-h-[42px] min-w-[42px] shrink-0 touch-manipulation items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900/70 px-2.5 py-2 text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800/80"
+                    className={MOBILE_DOC_HEADER_ICON_BTN}
                     aria-label="Open mobile controls menu"
                   >
-                    <span className="inline-flex flex-col gap-1" aria-hidden>
-                      <span className="h-0.5 w-4 rounded bg-zinc-200" />
-                      <span className="h-0.5 w-4 rounded bg-zinc-200" />
-                      <span className="h-0.5 w-4 rounded bg-zinc-200" />
+                    <span className="inline-flex flex-col gap-0.5" aria-hidden>
+                      <span className="h-0.5 w-3.5 rounded bg-zinc-200" />
+                      <span className="h-0.5 w-3.5 rounded bg-zinc-200" />
+                      <span className="h-0.5 w-3.5 rounded bg-zinc-200" />
                     </span>
                   </button>
                 </div>
@@ -1348,7 +1352,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
               lineFeedbackAutoShowKey=""
               showFeedbackToggle={false}
               copyButtonIdleLabel="Copy"
-              placeholder="Ideas, word lists, alternate lines…"
+              placeholder="Write brainstorm material for your lyrics here..."
               textInputAriaLabel="Brainstorm notes"
               onPersistFlush={isSong ? flushPersist : undefined}
               externalMobileToolsTrigger={isSong}
@@ -1358,11 +1362,11 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                     href={isSong ? "/" : "/lineroom"}
                     prefetch
                     aria-label={isSong ? "Back to dashboard" : "Back to LineRoom"}
-                    className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-zinc-700/80 bg-zinc-900/60 text-base leading-none text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800/80"
+                    className={MOBILE_DOC_HEADER_ICON_BTN}
                   >
                     <span aria-hidden>←</span>
                   </Link>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 pl-1.5">
                     {isSong && props.mode === "song" ?
                       <SongTitleEditor
                         songId={props.songId}
@@ -1378,12 +1382,12 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                     <button
                       type="button"
                       onClick={() => lyricDraftEditorRef.current?.toggleMobileTools()}
-                      className="inline-flex h-[42px] min-h-[42px] min-w-[42px] shrink-0 touch-manipulation items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900/70 px-2.5 py-2 text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800/80"
+                      className={MOBILE_DOC_HEADER_ICON_BTN}
                       aria-label="Open or close draft tools"
                     >
                       <svg
-                        width="18"
-                        height="18"
+                        width="16"
+                        height="16"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -1400,24 +1404,22 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                   <button
                     type="button"
                     onClick={() => setMobileMenuOpen(true)}
-                    className="inline-flex h-[42px] min-h-[42px] min-w-[42px] shrink-0 touch-manipulation items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900/70 px-2.5 py-2 text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800/80"
+                    className={MOBILE_DOC_HEADER_ICON_BTN}
                     aria-label="Open mobile controls menu"
                   >
-                    <span className="inline-flex flex-col gap-1" aria-hidden>
-                      <span className="h-0.5 w-4 rounded bg-zinc-200" />
-                      <span className="h-0.5 w-4 rounded bg-zinc-200" />
-                      <span className="h-0.5 w-4 rounded bg-zinc-200" />
+                    <span className="inline-flex flex-col gap-0.5" aria-hidden>
+                      <span className="h-0.5 w-3.5 rounded bg-zinc-200" />
+                      <span className="h-0.5 w-3.5 rounded bg-zinc-200" />
+                      <span className="h-0.5 w-3.5 rounded bg-zinc-200" />
                     </span>
                   </button>
                 </div>
               }
               headerLeading={lyricPaneTabs}
-              bodyPrefix={
-                <p className="px-3 pt-2.5 pb-1 text-xs leading-relaxed text-zinc-500">
-                  Private scratch space for this version. Not sent to the lyric
-                  assistant or critique.
-                </p>
-              }
+              // bodyPrefix={
+              //   <p className="px-3 pt-2.5 pb-1 text-xs leading-relaxed text-zinc-500">
+              //   </p>
+              // }
             />
           }
         </section>
