@@ -57,6 +57,142 @@ type EvalRunMetricsResponse = {
   };
 };
 
+type GroundTruthRow = EvalRunMetricsResponse["groundTruthRows"][number];
+
+type GtSortKey =
+  | "id"
+  | "title"
+  | "artist"
+  | "overallScore"
+  | "isCorrect"
+  | "predictedOverallScore";
+
+type GtSortState = { key: GtSortKey; dir: "asc" | "desc" };
+
+type GtFilterState = {
+  id: string;
+  title: string;
+  artist: string;
+  overallScore: string;
+  isCorrect: "all" | "true" | "false";
+  predictedOverallScore: string;
+};
+
+const GT_SORT_DEFAULT: GtSortState = {
+  key: "overallScore",
+  dir: "asc",
+};
+
+const GT_FILTERS_EMPTY: GtFilterState = {
+  id: "",
+  title: "",
+  artist: "",
+  overallScore: "",
+  isCorrect: "all",
+  predictedOverallScore: "",
+};
+
+const BAND_ORDER = new Map(
+  CANONICAL_RATING_BANDS.map((band, index) => [band, index] as const),
+);
+
+/** Lower = earlier in ascending “quality” order (Needs Work → Standout). */
+function bandSortRank(score: string | null | undefined): number {
+  if (score == null || !String(score).trim()) {
+    return CANONICAL_RATING_BANDS.length + 1;
+  }
+  const t = String(score).trim();
+  const i = BAND_ORDER.get(t as (typeof CANONICAL_RATING_BANDS)[number]);
+  if (i !== undefined) return i;
+  return CANONICAL_RATING_BANDS.length;
+}
+
+function compareGroundTruthRows(
+  a: GroundTruthRow,
+  b: GroundTruthRow,
+  key: GtSortKey,
+  dir: "asc" | "desc",
+): number {
+  const sign = dir === "asc" ? 1 : -1;
+  let cmp = 0;
+  switch (key) {
+    case "id":
+      cmp = a.id - b.id;
+      break;
+    case "title":
+      cmp = (a.title || "").localeCompare(b.title || "", undefined, {
+        sensitivity: "base",
+      });
+      break;
+    case "artist":
+      cmp = (a.artist || "").localeCompare(b.artist || "", undefined, {
+        sensitivity: "base",
+      });
+      break;
+    case "overallScore": {
+      const ra = bandSortRank(a.overallScore);
+      const rb = bandSortRank(b.overallScore);
+      cmp =
+        ra !== rb ? ra - rb : (a.overallScore || "").localeCompare(b.overallScore || "");
+      break;
+    }
+    case "isCorrect":
+      cmp = Number(a.isCorrect) - Number(b.isCorrect);
+      break;
+    case "predictedOverallScore": {
+      const ra = bandSortRank(a.predictedOverallScore);
+      const rb = bandSortRank(b.predictedOverallScore);
+      cmp =
+        ra !== rb ?
+          ra - rb
+        : (a.predictedOverallScore || "").localeCompare(
+            b.predictedOverallScore || "",
+          );
+      break;
+    }
+    default:
+      cmp = 0;
+  }
+  return sign * cmp;
+}
+
+function filterGroundTruthRows(
+  rows: GroundTruthRow[],
+  f: GtFilterState,
+): GroundTruthRow[] {
+  const idSub = f.id.trim();
+  const titleNeedle = f.title.trim().toLowerCase();
+  const artistNeedle = f.artist.trim().toLowerCase();
+  const scoreNeedle = f.overallScore.trim().toLowerCase();
+  const predNeedle = f.predictedOverallScore.trim().toLowerCase();
+  return rows.filter((r) => {
+    if (idSub && !String(r.id).includes(idSub)) return false;
+    if (titleNeedle && !(r.title || "").toLowerCase().includes(titleNeedle)) {
+      return false;
+    }
+    if (artistNeedle && !(r.artist || "").toLowerCase().includes(artistNeedle)) {
+      return false;
+    }
+    if (
+      scoreNeedle &&
+      !(r.overallScore || "").toLowerCase().includes(scoreNeedle)
+    ) {
+      return false;
+    }
+    if (
+      predNeedle &&
+      !(r.predictedOverallScore || "").toLowerCase().includes(predNeedle)
+    ) {
+      return false;
+    }
+    if (f.isCorrect !== "all") {
+      const want = f.isCorrect === "true";
+      if (r.isCorrect !== want) return false;
+    }
+    return true;
+  });
+}
+
 type Props = {
   email: string;
 };
@@ -83,6 +219,8 @@ export function EvalsPageClient({ email }: Props) {
   const [metricsLoading, setMetricsLoading] = useState(false);
   const [metricsError, setMetricsError] = useState<string | null>(null);
   const [addSongsOpen, setAddSongsOpen] = useState(false);
+  const [gtSort, setGtSort] = useState<GtSortState>(GT_SORT_DEFAULT);
+  const [gtFilters, setGtFilters] = useState<GtFilterState>(GT_FILTERS_EMPTY);
 
   const refreshRuns = useCallback(async () => {
     setListError(null);
@@ -188,6 +326,33 @@ export function EvalsPageClient({ email }: Props) {
     setMetricsError(null);
     setMetricsVisible(false);
   }, [runId]);
+
+  useEffect(() => {
+    if (!metrics?.runId) return;
+    setGtSort(GT_SORT_DEFAULT);
+    setGtFilters(GT_FILTERS_EMPTY);
+  }, [metrics?.runId]);
+
+  const filteredSortedGroundTruth = useMemo(() => {
+    const rows = metrics?.groundTruthRows ?? [];
+    const filtered = filterGroundTruthRows(rows, gtFilters);
+    return [...filtered].sort((a, b) =>
+      compareGroundTruthRows(a, b, gtSort.key, gtSort.dir),
+    );
+  }, [metrics?.groundTruthRows, gtFilters, gtSort]);
+
+  const onGroundTruthSortClick = (key: GtSortKey) => {
+    setGtSort((prev) =>
+      prev.key === key ?
+        { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+      : { key, dir: "asc" },
+    );
+  };
+
+  const groundTruthSortIndicator = (key: GtSortKey) => {
+    if (gtSort.key !== key) return "";
+    return gtSort.dir === "asc" ? " ↑" : " ↓";
+  };
 
   useEffect(() => {
     if (!runId || evalId == null) {
@@ -703,24 +868,154 @@ export function EvalsPageClient({ email }: Props) {
               </h3>
               <p className="mt-1 text-xs text-zinc-500">
                 All rows from <code className="text-zinc-400">generate_critique_eval_set</code>{" "}
-                for this comparison.
+                for this comparison. Sorted by{" "}
+                <code className="text-zinc-400">overall_score</code> band (Needs Work →
+                Standout) until you change the sort. Use column headers to sort; filters
+                match as substrings (case-insensitive).
               </p>
               <div className="mt-3 max-h-[min(50vh,28rem)] overflow-auto rounded-lg border border-zinc-800">
                 <table className="w-full min-w-[42rem] border-collapse text-left text-xs">
                   <thead className="sticky top-0 z-10 bg-zinc-950/95 backdrop-blur">
                     <tr className="border-b border-zinc-700 text-[10px] uppercase tracking-wide text-zinc-500">
-                      <th className="px-2 py-2 font-medium">ID</th>
-                      <th className="px-2 py-2 font-medium">Title</th>
-                      <th className="px-2 py-2 font-medium">Artist</th>
-                      <th className="px-2 py-2 font-medium">overall_score</th>
-                      <th className="px-2 py-2 font-medium">IS_CORRECT</th>
-                      <th className="px-2 py-2 font-medium">
-                        PREDICTED_OVERALL_SCORE
+                      <th className="px-1 py-1 font-medium" aria-sort={gtSort.key === "id" ? (gtSort.dir === "asc" ? "ascending" : "descending") : "none"}>
+                        <button
+                          type="button"
+                          onClick={() => onGroundTruthSortClick("id")}
+                          className="w-full rounded px-1 py-1.5 text-left hover:bg-zinc-800/80"
+                        >
+                          ID{groundTruthSortIndicator("id")}
+                        </button>
+                      </th>
+                      <th className="px-1 py-1 font-medium" aria-sort={gtSort.key === "title" ? (gtSort.dir === "asc" ? "ascending" : "descending") : "none"}>
+                        <button
+                          type="button"
+                          onClick={() => onGroundTruthSortClick("title")}
+                          className="w-full rounded px-1 py-1.5 text-left hover:bg-zinc-800/80"
+                        >
+                          Title{groundTruthSortIndicator("title")}
+                        </button>
+                      </th>
+                      <th className="px-1 py-1 font-medium" aria-sort={gtSort.key === "artist" ? (gtSort.dir === "asc" ? "ascending" : "descending") : "none"}>
+                        <button
+                          type="button"
+                          onClick={() => onGroundTruthSortClick("artist")}
+                          className="w-full rounded px-1 py-1.5 text-left hover:bg-zinc-800/80"
+                        >
+                          Artist{groundTruthSortIndicator("artist")}
+                        </button>
+                      </th>
+                      <th className="px-1 py-1 font-medium" aria-sort={gtSort.key === "overallScore" ? (gtSort.dir === "asc" ? "ascending" : "descending") : "none"}>
+                        <button
+                          type="button"
+                          onClick={() => onGroundTruthSortClick("overallScore")}
+                          className="w-full rounded px-1 py-1.5 text-left hover:bg-zinc-800/80"
+                        >
+                          overall_score{groundTruthSortIndicator("overallScore")}
+                        </button>
+                      </th>
+                      <th className="px-1 py-1 font-medium" aria-sort={gtSort.key === "isCorrect" ? (gtSort.dir === "asc" ? "ascending" : "descending") : "none"}>
+                        <button
+                          type="button"
+                          onClick={() => onGroundTruthSortClick("isCorrect")}
+                          className="w-full rounded px-1 py-1.5 text-left hover:bg-zinc-800/80"
+                        >
+                          IS_CORRECT{groundTruthSortIndicator("isCorrect")}
+                        </button>
+                      </th>
+                      <th className="px-1 py-1 font-medium" aria-sort={gtSort.key === "predictedOverallScore" ? (gtSort.dir === "asc" ? "ascending" : "descending") : "none"}>
+                        <button
+                          type="button"
+                          onClick={() => onGroundTruthSortClick("predictedOverallScore")}
+                          className="w-full rounded px-1 py-1.5 text-left hover:bg-zinc-800/80"
+                        >
+                          PREDICTED_OVERALL_SCORE
+                          {groundTruthSortIndicator("predictedOverallScore")}
+                        </button>
+                      </th>
+                    </tr>
+                    <tr className="border-b border-zinc-800 bg-zinc-950/90 text-[10px] normal-case text-zinc-400">
+                      <th className="px-1 py-1 align-top font-normal">
+                        <input
+                          value={gtFilters.id}
+                          onChange={(e) =>
+                            setGtFilters((p) => ({ ...p, id: e.target.value }))
+                          }
+                          placeholder="Filter…"
+                          className="w-full min-w-0 rounded border border-zinc-700 bg-zinc-900 px-1 py-1 font-mono text-[10px] text-zinc-200 placeholder:text-zinc-600"
+                          aria-label="Filter by id"
+                        />
+                      </th>
+                      <th className="px-1 py-1 align-top font-normal">
+                        <input
+                          value={gtFilters.title}
+                          onChange={(e) =>
+                            setGtFilters((p) => ({ ...p, title: e.target.value }))
+                          }
+                          placeholder="Filter…"
+                          className="w-full min-w-0 rounded border border-zinc-700 bg-zinc-900 px-1 py-1 text-[10px] text-zinc-200 placeholder:text-zinc-600"
+                          aria-label="Filter by title"
+                        />
+                      </th>
+                      <th className="px-1 py-1 align-top font-normal">
+                        <input
+                          value={gtFilters.artist}
+                          onChange={(e) =>
+                            setGtFilters((p) => ({ ...p, artist: e.target.value }))
+                          }
+                          placeholder="Filter…"
+                          className="w-full min-w-0 rounded border border-zinc-700 bg-zinc-900 px-1 py-1 text-[10px] text-zinc-200 placeholder:text-zinc-600"
+                          aria-label="Filter by artist"
+                        />
+                      </th>
+                      <th className="px-1 py-1 align-top font-normal">
+                        <input
+                          value={gtFilters.overallScore}
+                          onChange={(e) =>
+                            setGtFilters((p) => ({
+                              ...p,
+                              overallScore: e.target.value,
+                            }))
+                          }
+                          placeholder="Filter…"
+                          className="w-full min-w-0 rounded border border-zinc-700 bg-zinc-900 px-1 py-1 text-[10px] text-zinc-200 placeholder:text-zinc-600"
+                          aria-label="Filter by overall score"
+                        />
+                      </th>
+                      <th className="px-1 py-1 align-top font-normal">
+                        <select
+                          value={gtFilters.isCorrect}
+                          onChange={(e) =>
+                            setGtFilters((p) => ({
+                              ...p,
+                              isCorrect: e.target.value as GtFilterState["isCorrect"],
+                            }))
+                          }
+                          className="w-full min-w-0 rounded border border-zinc-700 bg-zinc-900 px-0.5 py-1 text-[10px] text-zinc-200"
+                          aria-label="Filter by is correct"
+                        >
+                          <option value="all">All</option>
+                          <option value="true">true</option>
+                          <option value="false">false</option>
+                        </select>
+                      </th>
+                      <th className="px-1 py-1 align-top font-normal">
+                        <input
+                          value={gtFilters.predictedOverallScore}
+                          onChange={(e) =>
+                            setGtFilters((p) => ({
+                              ...p,
+                              predictedOverallScore: e.target.value,
+                            }))
+                          }
+                          placeholder="Filter…"
+                          className="w-full min-w-0 rounded border border-zinc-700 bg-zinc-900 px-1 py-1 text-[10px] text-zinc-200 placeholder:text-zinc-600"
+                          aria-label="Filter by predicted score"
+                        />
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {metrics.groundTruthRows.map((r) => (
+                    {filteredSortedGroundTruth.map((r) => (
                       <tr
                         key={r.id}
                         className="border-b border-zinc-800/80 text-zinc-300"
@@ -751,6 +1046,11 @@ export function EvalsPageClient({ email }: Props) {
                     ))}
                   </tbody>
                 </table>
+                {filteredSortedGroundTruth.length === 0 ?
+                  <p className="border-t border-zinc-800 px-3 py-2 text-xs text-zinc-500">
+                    No rows match the current filters.
+                  </p>
+                : null}
               </div>
             </div>
           : null}
