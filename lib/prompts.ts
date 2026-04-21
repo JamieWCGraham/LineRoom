@@ -511,8 +511,9 @@ B) overallRatingBand
     - Broad statements substituted for dramatized feeling
     - Cliché doing most of the work
     - Generic uplift/devastation language
-    - No memorable line outside the hook, or hook is the only real asset
+    - No memorable lines outside the hook, or hook/structure/prosody are the only real assets.
     - Structure functions, but the actual wording remains underwritten
+    - Lyric contains a combination of (strong hook and/or prosody and/or structure), but the lyrics are seriously flawed on other dimensions, e.g. weak concept, consistently generic, vague, clichéd, or interchangeable.
 
   ### Promising
     - Real potential with some genuine strengths (concept, voice, hook, moments, imagery, attitude, or structure).
@@ -522,14 +523,14 @@ B) overallRatingBand
     - Requires meaningful revision or stronger sustained execution to reach Strong.
 
     Requirements
-    - At least some real craft is visible beyond mere catchiness or structure.
+    - Promising requires more than a good hook, good structure, good prosody / chantability, or basic song functionality. There must be visible evidence of real lyrical craft in the writing itself (compelling concept, voice, imagery, specificity, control, etc.) beyond competent assembly.
     - There is at least some distinctiveness in voice, perspective, imagery, or execution.
     - The lyric works as more than pure placeholder writing, even if it remains uneven.
 
     Disqualifiers
     - Clear lack of craft, specificity, control, and/or distinctive voice.
     - Very generic phrasing, filler-heavy writing, or an overdone concept executed in a stock way.
-    - A strong hook, strong prosody, emotional clarity, or clear structure alone is not enough to justify Promising.
+    - If the only strengths are strong hook / strong prosody / strong structure, that is not enough to justify Promising --> if the lyric is only strong on one or a combination of these dimensions with serious flaws on other dimensions, opt for "Needs Work".
     - Do not promote to Promising if the wording is mostly generic, vague, clichéd, or interchangeable, even if the song would likely work in performance.
 
     Hard ceiling rule
@@ -547,7 +548,7 @@ B) overallRatingBand
     - There is meaningful writing strength across the piece, even if not every line is equally memorable or quotable.
     - Strong may be achieved through different routes:
       1) vivid, striking, line-level writing, OR
-      2) exceptional control, economy, voice, dramatic framing, tonal coherence, or cumulative emotional effect within a simpler idiom.
+      2) exceptional control, emotional impact through compelling concept, voice, dramatic framing, tonal coherence, or cumulative emotional effect within a simpler idiom.
     - Simplicity, repetition, directness, or plainspoken language are not weaknesses by themselves if they feel controlled, genre-appropriate, and emotionally effective.
     - Conversational, contemporary, or restrained writing should not be downgraded merely for being less ornate, less literary, or less immediately quotable.
     - The lyric must show sustained writing quality beyond mere hook effectiveness, emotional clarity, chantability, atmosphere, or familiarity.
