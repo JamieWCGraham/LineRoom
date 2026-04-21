@@ -64,9 +64,9 @@ export function prefillChatAction(
           : "Give me other words that mean something similar to the main word or phrase in this selection.";
       }
       if (scope === "section") {
-        return "Give me other words that mean something similar to the main word or phrase in this section.";
+        return "You are a thesaurus. Give me other words that mean something similar to the following word: ";
       }
-      return "Give me other words that mean something similar to the main word or phrase in this draft.";
+      return "You are a thesaurus. Give me other words that mean something similar to the following word: ";
     }
   }
 }

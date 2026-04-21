@@ -11,6 +11,7 @@ import {
 } from "@/lib/lineAnnotations";
 import type { CritiqueResult } from "@/lib/types";
 import { critiqueResultSchema } from "@/lib/validators";
+import { AddNewSongsModal } from "@/components/evals/add-new-songs-modal";
 
 type EvalOutputJson = {
   runTimestamp?: string;
@@ -81,6 +82,7 @@ export function EvalsPageClient({ email }: Props) {
   const [metricsVisible, setMetricsVisible] = useState(false);
   const [metricsLoading, setMetricsLoading] = useState(false);
   const [metricsError, setMetricsError] = useState<string | null>(null);
+  const [addSongsOpen, setAddSongsOpen] = useState(false);
 
   const refreshRuns = useCallback(async () => {
     setListError(null);
@@ -405,6 +407,7 @@ export function EvalsPageClient({ email }: Props) {
 
   return (
     <div className="mt-8 space-y-6">
+      <AddNewSongsModal open={addSongsOpen} onClose={() => setAddSongsOpen(false)} />
       <section className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-4">
         <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
           Evaluation run
@@ -422,6 +425,13 @@ export function EvalsPageClient({ email }: Props) {
             className="rounded-lg bg-amber-600/90 px-4 py-2 text-sm font-medium text-zinc-950 transition hover:bg-amber-500 disabled:opacity-50"
           >
             {batchBusy ? "Starting…" : "Run full eval set"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setAddSongsOpen(true)}
+            className="rounded-lg border border-emerald-800/60 bg-emerald-950/30 px-4 py-2 text-sm font-medium text-emerald-100 hover:border-emerald-600/50 hover:bg-emerald-950/45"
+          >
+            Add New Songs
           </button>
           <button
             type="button"
