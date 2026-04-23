@@ -49,6 +49,19 @@ export async function POST(req: Request) {
     );
   }
 
+  if (
+    !process.env.AI_GATEWAY_API_KEY?.trim() &&
+    !process.env.VERCEL_AI_GATEWAY_API_KEY?.trim()
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Server is not configured with AI_GATEWAY_API_KEY (critique uses Vercel AI Gateway)",
+      },
+      { status: 503 },
+    );
+  }
+
   const freeQuota = getFreeCritiqueQuota();
   const needsSlot =
     !accessBefore.isBypassed && !accessBefore.hasActiveSubscription;
@@ -82,9 +95,12 @@ export async function POST(req: Request) {
       ({ critique } = await runCritiqueModel(payload));
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unknown error";
-      if (message === "OPENAI_API_KEY is not set") {
+      if (message === "AI_GATEWAY_API_KEY is not set") {
         return NextResponse.json(
-          { error: "Server is not configured with OPENAI_API_KEY" },
+          {
+            error:
+              "Server is not configured with AI_GATEWAY_API_KEY (critique uses Vercel AI Gateway)",
+          },
           { status: 503 },
         );
       }

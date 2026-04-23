@@ -36,19 +36,24 @@ export const lineFeedbackItemSchema = z.object({
   category: z
     .preprocess(lc, z.enum(["praise", "constructive"]))
     .default("constructive"),
-  // Accept any casing ("Strong", "Promising") and common aliases for "weak"
-  // ("Room for Improvement", "Needs Improvement", etc.)
+  // Accept any casing and legacy "weak" / "room for improvement" → suggestion
   strength: z
     .preprocess((v) => {
       if (typeof v !== "string") return v;
       const s = v.toLowerCase().trim();
       if (s === "strong") return "strong";
       if (s === "promising") return "promising";
-      if (s === "weak" || s.includes("improve") || s.includes("room")) {
-        return "weak";
+      if (
+        s === "suggestion" ||
+        s === "weak" ||
+        s.includes("suggest") ||
+        s.includes("improve") ||
+        s.includes("room")
+      ) {
+        return "suggestion";
       }
       return s;
-    }, z.enum(["strong", "promising", "weak"]))
+    }, z.enum(["strong", "promising", "suggestion"]))
     .optional(),
 });
 

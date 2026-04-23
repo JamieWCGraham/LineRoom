@@ -15,7 +15,7 @@ export type LineFeedbackItem = {
   quotedLine: string;
   feedback: string;
   category: "praise" | "constructive";
-  strength?: "strong" | "promising" | "weak";
+  strength?: "strong" | "promising" | "suggestion";
 };
 
 export type OverallRatingBand =

@@ -31,6 +31,11 @@ export function rethrowIfBadRequest(error: unknown): void {
     error instanceof APIError &&
     error.status === 400
   ) {
+    console.error(
+      "[critique LLM] 400 from provider:",
+      error.message,
+      error.code ?? "",
+    );
     throw new Error("__BAD_REQUEST__");
   }
 }

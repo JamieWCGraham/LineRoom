@@ -188,23 +188,23 @@ export function CritiqueDisplayPanel({
                     {(() => {
                       const strength =
                         item.strength ??
-                        (item.category === "praise" ? "strong" : "weak");
+                        (item.category === "praise" ? "strong" : "suggestion");
                       const quotedClass =
                         strength === "strong" ?
                           "border-l-2 border-green-600/75 pl-2 font-mono text-[13px] leading-snug text-zinc-100"
                         : strength === "promising" ?
-                          "border-l-2 border-yellow-500/85 pl-2 font-mono text-[13px] leading-snug text-yellow-100"
-                        : "border-l-2 border-pink-600/75 pl-2 font-mono text-[13px] leading-snug text-pink-100";
+                          "border-l-2 border-blue-500/80 pl-2 font-mono text-[13px] leading-snug text-sky-100"
+                        : "border-l-2 border-violet-400/70 pl-2 font-mono text-[13px] leading-snug text-violet-100";
                       const labelClass =
                         strength === "strong" ?
                           "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-green-300/90"
                         : strength === "promising" ?
-                          "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-yellow-300/90"
-                        : "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-pink-300/90";
+                          "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-sky-300/90"
+                        : "mt-1 pl-2 text-[11px] font-medium uppercase tracking-wide text-violet-300/90";
                       const strengthLabel =
                         strength === "strong" ? "Strong"
                         : strength === "promising" ? "Promising"
-                        : "Room for Improvement";
+                        : "Suggestion";
                       return (
                         <>
                           <p className={quotedClass}>{item.quotedLine || "—"}</p>

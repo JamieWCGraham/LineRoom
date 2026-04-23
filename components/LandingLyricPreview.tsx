@@ -2,8 +2,9 @@ const highlight = {
   strong:
     "rounded px-1 py-0.5 font-medium text-white ring-1 ring-emerald-500/50 bg-emerald-600/50",
   promising:
-    "rounded px-1 py-0.5 font-medium text-white ring-1 ring-amber-400/45 bg-amber-500/35",
-  weak: "rounded px-1 py-0.5 font-medium text-white ring-1 ring-rose-400/60 bg-rose-600/45",
+    "rounded px-1 py-0.5 font-medium text-white ring-1 ring-sky-500/50 bg-blue-600/40",
+  suggestion:
+    "rounded px-1 py-0.5 font-medium text-white ring-1 ring-violet-400/55 bg-violet-600/40",
 } as const;
 
 type Props = {
@@ -12,7 +13,7 @@ type Props = {
 };
 
 /**
- * Static marketing preview: four lyric lines, one weak highlight, one feedback
+ * Static marketing preview: four lyric lines, one suggestion-tier highlight, one feedback
  * block directly beneath it (no overlap) so highlight → feedback reads instantly.
  */
 export function LandingLyricPreview({ embedded = false }: Props) {
@@ -33,17 +34,17 @@ export function LandingLyricPreview({ embedded = false }: Props) {
           <mark className={highlight.strong}>The chorus hits like a closing door</mark>
         </div>
         <div className="min-h-[1.65em] pt-0.5">
-          <mark className={highlight.weak}>
+          <mark className={highlight.suggestion}>
             I feel something when you turn away
           </mark>
         </div>
 
         <div
-          className="mt-3 rounded-lg border border-rose-500/40 border-l-[3px] border-l-rose-400/40 bg-zinc-900 px-3.5 py-3 text-[13px] leading-snug text-zinc-100 sm:text-sm sm:leading-relaxed"
+          className="mt-3 rounded-lg border border-violet-500/35 border-l-[3px] border-l-violet-400/50 bg-zinc-900 px-3.5 py-3 text-[13px] leading-snug text-zinc-100 sm:text-sm sm:leading-relaxed"
           role="note"
           aria-label="Example line feedback"
         >
-          <span className="font-semibold text-rose-100">Room for improvement</span>
+          <span className="font-semibold text-violet-200">Suggestion</span>
           <span className="text-zinc-300"> — </span>
           <span className="text-zinc-200">
             The feeling lands, but the image stays generic. Name one concrete detail—

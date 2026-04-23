@@ -70,7 +70,7 @@ export type DraftEditorProps = {
 const TEXTAREA_CLASSES =
   "box-border h-full min-h-[min(50dvh,28rem)] w-full flex-1 resize-none rounded-lg border-0 bg-transparent p-4 max-lg:pl-5 max-lg:pt-8 text-sm font-sans leading-[1.625] whitespace-pre caret-zinc-100 outline-none [touch-action:pan-x_pan-y] overscroll-none [-webkit-text-fill-color:transparent] [color:rgb(244_244_245)] placeholder:text-zinc-500/45 placeholder:[-webkit-text-fill-color:rgb(161_161_170_/_0.45)] sm:min-h-[min(56dvh,32rem)] sm:resize-y lg:min-h-0 lg:text-base";
 
-type LineHighlightTier = "weak" | "promising" | "strong";
+type LineHighlightTier = "suggestion" | "promising" | "strong";
 
 type TooltipFeedbackEntry = { label: string; feedback: string };
 
@@ -507,14 +507,14 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
         return;
       }
       const tier: LineHighlightTier =
-        notes.some((n) => n.strength === "weak") ? "weak"
+        notes.some((n) => n.strength === "suggestion") ? "suggestion"
         : notes.some((n) => n.strength === "promising") ? "promising"
         : "strong";
       const entries: TooltipFeedbackEntry[] = notes.map((note) => {
         const label =
           note.strength === "strong" ? "Strong"
           : note.strength === "promising" ? "Promising"
-          : "Room for Improvement";
+          : "Suggestion";
         return { label, feedback: note.feedback };
       });
       setTooltip({
@@ -531,13 +531,13 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
     return backdropLines.map((line, i) => {
       const notes = lineFeedbackByIndex.get(i);
       const has = Boolean(notes?.length);
-      const hasWeak = notes?.some((note) => note.strength === "weak");
+      const hasSuggestion = notes?.some((note) => note.strength === "suggestion");
       const hasPromising = notes?.some((note) => note.strength === "promising");
       const lineHighlightClass =
-        hasWeak ?
-          "rounded-sm bg-pink-600/35 px-0.5 text-zinc-50"
+        hasSuggestion ?
+          "rounded-sm bg-violet-500/45 px-0.5 text-zinc-50"
         : hasPromising ?
-          "rounded-sm bg-yellow-500/25 px-0.5 text-zinc-50"
+          "rounded-sm bg-blue-600/45 px-0.5 text-zinc-50"
         : "rounded-sm bg-emerald-600/35 px-0.5 text-zinc-50";
 
       let globalIndex = 0;
@@ -857,8 +857,8 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
         <div
           ref={tooltipPopoverRef}
           className={`pointer-events-none fixed z-[100] max-h-64 max-w-sm min-w-0 overflow-y-auto rounded-lg border-2 bg-zinc-900/95 p-3 text-xs leading-relaxed text-zinc-200 shadow-xl backdrop-blur-sm ${
-            tooltip.tier === "weak" ? "border-pink-600/75"
-            : tooltip.tier === "promising" ? "border-yellow-500/75"
+            tooltip.tier === "suggestion" ? "border-violet-500/75"
+            : tooltip.tier === "promising" ? "border-blue-500/75"
             : "border-green-600/75"
           }`}
         >

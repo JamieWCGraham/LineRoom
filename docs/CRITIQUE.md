@@ -9,7 +9,7 @@ Critique produces a **single structured evaluation** of the current draft (lyric
 ## End-to-end flow
 
 1. **Client** (`components/LineRoomEditor.tsx`): The user triggers critique (first generation or **Regenerate**). The client `POST`s JSON to `/api/critique` with the draft, title, genre/similar-artists meta, and optional song-version context.
-2. **API route** (`app/api/critique/route.ts`): Validates the body with Zod, builds the **user** message from `buildCritiqueUserPayload`, calls OpenAI **Chat Completions** with a fixed **system** prompt (`CRITIQUE_JSON_INSTRUCTIONS`) and `response_format: { type: "json_object" }`.
+2. **API route** (`app/api/critique/route.ts`): Validates the body with Zod, builds the **user** message from `buildCritiqueUserPayload`, calls **Vercel AI Gateway** OpenAI-compatible **Chat Completions** with a fixed **system** prompt (`CRITIQUE_JSON_INSTRUCTIONS`) and `response_format: { type: "json_object" }`.
 3. **Response handling**: The assistant message is parsed as JSON and validated again with `critiqueResultSchema`. Server code then **attaches** song-version metadata (`attachSongVersionContext`) that the model does not emit.
 4. **Client**: On success, the critique is stored in React state; in **song** mode the editor may persist and version the result (save + new version + navigation)—that persistence is product flow, not part of the LLM call itself.
 
@@ -17,11 +17,11 @@ Critique produces a **single structured evaluation** of the current draft (lyric
 sequenceDiagram
   participant UI as LineRoomEditor
   participant API as POST /api/critique
-  participant OAI as OpenAI Chat Completions
+  participant GW as Vercel AI Gateway
   UI->>API: critiqueRequest JSON
   API->>API: Zod validate request
-  API->>OAI: system + user, json_object
-  OAI-->>API: JSON string
+  API->>GW: Chat Completions (system + user, json_object)
+  GW-->>API: JSON string
   API->>API: JSON.parse + Zod validate result
   API->>API: attachSongVersionContext
   API-->>UI: { critique }
@@ -31,11 +31,14 @@ sequenceDiagram
 
 | Area | Location |
 |------|----------|
-| HTTP handler, OpenAI call, tracing wrapper | `app/api/critique/route.ts` |
+| HTTP handler, gateway config check, tracing wrapper | `app/api/critique/route.ts` |
 | System prompt + user payload builder | `lib/prompts.ts` (`CRITIQUE_JSON_INSTRUCTIONS`, `buildCritiqueUserPayload`) |
 | Request/response Zod schemas | `lib/validators.ts` (`critiqueRequestSchema`, `critiqueResultSchema`, related line/band types) |
 | TypeScript types | `lib/types.ts` (`CritiqueResult`, `PriorVersionContext`, …) |
-| OpenAI client + model name | `lib/openai.ts` (`createBaseOpenAI`, `getChatModel`) |
+| Gateway OpenAI client + critique model id | `lib/aiGatewayCritique.ts` (`createCritiqueGatewayOpenAI`, `getCritiqueGatewayModelId`) |
+| Critique provider toggle (`openai` vs `gemini` default) | `lib/critique/critiqueLlmProvider.ts` (`getCritiqueLlmProvider`) |
+| Critique LLM call + validation | `lib/critique/runCritiqueModel.ts` |
+| OpenAI client for **chat** (not critique) | `lib/openai.ts` |
 | Langfuse trace/generation | `lib/langfuse-server.ts` (`runWithLangfuseTrace`, `scheduleLangfuseFlush`) |
 | UI trigger + payload assembly | `components/LineRoomEditor.tsx` (`runCritique`) |
 | Prior version rows for song mode | `app/song/[songId]/page.tsx` → `priorVersionsContext` |
@@ -51,11 +54,12 @@ The API expects:
 
 ## LLM call shape
 
-- **Model**: `getChatModel()` → `process.env.OPENAI_MODEL` or default **`gpt-5-mini`** (see `lib/openai.ts`).
+- **Transport**: OpenAI SDK with `baseURL` **`https://ai-gateway.vercel.sh/v1`** (override `AI_GATEWAY_BASE_URL`) and **`AI_GATEWAY_API_KEY`** (see [OpenAI compat](https://vercel.com/docs/ai-gateway/openai-compat)).
+- **Model**: `getCritiqueGatewayModelId()` in `lib/aiGatewayCritique.ts`. Set **`CRITIQUE_GATEWAY_MODEL`** to a full gateway id (e.g. `openai/gpt-5-mini`, `google/gemini-3.1-pro-preview`), or use **`CRITIQUE_LLM_PROVIDER`** (`openai` \| `gemini`/`google`) to pick the default OpenAI vs Gemini profile when `CRITIQUE_GATEWAY_MODEL` is unset.
 - **Messages**:
   - **System**: Long, static `CRITIQUE_JSON_INSTRUCTIONS`—role, craft principles, output JSON shape, calibration rules, and constraints (e.g. line feedback count, praise ratio, subscore stability when prior context exists).
   - **User**: Dynamic string from `buildCritiqueUserPayload`—title, genre, version context, optional **draft change summary** vs. latest prior, optional **prior versions** blocks (truncated drafts + critique summaries), optional **regeneration** block with the full previous critique snapshot, then the full current draft in a fenced block.
-- **Structured output**: `response_format: { type: "json_object" }` nudges a single JSON object matching the documented keys (no markdown fences in the ideal case).
+- **Structured output**: For gateway models whose id starts with **`openai/`**, the client sends `response_format: { type: "json_object" }`. Other providers (e.g. **`google/`**) often reject that field with HTTP 400, so JSON is enforced via the system prompt plus server-side Zod validation and the existing repair retry.
 
 ## Prompt design (why it is split this way)
 
@@ -72,7 +76,7 @@ Validated fields include:
 - `genrePrinciples`, `overallRatingBand` (enum), optional `overallBandRationale`
 - `subscores`: seven dimensions, each **1–5** integer
 - `overallStrengths` / `overallWeaknesses`: string arrays
-- `lineFeedback`: items with `quotedLine`, `feedback`, `category` (`praise` | `constructive`), optional `strength` (`strong` | `promising` | `weak`)
+- `lineFeedback`: items with `quotedLine`, `feedback`, `category` (`praise` | `constructive`), optional `strength` (`strong` | `promising` | `suggestion`; legacy `weak` is normalized to `suggestion`)
 
 Version-related fields **`analyzedSongVersion`**, **`priorSongVersionCompared`**, and **`comparedToSummary`** are part of the **TypeScript** `CritiqueResult` type and may be **set or cleared on the server** via `attachSongVersionContext` so the UI can show what was compared without trusting the model to echo IDs correctly.
 

@@ -17,7 +17,7 @@ This MVP is a **Next.js** app meant to deploy on **Vercel** with **serverless AP
 cd Experiments/LineRoom
 npm install
 cp .env.example .env.local
-# Set OPENAI_API_KEY in .env.local
+# Set OPENAI_API_KEY (chat) and AI_GATEWAY_API_KEY (generate critique) in .env.local
 npm run dev
 ```
 
@@ -27,8 +27,10 @@ Open [http://localhost:3000](http://localhost:3000).
 
 | Variable               | Required | Description |
 |------------------------|----------|-------------|
-| `OPENAI_API_KEY`       | Yes      | Server-only; never exposed to the client. |
-| `OPENAI_MODEL`         | No       | Defaults to `gpt-4o-mini`. |
+| `OPENAI_API_KEY`       | Yes      | Server-only; `/api/chat`. Never exposed to the client. |
+| `AI_GATEWAY_API_KEY`   | Yes      | Server-only; `/api/critique` via [Vercel AI Gateway](https://vercel.com/docs/ai-gateway/openai-compat). |
+| `CRITIQUE_LLM_PROVIDER`| No       | `openai` (default) → gateway `openai/gpt-5-mini`, or `gemini` → `google/gemini-3.1-pro-preview`. Override fully with `CRITIQUE_GATEWAY_MODEL`. |
+| `OPENAI_MODEL`         | No       | Chat default; see `lib/openai.ts`. |
 | `LANGFUSE_SECRET_KEY`  | No       | Enables [Langfuse](https://langfuse.com) tracing when set with `LANGFUSE_PUBLIC_KEY`. |
 | `LANGFUSE_PUBLIC_KEY`  | No       | Pair with secret key for Langfuse. |
 | `LANGFUSE_BASE_URL`    | No       | Defaults to `https://cloud.langfuse.com` (EU). US: `https://us.cloud.langfuse.com`. |
@@ -42,7 +44,7 @@ Requires **Node.js 20+** (for `@langfuse/otel`). Set the same variables in Verce
 ## Deploy on Vercel
 
 1. Import the repo (or this folder as the project root).
-2. Add `OPENAI_API_KEY` in **Project → Settings → Environment Variables**.
+2. Add `OPENAI_API_KEY` and `AI_GATEWAY_API_KEY` in **Project → Settings → Environment Variables** (see table above).
 3. Deploy. No database or extra services required for this MVP.
 
 ## Project layout
