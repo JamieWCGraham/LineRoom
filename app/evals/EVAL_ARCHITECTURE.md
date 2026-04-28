@@ -9,7 +9,6 @@ The evaluation system should therefore assess each part of the generated critiqu
 ```text
 Overall rating
 Subscores
-Genre principles
 Top strengths
 Top weaknesses
 Line-level feedback
