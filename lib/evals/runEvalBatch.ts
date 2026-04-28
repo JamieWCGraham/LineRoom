@@ -4,6 +4,14 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import type { CritiqueResult } from "@/lib/types";
 import { getEvalBatchConcurrency } from "./concurrency";
 import { evalOutputObjectPath, getLineRoomEvalsBucket } from "./bucket";
+import { parseOverallScoreFromDb } from "./ratingBands";
+import {
+  evaluateSubscoreCalibration,
+  getCritiqueExplanationText,
+  parseGroundTruthSubscores,
+  type SubscoreCalibrationResult,
+} from "./subscoreCalibration";
+import { judgeSubscoreExplanationAlignment } from "./subscoreJudge";
 import {
   fetchEvalSetRowById,
   type ParsedEvalSetRow,
@@ -19,6 +27,10 @@ export type LineRoomEvalOutputFile = {
   requestPayload: CritiqueRequestPayload | null;
   userPrompt?: string;
   critique?: CritiqueResult;
+  subscoreCalibration?: (SubscoreCalibrationResult & {
+    explanationAlignmentScore?: number;
+    explanationAlignmentNotes?: string;
+  }) | null;
   elapsedMs?: number;
   error?: string | null;
 };
@@ -71,12 +83,38 @@ async function processOneEvalRow(
       rootObservationName: "lineroom-critique-eval-batch",
       generationName: "lyric-critique-eval-batch",
     });
+    const groundTruth = parseGroundTruthSubscores(row.ground_truth_subscores);
+    let subscoreCalibration: LineRoomEvalOutputFile["subscoreCalibration"] = null;
+    if (groundTruth) {
+      const base = evaluateSubscoreCalibration({
+        predicted: critique.subscores,
+        groundTruth,
+        overallBand: parseOverallScoreFromDb(row.overall_score),
+      });
+      subscoreCalibration = base;
+      try {
+        const alignment = await judgeSubscoreExplanationAlignment({
+          lyrics: requestPayload.fullText,
+          predictedSubscores: critique.subscores,
+          groundTruthSubscores: groundTruth,
+          critiqueExplanation: getCritiqueExplanationText(critique),
+        });
+        subscoreCalibration = {
+          ...base,
+          explanationAlignmentScore: alignment.score,
+          explanationAlignmentNotes: alignment.notes,
+        };
+      } catch {
+        // Keep batch resilient if secondary judge call fails.
+      }
+    }
     await uploadOutput(path, {
       ...base,
       evalRow: row,
       requestPayload,
       userPrompt: userContent,
       critique,
+      subscoreCalibration,
       elapsedMs: Date.now() - started,
     });
   } catch (e) {

@@ -12,6 +12,8 @@ const EXPORT_HEADERS = [
   "genre",
   "overall_score",
   "rationale_short",
+  "ground_truth_subscores",
+  "ground_truth_subscores_approved",
 ] as const;
 
 function coerceText(raw: unknown): string {
@@ -44,7 +46,9 @@ export async function GET() {
   for (let offset = 0; ; offset += pageSize) {
     const { data, error } = await admin
       .from("generate_critique_eval_set")
-      .select("id, title, artist, lyrics, genre, overall_score, rationale_short")
+      .select(
+        "id, title, artist, lyrics, genre, overall_score, rationale_short, ground_truth_subscores, ground_truth_subscores_approved",
+      )
       .order("id", { ascending: true })
       .range(offset, offset + pageSize - 1);
 
@@ -75,6 +79,10 @@ export async function GET() {
       coerceText(row.genre),
       score,
       rationale,
+      row.ground_truth_subscores ? JSON.stringify(row.ground_truth_subscores) : "",
+      typeof row.ground_truth_subscores_approved === "boolean" ?
+        String(row.ground_truth_subscores_approved)
+      : "",
     ];
   });
 

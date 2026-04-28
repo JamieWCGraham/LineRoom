@@ -6,6 +6,10 @@ import { CritiqueDisplayPanel } from "@/components/CritiqueDisplayPanel";
 import { DraftEditor } from "@/components/DraftEditor";
 import { CANONICAL_RATING_BANDS } from "@/lib/evals/ratingBands";
 import {
+  parseGroundTruthSubscores,
+  SUBSCORE_DIMENSIONS,
+} from "@/lib/evals/subscoreCalibration";
+import {
   buildLineFeedbackByIndex,
   type LineAnnotation,
 } from "@/lib/lineAnnotations";
@@ -50,6 +54,20 @@ type EvalRunMetricsResponse = {
     isCorrect: boolean;
     predictedOverallScore: string | null;
   }>;
+  subscoreCalibration: {
+    comparedRows: number;
+    meanAbsoluteError: number | null;
+    bandConsistencyPassRate: number | null;
+    explanationAlignmentMean: number | null;
+    byDimension: Record<
+      string,
+      {
+        meanAbsoluteError: number | null;
+        withinToleranceRate: number | null;
+        failureRate: number | null;
+      }
+    >;
+  };
   skipped: {
     missingOutput: number[];
     missingPrediction: number[];
@@ -569,6 +587,26 @@ export function EvalsPageClient({ email }: Props) {
       : "",
     [critique?.lineFeedback],
   );
+  const evalRowObject =
+    output?.evalRow && typeof output.evalRow === "object" ?
+      (output.evalRow as Record<string, unknown>)
+    : null;
+  const selectedGroundTruthSubscores = useMemo(
+    () => parseGroundTruthSubscores(evalRowObject?.ground_truth_subscores),
+    [evalRowObject],
+  );
+  const selectedGroundTruthApproved =
+    typeof evalRowObject?.ground_truth_subscores_approved === "boolean" ?
+      evalRowObject.ground_truth_subscores_approved
+    : null;
+  const subscoreMetrics =
+    metrics?.subscoreCalibration ?? {
+      comparedRows: 0,
+      meanAbsoluteError: null,
+      bandConsistencyPassRate: null,
+      explanationAlignmentMean: null,
+      byDimension: {},
+    };
 
   return (
     <div className="mt-8 space-y-6">
@@ -598,6 +636,12 @@ export function EvalsPageClient({ email }: Props) {
           >
             Add New Songs
           </button>
+          <Link
+            href="/evals/hitl"
+            className="rounded-lg border border-indigo-800/60 bg-indigo-950/30 px-4 py-2 text-sm font-medium text-indigo-100 hover:border-indigo-600/50 hover:bg-indigo-950/45"
+          >
+            HITL Annotations
+          </Link>
           <button
             type="button"
             onClick={() => void refreshRuns()}
@@ -739,6 +783,77 @@ export function EvalsPageClient({ email }: Props) {
                 {metrics.totalCorrect} / {metrics.totalCompared} compared
               </p>
             </div>
+          </div>
+          <div className="mt-6 rounded-lg border border-zinc-800 bg-zinc-950/50 p-3">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+              Subscore calibration
+            </p>
+            <div className="mt-2 flex flex-wrap gap-6 text-sm">
+              <p className="text-zinc-300">
+                MAE:{" "}
+                <span className="font-semibold text-zinc-100">
+                  {subscoreMetrics.meanAbsoluteError != null ?
+                    (Math.round(subscoreMetrics.meanAbsoluteError * 100) / 100).toFixed(2)
+                  : "—"}
+                </span>
+              </p>
+              <p className="text-zinc-300">
+                Band pass rate:{" "}
+                <span className="font-semibold text-zinc-100">
+                  {subscoreMetrics.bandConsistencyPassRate != null ?
+                    `${Math.round(subscoreMetrics.bandConsistencyPassRate * 1000) / 10}%`
+                  : "—"}
+                </span>
+              </p>
+              <p className="text-zinc-300">
+                Explanation alignment mean:{" "}
+                <span className="font-semibold text-zinc-100">
+                  {subscoreMetrics.explanationAlignmentMean != null ?
+                    (Math.round(subscoreMetrics.explanationAlignmentMean * 100) / 100).toFixed(2)
+                  : "—"}
+                </span>
+              </p>
+              <p className="text-zinc-500">
+                n = {subscoreMetrics.comparedRows}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[42rem] border-collapse text-left text-xs">
+              <thead>
+                <tr className="border-b border-zinc-700 uppercase tracking-wide text-zinc-500">
+                  <th className="py-2 pr-4 font-medium">Subscore</th>
+                  <th className="py-2 pr-4 font-medium">MAE</th>
+                  <th className="py-2 pr-4 font-medium">Within ±1</th>
+                  <th className="py-2 font-medium">Failure (2+ off)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {SUBSCORE_DIMENSIONS.map((dim) => {
+                  const row = subscoreMetrics.byDimension?.[dim];
+                  return (
+                    <tr key={dim} className="border-b border-zinc-800/80 text-zinc-300">
+                      <td className="py-2 pr-4 font-mono text-[11px]">{dim}</td>
+                      <td className="py-2 pr-4">
+                        {row?.meanAbsoluteError != null ?
+                          (Math.round(row.meanAbsoluteError * 100) / 100).toFixed(2)
+                        : "—"}
+                      </td>
+                      <td className="py-2 pr-4">
+                        {row?.withinToleranceRate != null ?
+                          `${Math.round(row.withinToleranceRate * 1000) / 10}%`
+                        : "—"}
+                      </td>
+                      <td className="py-2">
+                        {row?.failureRate != null ?
+                          `${Math.round(row.failureRate * 1000) / 10}%`
+                        : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
           <div className="mt-4 overflow-x-auto">
             <table className="w-full min-w-[20rem] border-collapse text-left text-sm">
@@ -1125,6 +1240,8 @@ export function EvalsPageClient({ email }: Props) {
             loading={fetchingOutput}
             onRegenerate={() => {}}
             lyricsEmpty={!lyrics.trim()}
+            groundTruthSubscores={selectedGroundTruthSubscores}
+            groundTruthApproved={selectedGroundTruthApproved}
             readOnly
           />
         </div>

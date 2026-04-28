@@ -36,6 +36,8 @@ export const evalSetRowSchema = z.object({
   lyrics: pgLyricsish,
   genre: pgTextish,
   overall_score: z.unknown().nullable(),
+  ground_truth_subscores: z.unknown().nullable().optional(),
+  ground_truth_subscores_approved: z.boolean().nullable().optional(),
 });
 
 export type ParsedEvalSetRow = z.infer<typeof evalSetRowSchema>;
@@ -62,7 +64,9 @@ export async function fetchEvalSetRowById(
 > {
   const { data, error } = await admin
     .from("generate_critique_eval_set")
-    .select("id, title, artist, lyrics, genre, overall_score")
+    .select(
+      "id, title, artist, lyrics, genre, overall_score, ground_truth_subscores, ground_truth_subscores_approved",
+    )
     .eq("id", id)
     .maybeSingle();
 

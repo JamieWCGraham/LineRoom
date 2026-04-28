@@ -2,6 +2,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getEvalMetricsConcurrency } from "./concurrency";
 import { evalOutputObjectPath, getLineRoomEvalsBucket } from "./bucket";
+import type { LyricDimension } from "@/lib/types";
+import { lyricSubscoresSchema } from "@/lib/validators";
+import {
+  evaluateSubscoreCalibration,
+  parseGroundTruthSubscores,
+  SUBSCORE_DIMENSIONS,
+} from "./subscoreCalibration";
 import {
   CANONICAL_RATING_BANDS,
   type CanonicalRatingBand,
@@ -36,6 +43,20 @@ export type EvalRunMetricsResult = {
   /** Rows = ground truth band, columns = predicted band (counts of eval rows). */
   confusionMatrix: Record<CanonicalRatingBand, Record<CanonicalRatingBand, number>>;
   groundTruthRows: GroundTruthRowMetrics[];
+  subscoreCalibration: {
+    comparedRows: number;
+    meanAbsoluteError: number | null;
+    bandConsistencyPassRate: number | null;
+    explanationAlignmentMean: number | null;
+    byDimension: Record<
+      LyricDimension,
+      {
+        meanAbsoluteError: number | null;
+        withinToleranceRate: number | null;
+        failureRate: number | null;
+      }
+    >;
+  };
   skipped: {
     missingOutput: number[];
     missingPrediction: number[];
@@ -64,7 +85,11 @@ function displayCell(raw: unknown): string {
   return String(raw);
 }
 
-type RowWorkItem = { id: number; gold: CanonicalRatingBand };
+type RowWorkItem = {
+  id: number;
+  gold: CanonicalRatingBand;
+  groundTruthSubscores: unknown;
+};
 
 type RowMetricOutcome =
   | {
@@ -73,6 +98,10 @@ type RowMetricOutcome =
       gold: CanonicalRatingBand;
       predicted: CanonicalRatingBand;
       correct: boolean;
+      subscoreMae?: number;
+      subscoreBandConsistencyPass?: boolean;
+      explanationAlignmentScore?: number;
+      perDimensionDistance?: Record<LyricDimension, number>;
     }
   | { kind: "missingOutput"; id: number }
   | { kind: "missingPrediction"; id: number };
@@ -83,6 +112,7 @@ async function measureOneRow(
   runId: string,
   id: number,
   gold: CanonicalRatingBand,
+  groundTruthSubscoresRaw: unknown,
 ): Promise<RowMetricOutcome> {
   const path = evalOutputObjectPath(runId, id);
   const { data: blob, error: dlErr } = await client.storage
@@ -104,6 +134,30 @@ async function measureOneRow(
   if (!predicted) {
     return { kind: "missingPrediction", id };
   }
+  const obj = (parsed && typeof parsed === "object" ? parsed : {}) as Record<string, unknown>;
+  const critique = obj.critique;
+  const critiqueObj =
+    critique && typeof critique === "object" ? (critique as Record<string, unknown>) : null;
+  const predictedSubscores = lyricSubscoresSchema.safeParse(critiqueObj?.subscores);
+  const dbGroundTruth = parseGroundTruthSubscores(groundTruthSubscoresRaw);
+  const subscoreCalibration =
+    predictedSubscores.success && dbGroundTruth ?
+      evaluateSubscoreCalibration({
+        predicted: predictedSubscores.data,
+        groundTruth: dbGroundTruth,
+        overallBand: gold,
+      })
+    : null;
+  const alignmentRaw = obj.subscoreCalibration;
+  const explanationAlignmentScore =
+    alignmentRaw && typeof alignmentRaw === "object" ?
+      (alignmentRaw as { explanationAlignmentScore?: unknown }).explanationAlignmentScore
+    : undefined;
+  const maybeAlignment =
+    typeof explanationAlignmentScore === "number" &&
+      Number.isFinite(explanationAlignmentScore)
+    ? explanationAlignmentScore
+    : undefined;
 
   return {
     kind: "compared",
@@ -111,6 +165,14 @@ async function measureOneRow(
     gold,
     predicted,
     correct: predicted === gold,
+    ...(subscoreCalibration ?
+      {
+        subscoreMae: subscoreCalibration.meanAbsoluteError,
+        subscoreBandConsistencyPass: subscoreCalibration.bandConsistency === "pass",
+        perDimensionDistance: subscoreCalibration.perDimensionDistance,
+      }
+    : {}),
+    ...(maybeAlignment != null ? { explanationAlignmentScore: maybeAlignment } : {}),
   };
 }
 
@@ -132,7 +194,7 @@ export async function computeEvalRunMetrics(
 
   const { data: rows, error: tableErr } = await client
     .from("generate_critique_eval_set")
-    .select("id, title, artist, overall_score")
+    .select("id, title, artist, overall_score, ground_truth_subscores")
     .order("id", { ascending: true });
 
   if (tableErr) {
@@ -162,13 +224,20 @@ export async function computeEvalRunMetrics(
       invalidGoldLabel.push(id);
       continue;
     }
-    workItems.push({ id, gold });
+    workItems.push({ id, gold, groundTruthSubscores: row.ground_truth_subscores });
   }
 
   const outcomes: RowMetricOutcome[] = [];
   const concurrency = getEvalMetricsConcurrency();
-  await runPool(workItems, concurrency, async ({ id, gold }) => {
-    const outcome = await measureOneRow(client, bucket, runId, id, gold);
+  await runPool(workItems, concurrency, async ({ id, gold, groundTruthSubscores }) => {
+    const outcome = await measureOneRow(
+      client,
+      bucket,
+      runId,
+      id,
+      gold,
+      groundTruthSubscores,
+    );
     outcomes.push(outcome);
   });
 
@@ -179,6 +248,20 @@ export async function computeEvalRunMetrics(
 
   let totalCompared = 0;
   let totalCorrect = 0;
+  let subscoreComparedRows = 0;
+  let subscoreMaeTotal = 0;
+  let subscoreBandPassCount = 0;
+  let explanationAlignmentCount = 0;
+  let explanationAlignmentTotal = 0;
+  const perDimDistanceSums = Object.fromEntries(
+    SUBSCORE_DIMENSIONS.map((d) => [d, 0]),
+  ) as Record<LyricDimension, number>;
+  const perDimWithinToleranceCounts = Object.fromEntries(
+    SUBSCORE_DIMENSIONS.map((d) => [d, 0]),
+  ) as Record<LyricDimension, number>;
+  const perDimFailureCounts = Object.fromEntries(
+    SUBSCORE_DIMENSIONS.map((d) => [d, 0]),
+  ) as Record<LyricDimension, number>;
 
   for (const o of outcomes) {
     if (o.kind === "missingOutput") {
@@ -195,6 +278,25 @@ export async function computeEvalRunMetrics(
     stratum.count += 1;
     if (o.correct) stratum.correct += 1;
     confusionMatrix[o.gold][o.predicted] += 1;
+    if (typeof o.subscoreMae === "number") {
+      subscoreComparedRows += 1;
+      subscoreMaeTotal += o.subscoreMae;
+    }
+    if (o.perDimensionDistance) {
+      for (const dim of SUBSCORE_DIMENSIONS) {
+        const d = o.perDimensionDistance[dim];
+        perDimDistanceSums[dim] += d;
+        if (d <= 1) perDimWithinToleranceCounts[dim] += 1;
+        if (d >= 2) perDimFailureCounts[dim] += 1;
+      }
+    }
+    if (o.subscoreBandConsistencyPass) {
+      subscoreBandPassCount += 1;
+    }
+    if (typeof o.explanationAlignmentScore === "number") {
+      explanationAlignmentCount += 1;
+      explanationAlignmentTotal += o.explanationAlignmentScore;
+    }
   }
 
   for (const b of CANONICAL_RATING_BANDS) {
@@ -237,6 +339,43 @@ export async function computeEvalRunMetrics(
     byOverallScore,
     confusionMatrix,
     groundTruthRows,
+    subscoreCalibration: {
+      comparedRows: subscoreComparedRows,
+      meanAbsoluteError:
+        subscoreComparedRows > 0 ? subscoreMaeTotal / subscoreComparedRows : null,
+      bandConsistencyPassRate:
+        subscoreComparedRows > 0 ? subscoreBandPassCount / subscoreComparedRows : null,
+      explanationAlignmentMean:
+        explanationAlignmentCount > 0 ?
+          explanationAlignmentTotal / explanationAlignmentCount
+        : null,
+      byDimension: Object.fromEntries(
+        SUBSCORE_DIMENSIONS.map((dim) => [
+          dim,
+          {
+            meanAbsoluteError:
+              subscoreComparedRows > 0 ?
+                perDimDistanceSums[dim] / subscoreComparedRows
+              : null,
+            withinToleranceRate:
+              subscoreComparedRows > 0 ?
+                perDimWithinToleranceCounts[dim] / subscoreComparedRows
+              : null,
+            failureRate:
+              subscoreComparedRows > 0 ?
+                perDimFailureCounts[dim] / subscoreComparedRows
+              : null,
+          },
+        ]),
+      ) as Record<
+        LyricDimension,
+        {
+          meanAbsoluteError: number | null;
+          withinToleranceRate: number | null;
+          failureRate: number | null;
+        }
+      >,
+    },
     skipped: {
       missingOutput: missingOutput.sort((a, c) => a - c),
       missingPrediction: missingPrediction.sort((a, c) => a - c),

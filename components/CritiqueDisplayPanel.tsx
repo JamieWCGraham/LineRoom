@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useMobileToolbarInset } from "@/hooks/useMobileToolbarInset";
 import type { CritiqueResult } from "@/lib/types";
+import type { LyricSubscoresJson } from "@/lib/evals/subscoreCalibration";
 
 const DIMENSION_LABELS: Array<{
   key: keyof CritiqueResult["subscores"];
@@ -23,6 +24,8 @@ type Props = {
   onRegenerate: () => void;
   lyricsEmpty: boolean;
   quotaBadge?: string | null;
+  groundTruthSubscores?: LyricSubscoresJson | null;
+  groundTruthApproved?: boolean | null;
   /** Hide regenerate / quota footer (e.g. eval results viewer). */
   readOnly?: boolean;
 };
@@ -33,6 +36,8 @@ export function CritiqueDisplayPanel({
   onRegenerate,
   lyricsEmpty,
   quotaBadge,
+  groundTruthSubscores = null,
+  groundTruthApproved = null,
   readOnly = false,
 }: Props) {
   const mobileHeaderRef = useRef<HTMLDivElement>(null);
@@ -124,6 +129,16 @@ export function CritiqueDisplayPanel({
               <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
                 Subscores
               </p>
+              {groundTruthSubscores ? (
+                <p className="mt-1 text-[11px] text-zinc-500">
+                  Predicted vs ground truth
+                  {groundTruthApproved == null ?
+                    ""
+                  : groundTruthApproved ?
+                    " · GT approved"
+                  : " · GT not approved"}
+                </p>
+              ) : null}
               <ul className="mt-1 space-y-1.5 text-zinc-300">
                 {DIMENSION_LABELS.map(({ key, label }) => (
                   <li key={key} className="flex items-center justify-between gap-3">
@@ -132,6 +147,11 @@ export function CritiqueDisplayPanel({
                     </span>
                     <span className="font-medium tabular-nums text-amber-100/95">
                       {critique.subscores[key]}/5
+                      {groundTruthSubscores ? (
+                        <span className="ml-2 text-zinc-500">
+                          vs {groundTruthSubscores[key]}/5
+                        </span>
+                      ) : null}
                     </span>
                   </li>
                 ))}

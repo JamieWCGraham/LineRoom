@@ -1331,9 +1331,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                   }
                   useMobileVoiceFab
                   suppressMobileFloatingFab={isSong}
-                  mobileFabVisible={
-                    mobilePane === "draft" && lyricDocPane === "draft"
-                  }
+                  mobileFabVisible={mobilePane === "draft"}
                   disabled={
                     savePending ||
                     persistInFlight ||
@@ -1420,6 +1418,31 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
               //   <p className="px-3 pt-2.5 pb-1 text-xs leading-relaxed text-zinc-500">
               //   </p>
               // }
+              headerTrailing={
+                <DraftRecordingsPanel
+                  ref={voiceNotesRef}
+                  storageMode={isSong ? "cloud" : "local"}
+                  songId={songId ?? undefined}
+                  versionId={activeVersionId ?? undefined}
+                  recordings={meta.draftRecordings ?? []}
+                  onRecordingsChange={(next) =>
+                    setMeta((m) => ({
+                      ...m,
+                      draftRecordings: next.length ? next : undefined,
+                    }))
+                  }
+                  useMobileVoiceFab
+                  suppressMobileFloatingFab={isSong}
+                  mobileFabVisible={mobilePane === "draft"}
+                  disabled={
+                    savePending ||
+                    persistInFlight ||
+                    deleteVersionPending ||
+                    newVersionPending ||
+                    critiqueLoading
+                  }
+                />
+              }
             />
           }
         </section>
@@ -1483,7 +1506,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           {isSong &&
           props.mode === "song" &&
           mobilePane === "draft" &&
-          lyricDocPane === "draft" ?
+          (lyricDocPane === "draft" || lyricDocPane === "brainstorm") ?
             <button
               type="button"
               onClick={() => voiceNotesRef.current?.openVoicePanel()}
