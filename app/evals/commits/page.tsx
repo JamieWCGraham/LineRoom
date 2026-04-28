@@ -21,9 +21,9 @@ export default async function EvalsCommitsPage() {
       <AppBrandDash />
       <div className="mt-8 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-zinc-100">Main branch commits</h1>
+          <h1 className="text-xl font-semibold text-zinc-100">Github Insight Engine</h1>
           <p className="mt-2 text-sm text-zinc-400">
-            History from GitHub (default branch from the API). Search and filter the loaded set; use
+            Main branch Github commit history with LLM summaries (default branch from the API). Search and filter the loaded set; use
             &quot;Load more&quot; to pull additional pages.
           </p>
         </div>

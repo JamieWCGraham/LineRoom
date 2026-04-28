@@ -190,8 +190,10 @@ export function EvalsCommitsClient() {
       if (!res.ok) {
         throw new Error(data.detail ?? data.error ?? `HTTP ${res.status}`);
       }
-      if (data.summary && data.commitSha) {
-        setSummaries((prev) => ({ ...prev, [shaKey(data.commitSha)]: data.summary }));
+      if (typeof data.summary === "string" && typeof data.commitSha === "string") {
+        const normalizedSha = shaKey(data.commitSha);
+        const summary = data.summary;
+        setSummaries((prev) => ({ ...prev, [normalizedSha]: summary }));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Summary failed.");
