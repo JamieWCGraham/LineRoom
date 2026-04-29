@@ -9,6 +9,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
 } from "react";
 import { createPortal } from "react-dom";
 import type { DraftRecordingMeta } from "@/lib/types";
@@ -120,7 +121,17 @@ export const DraftRecordingsPanel = forwardRef<
   const [pendingName, setPendingName] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [playingId, setPlayingId] = useState<string | null>(null);
+  /** Recording whose audio is loaded in the persistent `<audio>` element. */
+  const [loadedMemoId, setLoadedMemoId] = useState<string | null>(null);
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const [playbackTimeSec, setPlaybackTimeSec] = useState(0);
+  const [playbackDurationSec, setPlaybackDurationSec] = useState(0);
+  const [scrubbing, setScrubbing] = useState(false);
+  const scrubbingRef = useRef(false);
+  /** During pointer scrub, UI position; audio seeks only on release. */
+  const [scrubPreviewSec, setScrubPreviewSec] = useState<number | null>(null);
+  const pendingScrubSecRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<DraftRecordingMeta | null>(
@@ -270,17 +281,74 @@ export const DraftRecordingsPanel = forwardRef<
   useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
-    const clearPlaying = () => setPlayingId(null);
-    const onPause = () => setPlayingId(null);
-    a.addEventListener("ended", clearPlaying);
-    a.addEventListener("error", clearPlaying);
+    const onPlay = () => setAudioPlaying(true);
+    const onPause = () => setAudioPlaying(false);
+    const onEnded = () => {
+      setLoadedMemoId(null);
+      setAudioPlaying(false);
+      setPlaybackTimeSec(0);
+      setPlaybackDurationSec(0);
+    };
+    const onError = () => {
+      setLoadedMemoId(null);
+      setAudioPlaying(false);
+      setPlaybackTimeSec(0);
+      setPlaybackDurationSec(0);
+    };
+    const onTimeUpdate = () => {
+      if (scrubbingRef.current) return;
+      setPlaybackTimeSec(a.currentTime);
+      if (Number.isFinite(a.duration) && a.duration > 0) {
+        setPlaybackDurationSec(a.duration);
+      }
+    };
+    const onLoadedMeta = () => {
+      if (Number.isFinite(a.duration) && a.duration > 0) {
+        setPlaybackDurationSec(a.duration);
+      }
+      setPlaybackTimeSec(a.currentTime);
+    };
+    a.addEventListener("play", onPlay);
     a.addEventListener("pause", onPause);
+    a.addEventListener("ended", onEnded);
+    a.addEventListener("error", onError);
+    a.addEventListener("timeupdate", onTimeUpdate);
+    a.addEventListener("loadedmetadata", onLoadedMeta);
     return () => {
-      a.removeEventListener("ended", clearPlaying);
-      a.removeEventListener("error", clearPlaying);
+      a.removeEventListener("play", onPlay);
       a.removeEventListener("pause", onPause);
+      a.removeEventListener("ended", onEnded);
+      a.removeEventListener("error", onError);
+      a.removeEventListener("timeupdate", onTimeUpdate);
+      a.removeEventListener("loadedmetadata", onLoadedMeta);
     };
   }, []);
+
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a || !audioPlaying || scrubbing) {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      return;
+    }
+    const tick = () => {
+      if (scrubbingRef.current) return;
+      setPlaybackTimeSec(a.currentTime);
+      if (Number.isFinite(a.duration) && a.duration > 0) {
+        setPlaybackDurationSec(a.duration);
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [audioPlaying, scrubbing]);
 
   useEffect(() => {
     return () => {
@@ -447,15 +515,26 @@ export const DraftRecordingsPanel = forwardRef<
     const audio = audioRef.current;
     if (!audio) return;
 
-    if (playingId === rec.id && !audio.paused) {
-      audio.pause();
-      setPlayingId(null);
+    if (loadedMemoId === rec.id) {
+      if (!audio.paused) {
+        audio.pause();
+        return;
+      }
+      try {
+        await audio.play();
+      } catch (e) {
+        setLoadedMemoId(null);
+        setSaveError(e instanceof Error ? e.message : "Playback failed.");
+      }
       return;
     }
 
     setSaveError(null);
     revokeLastAudioUrl();
     audio.pause();
+    setLoadedMemoId(null);
+    setPlaybackTimeSec(0);
+    setPlaybackDurationSec(0);
 
     try {
       let src: string;
@@ -473,13 +552,50 @@ export const DraftRecordingsPanel = forwardRef<
       }
 
       audio.src = src;
-      setPlayingId(rec.id);
+      setLoadedMemoId(rec.id);
       await audio.play();
     } catch (e) {
-      setPlayingId(null);
+      setLoadedMemoId(null);
       setSaveError(e instanceof Error ? e.message : "Playback failed.");
     }
   };
+
+  const seekPlaybackTo = useCallback(
+    (sec: number) => {
+      const audio = audioRef.current;
+      if (!audio || loadedMemoId === null) return;
+      const d =
+        Number.isFinite(audio.duration) && audio.duration > 0 ?
+          audio.duration
+        : playbackDurationSec > 0 ? playbackDurationSec
+        : 0;
+      const clamped = d > 0 ? Math.min(Math.max(0, sec), d) : Math.max(0, sec);
+      audio.currentTime = clamped;
+      setPlaybackTimeSec(clamped);
+    },
+    [loadedMemoId, playbackDurationSec],
+  );
+
+  const finalizePointerScrub = useCallback(() => {
+    const wasPointerScrub = scrubbingRef.current;
+    const v = pendingScrubSecRef.current;
+    scrubbingRef.current = false;
+    setScrubbing(false);
+    setScrubPreviewSec(null);
+    pendingScrubSecRef.current = null;
+    if (!wasPointerScrub || v == null || !Number.isFinite(v)) return;
+    seekPlaybackTo(v);
+  }, [seekPlaybackTo]);
+
+  useEffect(() => {
+    if (!scrubbing) return;
+    window.addEventListener("pointerup", finalizePointerScrub);
+    window.addEventListener("pointercancel", finalizePointerScrub);
+    return () => {
+      window.removeEventListener("pointerup", finalizePointerScrub);
+      window.removeEventListener("pointercancel", finalizePointerScrub);
+    };
+  }, [scrubbing, finalizePointerScrub]);
 
   const downloadRecording = useCallback(
     async (rec: DraftRecordingMeta) => {
@@ -545,9 +661,12 @@ export const DraftRecordingsPanel = forwardRef<
       }
       signCacheRef.current.delete(rec.objectPath);
       onRecordingsChange(recordings.filter((r) => r.id !== rec.id));
-      if (playingId === rec.id) {
+      if (loadedMemoId === rec.id) {
         audioRef.current?.pause();
-        setPlayingId(null);
+        setLoadedMemoId(null);
+        setAudioPlaying(false);
+        setPlaybackTimeSec(0);
+        setPlaybackDurationSec(0);
       }
       revokeLastAudioUrl();
       setDeleteConfirm(null);
@@ -660,7 +779,27 @@ export const DraftRecordingsPanel = forwardRef<
       : null}
 
       <ul className="space-y-2 pb-1">
-        {sorted.map((rec) => (
+        {sorted.map((rec) => {
+          const isLoaded = loadedMemoId === rec.id;
+          const showPause = isLoaded && audioPlaying;
+          const metaDuration =
+            typeof rec.durationSec === "number" && rec.durationSec > 0 ?
+              rec.durationSec
+            : 0;
+          const sliderMax =
+            playbackDurationSec > 0 ? playbackDurationSec
+            : metaDuration > 0 ? metaDuration
+            : 1;
+          const displaySec =
+            isLoaded ?
+              scrubPreviewSec !== null ?
+                Math.min(scrubPreviewSec, sliderMax)
+              : Math.min(playbackTimeSec, sliderMax)
+            : 0;
+          const fillPct =
+            isLoaded && sliderMax > 0 ? (displaySec / sliderMax) * 100 : 0;
+
+          return (
           <li
             key={rec.id}
             className="flex items-stretch gap-2 rounded-lg border border-zinc-800/80 bg-zinc-900/35 p-2"
@@ -670,9 +809,9 @@ export const DraftRecordingsPanel = forwardRef<
               onClick={() => void togglePlay(rec)}
               disabled={disabled}
               className={`${chip} h-auto w-11 shrink-0`}
-              aria-label={playingId === rec.id ? "Pause" : "Play"}
+              aria-label={showPause ? "Pause" : "Play"}
             >
-              {playingId === rec.id ?
+              {showPause ?
                 <svg
                   width="18"
                   height="18"
@@ -719,17 +858,66 @@ export const DraftRecordingsPanel = forwardRef<
                   {rec.name}
                 </button>
               }
-              <p className="mt-0.5 text-[11px] tabular-nums text-zinc-500">
-                {new Date(rec.createdAt).toLocaleString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
-                {typeof rec.durationSec === "number" ?
-                  ` · ${formatMmSs(rec.durationSec)}`
-                : null}
-              </p>
+              {isLoaded ?
+                <div className="mt-0.5 flex min-h-[22px] items-center gap-2">
+                  <span className="min-w-[2.75rem] shrink-0 text-[11px] leading-none tabular-nums text-zinc-400">
+                    {formatMmSs(displaySec)}
+                  </span>
+                  <input
+                    type="range"
+                    aria-label={`Seek within ${rec.name}`}
+                    className="voice-memo-scrubber min-w-0 flex-1 cursor-pointer touch-manipulation disabled:cursor-not-allowed disabled:opacity-40"
+                    style={
+                      { "--fill": `${fillPct}%` } as CSSProperties & {
+                        "--fill": string;
+                      }
+                    }
+                    min={0}
+                    max={sliderMax}
+                    step={0.02}
+                    value={displaySec}
+                    disabled={disabled}
+                    onPointerDown={() => {
+                      const audio = audioRef.current;
+                      const t =
+                        audio && Number.isFinite(audio.currentTime) ?
+                          audio.currentTime
+                        : playbackTimeSec;
+                      const capped = Math.min(Math.max(0, t), sliderMax);
+                      pendingScrubSecRef.current = capped;
+                      setScrubPreviewSec(capped);
+                      scrubbingRef.current = true;
+                      setScrubbing(true);
+                    }}
+                    onPointerUp={() => finalizePointerScrub()}
+                    onPointerCancel={() => finalizePointerScrub()}
+                    onInput={(e) => {
+                      const v = parseFloat(e.currentTarget.value);
+                      if (!Number.isFinite(v)) return;
+                      pendingScrubSecRef.current = v;
+                      if (scrubbingRef.current) {
+                        setScrubPreviewSec(v);
+                      } else {
+                        seekPlaybackTo(v);
+                      }
+                    }}
+                  />
+                  <span className="min-w-[2.75rem] shrink-0 text-right text-[11px] leading-none tabular-nums text-zinc-500">
+                    {sliderMax > 0 ? formatMmSs(sliderMax) : "—:—"}
+                  </span>
+                </div>
+              : <p className="mt-0.5 flex min-h-[22px] items-center text-[11px] leading-snug tabular-nums text-zinc-500">
+                  {new Date(rec.createdAt).toLocaleString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                  {typeof rec.durationSec === "number" ?
+                    ` · ${formatMmSs(rec.durationSec)}`
+                  : null}
+                </p>
+              }
             </div>
             <div className="flex shrink-0 items-stretch gap-1">
               <button
@@ -805,10 +993,10 @@ export const DraftRecordingsPanel = forwardRef<
               </button>
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
 
-      <audio ref={audioRef} className="hidden" playsInline preload="none" />
     </div>
   );
 
@@ -1043,6 +1231,7 @@ export const DraftRecordingsPanel = forwardRef<
       : null}
       {overlay}
       {deleteDialog}
+      <audio ref={audioRef} className="hidden" playsInline preload="metadata" />
     </>
   );
 });

@@ -9,3 +9,60 @@
 body {
   @apply bg-zinc-950 text-zinc-100;
 }
+
+/* Voice memo playback: compact inline scrubber (DraftRecordingsPanel) */
+.voice-memo-scrubber {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 22px;
+  background: transparent;
+}
+
+.voice-memo-scrubber:disabled {
+  opacity: 0.45;
+}
+
+.voice-memo-scrubber::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    rgb(251 191 36 / 0.92) 0%,
+    rgb(251 191 36 / 0.92) var(--fill, 0%),
+    rgb(63 63 70 / 0.92) var(--fill, 0%),
+    rgb(63 63 70 / 0.92) 100%
+  );
+}
+
+.voice-memo-scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -3px;
+  border-radius: 9999px;
+  background: #fafafa;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.45);
+  border: 1px solid rgb(24 24 27 / 0.5);
+}
+
+.voice-memo-scrubber::-moz-range-track {
+  height: 5px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    rgb(251 191 36 / 0.92) 0%,
+    rgb(251 191 36 / 0.92) var(--fill, 0%),
+    rgb(63 63 70 / 0.92) var(--fill, 0%),
+    rgb(63 63 70 / 0.92) 100%
+  );
+}
+
+.voice-memo-scrubber::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgb(24 24 27 / 0.5);
+  border-radius: 9999px;
+  background: #fafafa;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.45);
+}
