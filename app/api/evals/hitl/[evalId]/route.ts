@@ -2,14 +2,31 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireBillingBypassSession } from "@/lib/evals/requireBillingBypassSession";
 import { lyricSubscoresJsonSchema } from "@/lib/evals/subscoreCalibration";
+import { groundTruthStrengthsWeaknessesSchema } from "@/lib/evals/strengthWeaknessGroundTruth";
+import { groundTruthLineFeedbackSchema } from "@/lib/evals/lineFeedbackGroundTruth";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 type Params = { params: Promise<{ evalId: string }> };
 
-const bodySchema = z.object({
-  groundTruthSubscores: lyricSubscoresJsonSchema,
-  approved: z.boolean().optional(),
-});
+const bodySchema = z
+  .object({
+    groundTruthSubscores: lyricSubscoresJsonSchema.optional(),
+    groundTruthSubscoresApproved: z.boolean().optional(),
+    groundTruthStrengthsWeaknesses: groundTruthStrengthsWeaknessesSchema.optional(),
+    groundTruthStrengthsWeaknessesApproved: z.boolean().optional(),
+    groundTruthLineFeedback: groundTruthLineFeedbackSchema.optional(),
+    groundTruthLineFeedbackApproved: z.boolean().optional(),
+  })
+  .refine(
+    (d) =>
+      d.groundTruthSubscores != null ||
+      d.groundTruthSubscoresApproved !== undefined ||
+      d.groundTruthStrengthsWeaknesses != null ||
+      d.groundTruthStrengthsWeaknessesApproved !== undefined ||
+      d.groundTruthLineFeedback != null ||
+      d.groundTruthLineFeedbackApproved !== undefined,
+    { message: "At least one annotation field is required" },
+  );
 
 function isMissingColumnError(message: string | undefined): boolean {
   const m = (message ?? "").toLowerCase();
@@ -51,14 +68,30 @@ export async function PATCH(req: Request, { params }: Params) {
     );
   }
 
+  const update: Record<string, unknown> = {};
+  if (parsed.data.groundTruthSubscores != null) {
+    update.ground_truth_subscores = parsed.data.groundTruthSubscores;
+  }
+  if (parsed.data.groundTruthSubscoresApproved !== undefined) {
+    update.ground_truth_subscores_approved = parsed.data.groundTruthSubscoresApproved;
+  }
+  if (parsed.data.groundTruthStrengthsWeaknesses != null) {
+    update.ground_truth_strengths_weaknesses = parsed.data.groundTruthStrengthsWeaknesses;
+  }
+  if (parsed.data.groundTruthStrengthsWeaknessesApproved !== undefined) {
+    update.ground_truth_strengths_weaknesses_approved =
+      parsed.data.groundTruthStrengthsWeaknessesApproved;
+  }
+  if (parsed.data.groundTruthLineFeedback != null) {
+    update.ground_truth_line_feedback = parsed.data.groundTruthLineFeedback;
+  }
+  if (parsed.data.groundTruthLineFeedbackApproved !== undefined) {
+    update.ground_truth_line_feedback_approved = parsed.data.groundTruthLineFeedbackApproved;
+  }
+
   const { error } = await admin
     .from("generate_critique_eval_set")
-    .update({
-      ground_truth_subscores: parsed.data.groundTruthSubscores,
-      ...(parsed.data.approved !== undefined ?
-        { ground_truth_subscores_approved: parsed.data.approved }
-      : {}),
-    })
+    .update(update)
     .eq("id", idNum);
 
   if (error) {
@@ -66,7 +99,7 @@ export async function PATCH(req: Request, { params }: Params) {
       return NextResponse.json(
         {
           error: "HITL schema columns missing",
-          detail: "Run Supabase migrations to add ground_truth_subscores columns.",
+          detail: "Run Supabase migrations for ground-truth annotation columns.",
         },
         { status: 409 },
       );

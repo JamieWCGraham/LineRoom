@@ -4,6 +4,24 @@ import { useRef, useState } from "react";
 import { useMobileToolbarInset } from "@/hooks/useMobileToolbarInset";
 import type { CritiqueResult } from "@/lib/types";
 import type { LyricSubscoresJson } from "@/lib/evals/subscoreCalibration";
+import type { GroundTruthStrengthsWeaknesses } from "@/lib/evals/strengthWeaknessGroundTruth";
+import type { GroundTruthLineFeedback } from "@/lib/evals/lineFeedbackGroundTruth";
+import type { LineFeedbackEvalSnapshot } from "@/lib/evals/lineFeedbackMetrics";
+
+/** Short copy for judge `failure_flags` (line-level eval module). */
+const LINE_FEEDBACK_FLAG_LABELS: Record<string, string> = {
+  generic_line_notes: "Generic or boilerplate line notes",
+  mislabeled_strength: "Strength label (strong / promising / suggestion) miscalibrated vs reference",
+  missed_must_line: "Skipped or barely addressed a must-comment reference line",
+  low_revision_leverage: "Constructive lines lack a useful revision direction",
+  weak_context: "Note ignores how the line functions in the song",
+  redundant_line_feedback: "Overlapping or redundant line-level entries",
+};
+
+function lineFeedbackFlagLabel(flag: string): string {
+  const key = flag.trim();
+  return LINE_FEEDBACK_FLAG_LABELS[key] ?? key.replace(/_/g, " ");
+}
 
 const DIMENSION_LABELS: Array<{
   key: keyof CritiqueResult["subscores"];
@@ -26,6 +44,13 @@ type Props = {
   quotaBadge?: string | null;
   groundTruthSubscores?: LyricSubscoresJson | null;
   groundTruthApproved?: boolean | null;
+  /** Eval-set HITL reference bullets (when present on the eval row). */
+  groundTruthStrengthsWeaknesses?: GroundTruthStrengthsWeaknesses | null;
+  groundTruthStrengthsWeaknessesApproved?: boolean | null;
+  groundTruthLineFeedback?: GroundTruthLineFeedback | null;
+  groundTruthLineFeedbackApproved?: boolean | null;
+  /** When viewing an eval run `output.json`, judge snapshot for line-level quality. */
+  lineFeedbackEval?: LineFeedbackEvalSnapshot | null;
   /** Hide regenerate / quota footer (e.g. eval results viewer). */
   readOnly?: boolean;
 };
@@ -38,6 +63,11 @@ export function CritiqueDisplayPanel({
   quotaBadge,
   groundTruthSubscores = null,
   groundTruthApproved = null,
+  groundTruthStrengthsWeaknesses = null,
+  groundTruthStrengthsWeaknessesApproved = null,
+  groundTruthLineFeedback = null,
+  groundTruthLineFeedbackApproved = null,
+  lineFeedbackEval = null,
   readOnly = false,
 }: Props) {
   const mobileHeaderRef = useRef<HTMLDivElement>(null);
@@ -185,6 +215,27 @@ export function CritiqueDisplayPanel({
                   <li key={i}>{s}</li>
                 ))}
               </ul>
+              {groundTruthStrengthsWeaknesses != null ?
+                <div className="mt-3 rounded-lg border border-teal-800/50 bg-teal-950/25 px-3 py-2.5">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-teal-500/95">
+                    Eval set reference (gold strengths)
+                    {groundTruthStrengthsWeaknessesApproved ?
+                      <span className="ml-1.5 font-normal text-teal-400/90">· approved</span>
+                    : null}
+                  </p>
+                  {groundTruthStrengthsWeaknesses.overallStrengths.length === 0 ?
+                    <p className="mt-1 text-[12px] leading-relaxed text-zinc-500">
+                      No gold strength bullets on this eval row.
+                    </p>
+                  : (
+                    <ul className="mt-1.5 list-disc space-y-1 pl-4 text-[13px] leading-relaxed text-teal-100/90">
+                      {groundTruthStrengthsWeaknesses.overallStrengths.map((s, i) => (
+                        <li key={i}>{s}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              : null}
             </div>
 
             <div>
@@ -196,6 +247,27 @@ export function CritiqueDisplayPanel({
                   <li key={i}>{s}</li>
                 ))}
               </ul>
+              {groundTruthStrengthsWeaknesses != null ?
+                <div className="mt-3 rounded-lg border border-teal-800/50 bg-teal-950/25 px-3 py-2.5">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-teal-500/95">
+                    Eval set reference (gold weaknesses)
+                    {groundTruthStrengthsWeaknessesApproved ?
+                      <span className="ml-1.5 font-normal text-teal-400/90">· approved</span>
+                    : null}
+                  </p>
+                  {groundTruthStrengthsWeaknesses.overallWeaknesses.length === 0 ?
+                    <p className="mt-1 text-[12px] leading-relaxed text-zinc-500">
+                      No gold weakness bullets on this eval row.
+                    </p>
+                  : (
+                    <ul className="mt-1.5 list-disc space-y-1 pl-4 text-[13px] leading-relaxed text-teal-100/90">
+                      {groundTruthStrengthsWeaknesses.overallWeaknesses.map((s, i) => (
+                        <li key={i}>{s}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              : null}
             </div>
 
             <div>
@@ -238,6 +310,105 @@ export function CritiqueDisplayPanel({
                   </li>
                 ))}
               </ul>
+              {groundTruthLineFeedback != null || lineFeedbackEval != null ?
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <div className="min-w-0 rounded-lg border border-cyan-800/50 bg-cyan-950/25 px-3 py-2.5">
+                    {groundTruthLineFeedback != null ?
+                      <>
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-cyan-500/95">
+                          Eval set reference (must-comment lines)
+                          {groundTruthLineFeedbackApproved ?
+                            <span className="ml-1.5 font-normal text-cyan-400/90">· approved</span>
+                          : null}
+                        </p>
+                        {groundTruthLineFeedback.mustCommentLines.length === 0 ?
+                          <p className="mt-1 text-[12px] text-zinc-500">None listed.</p>
+                        : (
+                          <ul className="mt-1.5 list-disc space-y-1 pl-4 text-[12px] leading-relaxed text-cyan-100/90">
+                            {groundTruthLineFeedback.mustCommentLines.map((s, i) => (
+                              <li key={i}>{s}</li>
+                            ))}
+                          </ul>
+                        )}
+                        {groundTruthLineFeedback.anchorLines.length > 0 ?
+                          <>
+                            <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-cyan-600/90">
+                              Anchor notes
+                            </p>
+                            <ul className="mt-1 space-y-2 text-[12px] leading-relaxed text-cyan-100/85">
+                              {groundTruthLineFeedback.anchorLines.map((a, i) => (
+                                <li key={i} className="list-none">
+                                  <p className="font-mono text-[11px] text-zinc-200">{a.quotedLine}</p>
+                                  {(a.role || a.expectedStrength) ?
+                                    <p className="mt-0.5 text-[11px] text-zinc-500">
+                                      {[a.role, a.expectedStrength].filter(Boolean).join(" · ")}
+                                    </p>
+                                  : null}
+                                  {a.rationale ?
+                                    <p className="mt-0.5 text-zinc-400">{a.rationale}</p>
+                                  : null}
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        : null}
+                      </>
+                    : (
+                      <p className="text-[12px] leading-relaxed text-zinc-500">
+                        No HITL line-level reference on this eval row.
+                      </p>
+                    )}
+                  </div>
+                  <div className="min-w-0 rounded-lg border border-amber-800/45 bg-amber-950/20 px-3 py-2.5">
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-amber-500/95">
+                      This run — line-level failures
+                    </p>
+                    {lineFeedbackEval != null ?
+                      <>
+                        {lineFeedbackEval.failure_flags.filter((f) => f.trim()).length === 0 ?
+                          <p className="mt-1.5 text-[12px] text-emerald-400/90">
+                            No failure flags — judge did not tag a line-level failure mode for this
+                            song.
+                          </p>
+                        : (
+                          <ul className="mt-1.5 list-disc space-y-1.5 pl-4 text-[12px] leading-relaxed text-amber-100/90">
+                            {lineFeedbackEval.failure_flags
+                              .map((f) => f.trim())
+                              .filter(Boolean)
+                              .map((flag) => (
+                                <li key={flag}>
+                                  <span className="font-mono text-[11px] text-amber-200/95">
+                                    {flag}
+                                  </span>
+                                  <span className="block text-[11px] text-zinc-400">
+                                    {lineFeedbackFlagLabel(flag)}
+                                  </span>
+                                </li>
+                              ))}
+                          </ul>
+                        )}
+                        {lineFeedbackEval.notes?.trim() ?
+                          <p className="mt-2 border-t border-amber-900/40 pt-2 text-[12px] leading-relaxed text-zinc-400">
+                            {lineFeedbackEval.notes}
+                          </p>
+                        : null}
+                        <p className="mt-2 font-mono text-[10px] leading-relaxed text-zinc-500">
+                          composite {(Math.round(lineFeedbackEval.line_level_composite * 1000) / 1000).toFixed(3)} ·
+                          coverage {(Math.round(lineFeedbackEval.coverage * 1000) / 10).toFixed(1)}% · label cal.{" "}
+                          {(Math.round(lineFeedbackEval.label_calibration * 1000) / 10).toFixed(1)}% · rubric{" "}
+                          {lineFeedbackEval.specificity}/{lineFeedbackEval.revision_usefulness}/
+                          {lineFeedbackEval.context_awareness} (1–5)
+                        </p>
+                      </>
+                    : (
+                      <p className="mt-1.5 text-[12px] leading-relaxed text-zinc-500">
+                        No line-level judge block in this output (e.g. missing HITL reference, judge
+                        error, or run from before line-level eval was recorded).
+                      </p>
+                    )}
+                  </div>
+                </div>
+              : null}
             </div>
           </div>
         ) : null}

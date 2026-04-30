@@ -23,7 +23,8 @@ export default async function EvalsHitlPage() {
         <div>
           <h1 className="text-xl font-semibold text-zinc-100">Evals HITL</h1>
           <p className="mt-2 text-sm text-zinc-400">
-            Review and approve ground-truth subscore annotations.
+            Review and approve ground-truth subscores, top strengths / weaknesses, and line-level
+            feedback references for eval calibration.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">

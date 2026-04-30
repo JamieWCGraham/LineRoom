@@ -12,6 +12,18 @@ import {
   type SubscoreCalibrationResult,
 } from "./subscoreCalibration";
 import { judgeSubscoreExplanationAlignment } from "./subscoreJudge";
+import { parseGroundTruthStrengthsWeaknesses } from "./strengthWeaknessGroundTruth";
+import { judgeStrengthWeaknessQuality } from "./strengthWeaknessJudge";
+import type { StrengthWeaknessEvalSnapshot } from "./strengthWeaknessMetrics";
+import {
+  hasLineFeedbackGoldForJudge,
+  parseGroundTruthLineFeedback,
+} from "./lineFeedbackGroundTruth";
+import { judgeLineFeedbackQuality } from "./lineFeedbackJudge";
+import {
+  lineFeedbackJudgeToSnapshot,
+  type LineFeedbackEvalSnapshot,
+} from "./lineFeedbackMetrics";
 import {
   fetchEvalSetRowById,
   type ParsedEvalSetRow,
@@ -31,6 +43,8 @@ export type LineRoomEvalOutputFile = {
     explanationAlignmentScore?: number;
     explanationAlignmentNotes?: string;
   }) | null;
+  strengthWeaknessEval?: StrengthWeaknessEvalSnapshot | null;
+  lineFeedbackEval?: LineFeedbackEvalSnapshot | null;
   elapsedMs?: number;
   error?: string | null;
 };
@@ -83,6 +97,47 @@ async function processOneEvalRow(
       rootObservationName: "lineroom-critique-eval-batch",
       generationName: "lyric-critique-eval-batch",
     });
+    const groundTruthLf = parseGroundTruthLineFeedback(row.ground_truth_line_feedback);
+    let lineFeedbackEval: LineRoomEvalOutputFile["lineFeedbackEval"] = null;
+    if (groundTruthLf && hasLineFeedbackGoldForJudge(groundTruthLf)) {
+      try {
+        const lfJudge = await judgeLineFeedbackQuality({
+          lyrics: requestPayload.fullText,
+          reference: groundTruthLf,
+          predictedLineFeedback: critique.lineFeedback,
+        });
+        lineFeedbackEval = lineFeedbackJudgeToSnapshot(lfJudge);
+      } catch {
+        // Keep batch resilient if judge call fails.
+      }
+    }
+
+    const groundTruthSw = parseGroundTruthStrengthsWeaknesses(
+      row.ground_truth_strengths_weaknesses,
+    );
+    let strengthWeaknessEval: LineRoomEvalOutputFile["strengthWeaknessEval"] = null;
+    if (groundTruthSw) {
+      try {
+        const swJudge = await judgeStrengthWeaknessQuality({
+          lyrics: requestPayload.fullText,
+          reference: groundTruthSw,
+          predictedStrengths: critique.overallStrengths,
+          predictedWeaknesses: critique.overallWeaknesses,
+        });
+        strengthWeaknessEval = {
+          specificity: swJudge.specificity,
+          evidence_grounding: swJudge.evidence_grounding,
+          non_redundancy: swJudge.non_redundancy,
+          actionability: swJudge.actionability,
+          fairness: swJudge.fairness,
+          failure_flags: swJudge.failure_flags,
+          notes: swJudge.notes,
+        };
+      } catch {
+        // Keep batch resilient if judge call fails.
+      }
+    }
+
     const groundTruth = parseGroundTruthSubscores(row.ground_truth_subscores);
     let subscoreCalibration: LineRoomEvalOutputFile["subscoreCalibration"] = null;
     if (groundTruth) {
@@ -115,6 +170,8 @@ async function processOneEvalRow(
       userPrompt: userContent,
       critique,
       subscoreCalibration,
+      strengthWeaknessEval,
+      lineFeedbackEval,
       elapsedMs: Date.now() - started,
     });
   } catch (e) {

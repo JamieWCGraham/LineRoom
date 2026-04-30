@@ -14,6 +14,10 @@ const EXPORT_HEADERS = [
   "rationale_short",
   "ground_truth_subscores",
   "ground_truth_subscores_approved",
+  "ground_truth_strengths_weaknesses",
+  "ground_truth_strengths_weaknesses_approved",
+  "ground_truth_line_feedback",
+  "ground_truth_line_feedback_approved",
 ] as const;
 
 function coerceText(raw: unknown): string {
@@ -47,7 +51,7 @@ export async function GET() {
     const { data, error } = await admin
       .from("generate_critique_eval_set")
       .select(
-        "id, title, artist, lyrics, genre, overall_score, rationale_short, ground_truth_subscores, ground_truth_subscores_approved",
+        "id, title, artist, lyrics, genre, overall_score, rationale_short, ground_truth_subscores, ground_truth_subscores_approved, ground_truth_strengths_weaknesses, ground_truth_strengths_weaknesses_approved, ground_truth_line_feedback, ground_truth_line_feedback_approved",
       )
       .order("id", { ascending: true })
       .range(offset, offset + pageSize - 1);
@@ -82,6 +86,16 @@ export async function GET() {
       row.ground_truth_subscores ? JSON.stringify(row.ground_truth_subscores) : "",
       typeof row.ground_truth_subscores_approved === "boolean" ?
         String(row.ground_truth_subscores_approved)
+      : "",
+      row.ground_truth_strengths_weaknesses ?
+        JSON.stringify(row.ground_truth_strengths_weaknesses)
+      : "",
+      typeof row.ground_truth_strengths_weaknesses_approved === "boolean" ?
+        String(row.ground_truth_strengths_weaknesses_approved)
+      : "",
+      row.ground_truth_line_feedback ? JSON.stringify(row.ground_truth_line_feedback) : "",
+      typeof row.ground_truth_line_feedback_approved === "boolean" ?
+        String(row.ground_truth_line_feedback_approved)
       : "",
     ];
   });

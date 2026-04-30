@@ -3,7 +3,8 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getEvalMetricsConcurrency } from "./concurrency";
 import { evalOutputObjectPath, getLineRoomEvalsBucket } from "./bucket";
 import type { LyricDimension } from "@/lib/types";
-import { lyricSubscoresSchema } from "@/lib/validators";
+import type { LineFeedbackItem } from "@/lib/types";
+import { critiqueResultSchema, lyricSubscoresSchema } from "@/lib/validators";
 import {
   evaluateSubscoreCalibration,
   parseGroundTruthSubscores,
@@ -16,6 +17,54 @@ import {
   parseOverallScoreFromDb,
 } from "./ratingBands";
 import { runPool } from "./runPool";
+import { parseGroundTruthStrengthsWeaknesses } from "./strengthWeaknessGroundTruth";
+import {
+  aggregateStrengthWeaknessRunMetrics,
+  parseStrengthWeaknessEvalFromOutputJson,
+  type StrengthWeaknessEvalSnapshot,
+} from "./strengthWeaknessMetrics";
+import {
+  hasLineFeedbackGoldForJudge,
+  parseGroundTruthLineFeedback,
+} from "./lineFeedbackGroundTruth";
+import {
+  aggregateLineFeedbackRunMetrics,
+  parseLineFeedbackEvalFromOutputJson,
+  type LineFeedbackEvalSnapshot,
+} from "./lineFeedbackMetrics";
+
+export type StrengthWeaknessDrilldownStatus =
+  | "ok"
+  | "no_gold_reference"
+  | "no_judge_in_output"
+  | "missing_run_output"
+  | "missing_prediction"
+  | "invalid_gold_label";
+
+export type StrengthWeaknessRowDrilldown = {
+  status: StrengthWeaknessDrilldownStatus;
+  goldStrengths: string[];
+  goldWeaknesses: string[];
+  predictedStrengths: string[];
+  predictedWeaknesses: string[];
+  judge: StrengthWeaknessEvalSnapshot | null;
+};
+
+export type LineFeedbackDrilldownStatus =
+  | "ok"
+  | "no_gold_reference"
+  | "no_judge_in_output"
+  | "missing_run_output"
+  | "missing_prediction"
+  | "invalid_gold_label";
+
+export type LineFeedbackRowDrilldown = {
+  status: LineFeedbackDrilldownStatus;
+  goldMustLines: string[];
+  goldOptionalLines: string[];
+  predictedLineFeedback: LineFeedbackItem[];
+  judge: LineFeedbackEvalSnapshot | null;
+};
 
 export type BandStratumMetrics = {
   count: number;
@@ -31,6 +80,9 @@ export type GroundTruthRowMetrics = {
   overallScore: string;
   isCorrect: boolean;
   predictedOverallScore: string | null;
+  /** Per-song gold vs this run + optional LLM judge snapshot (strength/weakness module). */
+  strengthWeaknessDrilldown: StrengthWeaknessRowDrilldown;
+  lineFeedbackDrilldown: LineFeedbackRowDrilldown;
 };
 
 export type EvalRunMetricsResult = {
@@ -56,6 +108,26 @@ export type EvalRunMetricsResult = {
         failureRate: number | null;
       }
     >;
+  };
+  strengthWeaknessCalibration: {
+    comparedRows: number;
+    meanSpecificity: number | null;
+    meanEvidenceGrounding: number | null;
+    meanNonRedundancy: number | null;
+    meanActionability: number | null;
+    meanFairness: number | null;
+    meanCompositeRubric: number | null;
+    failureFlagCounts: Record<string, number>;
+  };
+  lineFeedbackCalibration: {
+    comparedRows: number;
+    meanCoverage: number | null;
+    meanLabelCalibration: number | null;
+    meanSpecificity: number | null;
+    meanRevisionUsefulness: number | null;
+    meanContextAwareness: number | null;
+    meanLineLevelComposite: number | null;
+    failureFlagCounts: Record<string, number>;
   };
   skipped: {
     missingOutput: number[];
@@ -89,6 +161,8 @@ type RowWorkItem = {
   id: number;
   gold: CanonicalRatingBand;
   groundTruthSubscores: unknown;
+  groundTruthStrengthsWeaknesses: unknown;
+  groundTruthLineFeedback: unknown;
 };
 
 type RowMetricOutcome =
@@ -102,6 +176,11 @@ type RowMetricOutcome =
       subscoreBandConsistencyPass?: boolean;
       explanationAlignmentScore?: number;
       perDimensionDistance?: Record<LyricDimension, number>;
+      strengthWeaknessEval?: StrengthWeaknessEvalSnapshot | null;
+      predictedStrengths: string[];
+      predictedWeaknesses: string[];
+      lineFeedbackEval: LineFeedbackEvalSnapshot | null;
+      predictedLineFeedback: LineFeedbackItem[];
     }
   | { kind: "missingOutput"; id: number }
   | { kind: "missingPrediction"; id: number };
@@ -113,6 +192,8 @@ async function measureOneRow(
   id: number,
   gold: CanonicalRatingBand,
   groundTruthSubscoresRaw: unknown,
+  groundTruthStrengthsWeaknessesRaw: unknown,
+  groundTruthLineFeedbackRaw: unknown,
 ): Promise<RowMetricOutcome> {
   const path = evalOutputObjectPath(runId, id);
   const { data: blob, error: dlErr } = await client.storage
@@ -159,6 +240,21 @@ async function measureOneRow(
     ? explanationAlignmentScore
     : undefined;
 
+  const gtSw = parseGroundTruthStrengthsWeaknesses(groundTruthStrengthsWeaknessesRaw);
+  const strengthWeaknessEval =
+    gtSw ? parseStrengthWeaknessEvalFromOutputJson(parsed) : null;
+
+  const gtLf = parseGroundTruthLineFeedback(groundTruthLineFeedbackRaw);
+  const lineFeedbackEval =
+    gtLf && hasLineFeedbackGoldForJudge(gtLf) ?
+      parseLineFeedbackEvalFromOutputJson(parsed)
+    : null;
+
+  const critParsed = critiqueResultSchema.safeParse(critiqueObj);
+  const predictedStrengths = critParsed.success ? critParsed.data.overallStrengths : [];
+  const predictedWeaknesses = critParsed.success ? critParsed.data.overallWeaknesses : [];
+  const predictedLineFeedback = critParsed.success ? critParsed.data.lineFeedback : [];
+
   return {
     kind: "compared",
     id,
@@ -173,6 +269,11 @@ async function measureOneRow(
       }
     : {}),
     ...(maybeAlignment != null ? { explanationAlignmentScore: maybeAlignment } : {}),
+    strengthWeaknessEval,
+    predictedStrengths,
+    predictedWeaknesses,
+    lineFeedbackEval,
+    predictedLineFeedback,
   };
 }
 
@@ -194,7 +295,9 @@ export async function computeEvalRunMetrics(
 
   const { data: rows, error: tableErr } = await client
     .from("generate_critique_eval_set")
-    .select("id, title, artist, overall_score, ground_truth_subscores")
+    .select(
+      "id, title, artist, overall_score, ground_truth_subscores, ground_truth_strengths_weaknesses, ground_truth_line_feedback",
+    )
     .order("id", { ascending: true });
 
   if (tableErr) {
@@ -224,22 +327,40 @@ export async function computeEvalRunMetrics(
       invalidGoldLabel.push(id);
       continue;
     }
-    workItems.push({ id, gold, groundTruthSubscores: row.ground_truth_subscores });
+    workItems.push({
+      id,
+      gold,
+      groundTruthSubscores: row.ground_truth_subscores,
+      groundTruthStrengthsWeaknesses: row.ground_truth_strengths_weaknesses,
+      groundTruthLineFeedback: row.ground_truth_line_feedback,
+    });
   }
 
   const outcomes: RowMetricOutcome[] = [];
   const concurrency = getEvalMetricsConcurrency();
-  await runPool(workItems, concurrency, async ({ id, gold, groundTruthSubscores }) => {
-    const outcome = await measureOneRow(
-      client,
-      bucket,
-      runId,
+  await runPool(
+    workItems,
+    concurrency,
+    async ({
       id,
       gold,
       groundTruthSubscores,
-    );
-    outcomes.push(outcome);
-  });
+      groundTruthStrengthsWeaknesses,
+      groundTruthLineFeedback,
+    }) => {
+      const outcome = await measureOneRow(
+        client,
+        bucket,
+        runId,
+        id,
+        gold,
+        groundTruthSubscores,
+        groundTruthStrengthsWeaknesses,
+        groundTruthLineFeedback,
+      );
+      outcomes.push(outcome);
+    },
+  );
 
   const outcomeById = new Map<number, RowMetricOutcome>();
   for (const o of outcomes) {
@@ -299,10 +420,24 @@ export async function computeEvalRunMetrics(
     }
   }
 
+  const strengthWeaknessSnapshots: Array<StrengthWeaknessEvalSnapshot | null> = [];
+  const lineFeedbackSnapshots: Array<LineFeedbackEvalSnapshot | null> = [];
+  for (const o of outcomes) {
+    if (o.kind !== "compared") continue;
+    strengthWeaknessSnapshots.push(o.strengthWeaknessEval ?? null);
+    lineFeedbackSnapshots.push(o.lineFeedbackEval ?? null);
+  }
+  const strengthWeaknessCalibration = aggregateStrengthWeaknessRunMetrics(
+    strengthWeaknessSnapshots,
+  );
+  const lineFeedbackCalibration = aggregateLineFeedbackRunMetrics(lineFeedbackSnapshots);
+
   for (const b of CANONICAL_RATING_BANDS) {
     const s = byOverallScore[b];
     s.accuracy = s.count > 0 ? s.correct / s.count : null;
   }
+
+  const invalidGoldSet = new Set(invalidGoldLabel);
 
   const groundTruthRows: GroundTruthRowMetrics[] = [];
   for (const row of rows ?? []) {
@@ -321,6 +456,94 @@ export async function computeEvalRunMetrics(
       isCorrect = o.correct;
     }
 
+    const goldSw = parseGroundTruthStrengthsWeaknesses(row.ground_truth_strengths_weaknesses);
+    const goldLf = parseGroundTruthLineFeedback(row.ground_truth_line_feedback);
+
+    let strengthWeaknessDrilldown: StrengthWeaknessRowDrilldown;
+    if (invalidGoldSet.has(id)) {
+      strengthWeaknessDrilldown = {
+        status: "invalid_gold_label",
+        goldStrengths: goldSw?.overallStrengths ?? [],
+        goldWeaknesses: goldSw?.overallWeaknesses ?? [],
+        predictedStrengths: [],
+        predictedWeaknesses: [],
+        judge: null,
+      };
+    } else if (!o || o.kind === "missingOutput") {
+      strengthWeaknessDrilldown = {
+        status: "missing_run_output",
+        goldStrengths: goldSw?.overallStrengths ?? [],
+        goldWeaknesses: goldSw?.overallWeaknesses ?? [],
+        predictedStrengths: [],
+        predictedWeaknesses: [],
+        judge: null,
+      };
+    } else if (o.kind === "missingPrediction") {
+      strengthWeaknessDrilldown = {
+        status: "missing_prediction",
+        goldStrengths: goldSw?.overallStrengths ?? [],
+        goldWeaknesses: goldSw?.overallWeaknesses ?? [],
+        predictedStrengths: [],
+        predictedWeaknesses: [],
+        judge: null,
+      };
+    } else {
+      const judge = o.strengthWeaknessEval ?? null;
+      const status: StrengthWeaknessDrilldownStatus =
+        !goldSw ? "no_gold_reference"
+        : judge ? "ok"
+        : "no_judge_in_output";
+      strengthWeaknessDrilldown = {
+        status,
+        goldStrengths: goldSw?.overallStrengths ?? [],
+        goldWeaknesses: goldSw?.overallWeaknesses ?? [],
+        predictedStrengths: o.predictedStrengths,
+        predictedWeaknesses: o.predictedWeaknesses,
+        judge,
+      };
+    }
+
+    let lineFeedbackDrilldown: LineFeedbackRowDrilldown;
+    if (invalidGoldSet.has(id)) {
+      lineFeedbackDrilldown = {
+        status: "invalid_gold_label",
+        goldMustLines: goldLf?.mustCommentLines ?? [],
+        goldOptionalLines: goldLf?.optionalCommentLines ?? [],
+        predictedLineFeedback: [],
+        judge: null,
+      };
+    } else if (!o || o.kind === "missingOutput") {
+      lineFeedbackDrilldown = {
+        status: "missing_run_output",
+        goldMustLines: goldLf?.mustCommentLines ?? [],
+        goldOptionalLines: goldLf?.optionalCommentLines ?? [],
+        predictedLineFeedback: [],
+        judge: null,
+      };
+    } else if (o.kind === "missingPrediction") {
+      lineFeedbackDrilldown = {
+        status: "missing_prediction",
+        goldMustLines: goldLf?.mustCommentLines ?? [],
+        goldOptionalLines: goldLf?.optionalCommentLines ?? [],
+        predictedLineFeedback: [],
+        judge: null,
+      };
+    } else {
+      const judgeLf = o.lineFeedbackEval ?? null;
+      const hasGoldLf = goldLf != null && hasLineFeedbackGoldForJudge(goldLf);
+      const status: LineFeedbackDrilldownStatus =
+        !hasGoldLf ? "no_gold_reference"
+        : judgeLf ? "ok"
+        : "no_judge_in_output";
+      lineFeedbackDrilldown = {
+        status,
+        goldMustLines: goldLf?.mustCommentLines ?? [],
+        goldOptionalLines: goldLf?.optionalCommentLines ?? [],
+        predictedLineFeedback: o.predictedLineFeedback,
+        judge: judgeLf,
+      };
+    }
+
     groundTruthRows.push({
       id,
       title,
@@ -328,6 +551,8 @@ export async function computeEvalRunMetrics(
       overallScore,
       isCorrect,
       predictedOverallScore,
+      strengthWeaknessDrilldown,
+      lineFeedbackDrilldown,
     });
   }
 
@@ -376,6 +601,8 @@ export async function computeEvalRunMetrics(
         }
       >,
     },
+    strengthWeaknessCalibration,
+    lineFeedbackCalibration,
     skipped: {
       missingOutput: missingOutput.sort((a, c) => a - c),
       missingPrediction: missingPrediction.sort((a, c) => a - c),

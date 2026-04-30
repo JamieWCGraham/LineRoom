@@ -3,15 +3,21 @@ import { z } from "zod";
 import { requireBillingBypassSession } from "@/lib/evals/requireBillingBypassSession";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { generateBaselineGroundTruthSubscores } from "@/lib/evals/subscoreJudge";
+import { generateBaselineGroundTruthStrengthsWeaknesses } from "@/lib/evals/strengthWeaknessJudge";
+import { generateBaselineGroundTruthLineFeedback } from "@/lib/evals/lineFeedbackJudge";
 
 const querySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(200).default(50),
+  limit: z.coerce.number().int().min(1).max(2000).default(200),
   offset: z.coerce.number().int().min(0).default(0),
 });
 
 const baselineBodySchema = z.object({
   onlyMissing: z.boolean().default(true),
-  limit: z.number().int().min(1).max(200).default(30),
+  /** Max rows to process; omit to process every matching row (paginated, up to 50k). */
+  limit: z.number().int().min(1).max(50_000).optional(),
+  target: z
+    .enum(["subscores", "strengths_weaknesses", "line_feedback"])
+    .default("subscores"),
 });
 
 function isMissingColumnError(message: string | undefined): boolean {
@@ -47,7 +53,7 @@ export async function GET(req: Request) {
   const { data, error } = await admin
     .from("generate_critique_eval_set")
     .select(
-      "id, title, artist, genre, lyrics, overall_score, ground_truth_subscores, ground_truth_subscores_approved",
+      "id, title, artist, genre, lyrics, overall_score, ground_truth_subscores, ground_truth_subscores_approved, ground_truth_strengths_weaknesses, ground_truth_strengths_weaknesses_approved, ground_truth_line_feedback, ground_truth_line_feedback_approved",
     )
     .order("id", { ascending: true })
     .range(offset, offset + limit - 1);
@@ -69,6 +75,10 @@ export async function GET(req: Request) {
         ...r,
         ground_truth_subscores: null,
         ground_truth_subscores_approved: false,
+        ground_truth_strengths_weaknesses: null,
+        ground_truth_strengths_weaknesses_approved: false,
+        ground_truth_line_feedback: null,
+        ground_truth_line_feedback_approved: false,
       }));
       return NextResponse.json({
         rows,
@@ -112,59 +122,137 @@ export async function POST(req: Request) {
     );
   }
 
-  const { limit, onlyMissing } = parsed.data;
-  let query = admin
-    .from("generate_critique_eval_set")
-    .select("id, title, artist, genre, lyrics, overall_score, ground_truth_subscores")
-    .order("id", { ascending: true })
-    .limit(limit);
+  const { limit: limitCap, onlyMissing, target } = parsed.data;
+  const maxToProcess = limitCap ?? 50_000;
+  const selectCols =
+    target === "subscores" ?
+      "id, title, artist, genre, lyrics, overall_score, ground_truth_subscores"
+    : target === "strengths_weaknesses" ?
+      "id, title, artist, genre, lyrics, overall_score, ground_truth_strengths_weaknesses"
+    : "id, title, artist, genre, lyrics, overall_score, ground_truth_line_feedback";
 
-  if (onlyMissing) {
-    query = query.is("ground_truth_subscores", null);
-  }
-  const { data, error } = await query;
-  if (error) {
-    if (isMissingColumnError(error.message)) {
+  const PAGE = 200;
+  type BaselineRow = {
+    id: number;
+    title?: string | null;
+    artist?: string | null;
+    genre?: string | null;
+    lyrics?: string | null;
+    overall_score?: string | null;
+  };
+  const collected: BaselineRow[] = [];
+
+  for (let offset = 0; collected.length < maxToProcess; offset += PAGE) {
+    const take = Math.min(PAGE, maxToProcess - collected.length);
+    let q = admin
+      .from("generate_critique_eval_set")
+      .select(selectCols)
+      .order("id", { ascending: true })
+      .range(offset, offset + take - 1);
+
+    if (onlyMissing) {
+      q =
+        target === "subscores" ?
+          q.is("ground_truth_subscores", null)
+        : target === "strengths_weaknesses" ?
+          q.is("ground_truth_strengths_weaknesses", null)
+        : q.is("ground_truth_line_feedback", null);
+    }
+
+    const { data, error } = await q;
+    if (error) {
+      if (isMissingColumnError(error.message)) {
+        return NextResponse.json(
+          {
+            error: "HITL schema columns missing",
+            detail: "Run Supabase migrations to add ground-truth annotation columns.",
+          },
+          { status: 409 },
+        );
+      }
       return NextResponse.json(
-        {
-          error: "HITL schema columns missing",
-          detail: "Run Supabase migrations to add ground_truth_subscores columns.",
-        },
-        { status: 409 },
+        { error: "Failed to load rows for baseline generation", detail: error.message },
+        { status: 500 },
       );
     }
-    return NextResponse.json(
-      { error: "Failed to load rows for baseline generation", detail: error.message },
-      { status: 500 },
-    );
+
+    const chunk = (data ?? []) as BaselineRow[];
+    for (const row of chunk) {
+      collected.push(row);
+      if (collected.length >= maxToProcess) break;
+    }
+    if (collected.length >= maxToProcess) break;
+    if (chunk.length < take) break;
   }
 
   const results: Array<{ id: number; status: "updated" | "skipped" | "failed"; detail?: string }> = [];
-  for (const row of data ?? []) {
+  for (const row of collected) {
     if (typeof row.id !== "number") continue;
     if (typeof row.lyrics !== "string" || !row.lyrics.trim()) {
       results.push({ id: row.id, status: "skipped", detail: "empty lyrics" });
       continue;
     }
     try {
-      const baseline = await generateBaselineGroundTruthSubscores({
-        title: typeof row.title === "string" ? row.title : null,
-        artist: typeof row.artist === "string" ? row.artist : null,
-        genre: typeof row.genre === "string" ? row.genre : null,
-        lyrics: row.lyrics,
-        overallScore: typeof row.overall_score === "string" ? row.overall_score : null,
-      });
-      const { error: updateError } = await admin
-        .from("generate_critique_eval_set")
-        .update({
-          ground_truth_subscores: baseline.subscores,
-          ground_truth_subscores_approved: false,
-        })
-        .eq("id", row.id);
-      if (updateError) {
-        results.push({ id: row.id, status: "failed", detail: updateError.message });
+      if (target === "line_feedback") {
+        const baseline = await generateBaselineGroundTruthLineFeedback({
+          title: typeof row.title === "string" ? row.title : null,
+          artist: typeof row.artist === "string" ? row.artist : null,
+          genre: typeof row.genre === "string" ? row.genre : null,
+          lyrics: row.lyrics,
+          overallScore: typeof row.overall_score === "string" ? row.overall_score : null,
+        });
+        const { error: updateError } = await admin
+          .from("generate_critique_eval_set")
+          .update({
+            ground_truth_line_feedback: baseline,
+            ground_truth_line_feedback_approved: false,
+          })
+          .eq("id", row.id);
+        if (updateError) {
+          results.push({ id: row.id, status: "failed", detail: updateError.message });
+        } else {
+          results.push({ id: row.id, status: "updated" });
+        }
+      } else if (target === "subscores") {
+        const baseline = await generateBaselineGroundTruthSubscores({
+          title: typeof row.title === "string" ? row.title : null,
+          artist: typeof row.artist === "string" ? row.artist : null,
+          genre: typeof row.genre === "string" ? row.genre : null,
+          lyrics: row.lyrics,
+          overallScore: typeof row.overall_score === "string" ? row.overall_score : null,
+        });
+        const { error: updateError } = await admin
+          .from("generate_critique_eval_set")
+          .update({
+            ground_truth_subscores: baseline.subscores,
+            ground_truth_subscores_approved: false,
+          })
+          .eq("id", row.id);
+        if (updateError) {
+          results.push({ id: row.id, status: "failed", detail: updateError.message });
+        } else {
+          results.push({ id: row.id, status: "updated" });
+        }
       } else {
-        results.push({ id: row.id, status: "updated" });
+        const baseline = await generateBaselineGroundTruthStrengthsWeaknesses({
+          title: typeof row.title === "string" ? row.title : null,
+          artist: typeof row.artist === "string" ? row.artist : null,
+          genre: typeof row.genre === "string" ? row.genre : null,
+          lyrics: row.lyrics,
+          overallScore: typeof row.overall_score === "string" ? row.overall_score : null,
+        });
+        const { error: updateError } = await admin
+          .from("generate_critique_eval_set")
+          .update({
+            ground_truth_strengths_weaknesses: baseline,
+            ground_truth_strengths_weaknesses_approved: false,
+          })
+          .eq("id", row.id);
+        if (updateError) {
+          results.push({ id: row.id, status: "failed", detail: updateError.message });
+        } else {
+          results.push({ id: row.id, status: "updated" });
+        }
       }
     } catch (e) {
       results.push({
@@ -175,5 +263,9 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ results });
+  return NextResponse.json({
+    results,
+    candidateRowCount: collected.length,
+    maxToProcess,
+  });
 }
