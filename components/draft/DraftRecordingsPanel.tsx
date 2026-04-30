@@ -131,6 +131,8 @@ export const DraftRecordingsPanel = forwardRef<
   /** During pointer scrub, UI position; audio seeks only on release. */
   const [scrubPreviewSec, setScrubPreviewSec] = useState<number | null>(null);
   const pendingScrubSecRef = useRef<number | null>(null);
+  /** If true, resume playback once after pointer scrub ends. */
+  const wasPlayingBeforePointerScrubRef = useRef(false);
   const rafRef = useRef<number | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -579,12 +581,21 @@ export const DraftRecordingsPanel = forwardRef<
   const finalizePointerScrub = useCallback(() => {
     const wasPointerScrub = scrubbingRef.current;
     const v = pendingScrubSecRef.current;
+    const resumeAfter = wasPlayingBeforePointerScrubRef.current;
     scrubbingRef.current = false;
     setScrubbing(false);
     setScrubPreviewSec(null);
     pendingScrubSecRef.current = null;
-    if (!wasPointerScrub || v == null || !Number.isFinite(v)) return;
+    if (!wasPointerScrub || v == null || !Number.isFinite(v)) {
+      wasPlayingBeforePointerScrubRef.current = false;
+      return;
+    }
+    wasPlayingBeforePointerScrubRef.current = false;
     seekPlaybackTo(v);
+    if (resumeAfter) {
+      const a = audioRef.current;
+      if (a) void a.play().catch(() => {});
+    }
   }, [seekPlaybackTo]);
 
   useEffect(() => {
@@ -596,6 +607,12 @@ export const DraftRecordingsPanel = forwardRef<
       window.removeEventListener("pointercancel", finalizePointerScrub);
     };
   }, [scrubbing, finalizePointerScrub]);
+
+  useEffect(() => {
+    if (loadedMemoId === null) {
+      wasPlayingBeforePointerScrubRef.current = false;
+    }
+  }, [loadedMemoId]);
 
   const downloadRecording = useCallback(
     async (rec: DraftRecordingMeta) => {
@@ -879,6 +896,12 @@ export const DraftRecordingsPanel = forwardRef<
                     disabled={disabled}
                     onPointerDown={() => {
                       const audio = audioRef.current;
+                      wasPlayingBeforePointerScrubRef.current = Boolean(
+                        audio && !audio.paused,
+                      );
+                      if (audio && !audio.paused) {
+                        audio.pause();
+                      }
                       const t =
                         audio && Number.isFinite(audio.currentTime) ?
                           audio.currentTime
