@@ -40,7 +40,7 @@ export type DraftEditorProps = {
   /** When set, flushes debounced server persistence (e.g. song mode autosave) on editor blur. */
   onPersistFlush?: () => void;
   onDraftContextChange?: (ctx: DraftEditorContext) => void;
-  /** When true and user highlights text, show “Add to chat” (requires critique). */
+  /** When true and user highlights text, show "Add to workshop" (requires critique). */
   addToChatEnabled?: boolean;
   onAddSelectionToChat?: (payload: ChatSelectionPayload) => void;
   /** Shown on the top-right of the draft header (e.g. voice memos). */
@@ -894,7 +894,7 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
             onClick={handleAddSelectionToChat}
             className="rounded-[5px] px-2 py-1 text-[11px] font-medium leading-tight text-zinc-100 transition hover:bg-zinc-800/90"
           >
-            Add to chat
+            Add to workshop
           </button>
         </div>
       : null}

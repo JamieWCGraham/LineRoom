@@ -51,7 +51,7 @@ type Props = {
   messages: ChatMessage[];
   onMessagesChange: (next: ChatMessage[]) => void;
   onClearMessages: () => void;
-  /** When null (before the first critique), chat still works; structured critique context is omitted. */
+  /** When null (before the first critique), workshop still works; structured critique context is omitted. */
   critique: CritiqueResult | null;
   critiqueMeta: CritiqueMeta;
   onCritiqueMetaChange: (next: CritiqueMeta) => void;
@@ -179,7 +179,7 @@ export function LyricChatPanel({
     if (!trimmed || loading) return;
 
     if (selectedChatAction && chatScope === "selection" && !hasPinned) {
-      setError("Highlight lyrics in the draft and choose Add to chat.");
+      setError("Highlight lyrics in the draft and choose Add to workshop.");
       return;
     }
 
@@ -333,8 +333,8 @@ export function LyricChatPanel({
           </button>
         </div>
         <p className="mt-3 py-0.5 text-[11px] leading-relaxed text-zinc-600">
-          Highlight lines and use <span className="text-zinc-500">Add to chat</span> to attach
-          excerpts. Choose a quick action when starting or from Piece context after you chat.
+          Highlight lines and use <span className="text-zinc-500">Add to workshop</span> to attach
+          excerpts. Choose a quick action when starting or from Piece context after your workshop.
         </p>
         <details className="mt-3 rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-2 py-1.5">
           <summary className="cursor-pointer select-none text-[11px] font-medium text-zinc-500">
@@ -500,7 +500,7 @@ export function LyricChatPanel({
             <div className="space-y-1.5 rounded-md border border-amber-900/40 bg-amber-950/25 px-2 py-1.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[10px] font-medium uppercase tracking-wide text-amber-200/80">
-                  In chat ({trimmedPins.length})
+                  In workshop ({trimmedPins.length})
                 </span>
                 <button
                   type="button"

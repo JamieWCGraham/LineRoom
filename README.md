@@ -1,15 +1,15 @@
 # LineRoom
 
-Lyric workspace: **draft** and **chat about the full draft** (“talk to your lyrics”).
+Lyric workspace: **draft** and **Workshop** for the full draft (“talk to your lyrics”).
 
 This MVP is a **Next.js** app meant to deploy on **Vercel** with **serverless API routes**, **client-side state**, and **localStorage** autosave.
 
 ## Features
 
-- Two-column layout on desktop (draft, chat); stacks on small screens.
+- Two-column layout on desktop (draft, Workshop); stacks on small screens.
 - Main **draft** editor.
-- **Talk to your lyrics** — conversational panel backed by `POST /api/chat` (full draft injected each turn so edits stay in sync).
-- Autosave: draft and chat history in `localStorage`.
+- **Workshop your lyrics** — conversational panel backed by `POST /api/chat` (full draft injected each turn so edits stay in sync).
+- Autosave: draft and Workshop history in `localStorage`.
 
 ## Setup
 
@@ -17,7 +17,7 @@ This MVP is a **Next.js** app meant to deploy on **Vercel** with **serverless AP
 cd Experiments/LineRoom
 npm install
 cp .env.example .env.local
-# Set OPENAI_API_KEY (chat) and AI_GATEWAY_API_KEY (generate critique) in .env.local
+# Set OPENAI_API_KEY (Workshop) and AI_GATEWAY_API_KEY (generate critique) in .env.local
 npm run dev
 ```
 
@@ -30,7 +30,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `OPENAI_API_KEY`       | Yes      | Server-only; `/api/chat`. Never exposed to the client. |
 | `AI_GATEWAY_API_KEY`   | Yes      | Server-only; `/api/critique` via [Vercel AI Gateway](https://vercel.com/docs/ai-gateway/openai-compat). |
 | `CRITIQUE_LLM_PROVIDER`| No       | `openai` (default) → gateway `openai/gpt-5-mini`, or `gemini` → `google/gemini-3.1-pro-preview`. Override fully with `CRITIQUE_GATEWAY_MODEL`. |
-| `OPENAI_MODEL`         | No       | Chat default; see `lib/openai.ts`. |
+| `OPENAI_MODEL`         | No       | Workshop default; see `lib/openai.ts`. |
 | `LANGFUSE_SECRET_KEY`  | No       | Enables [Langfuse](https://langfuse.com) tracing when set with `LANGFUSE_PUBLIC_KEY`. |
 | `LANGFUSE_PUBLIC_KEY`  | No       | Pair with secret key for Langfuse. |
 | `LANGFUSE_BASE_URL`    | No       | Defaults to `https://cloud.langfuse.com` (EU). US: `https://us.cloud.langfuse.com`. |
@@ -50,7 +50,7 @@ Requires **Node.js 20+** (for `@langfuse/otel`). Set the same variables in Verce
 ## Project layout
 
 - `app/page.tsx` — client UI and state.
-- `app/api/chat/route.ts` — chat route handler.
+- `app/api/chat/route.ts` — Workshop route handler.
 - `instrumentation.ts` — registers Langfuse OpenTelemetry on the Node runtime when configured.
 - `lib/langfuse-server.ts` — Langfuse span processor, `observeOpenAI` wrapper, `after` flush for serverless.
 - `components/` — `DraftEditor`, `LyricChatPanel`, `Header`.
