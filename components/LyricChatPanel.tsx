@@ -355,7 +355,7 @@ export function LyricChatPanel({
                 })
               }
               disabled={loading}
-              className="w-full rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:opacity-50"
+              className="w-full rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-700/40 focus:outline-none focus:ring-1 focus:ring-emerald-600/25 disabled:opacity-50"
               style={{ colorScheme: "dark" }}
               placeholder="Genre"
             />
@@ -369,7 +369,7 @@ export function LyricChatPanel({
               }
               disabled={loading}
               rows={2}
-              className="w-full resize-y rounded border border-zinc-800 bg-zinc-900/60 p-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:opacity-50"
+              className="w-full resize-y rounded border border-zinc-800 bg-zinc-900/60 p-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-700/40 focus:outline-none focus:ring-1 focus:ring-emerald-600/25 disabled:opacity-50"
               style={{ colorScheme: "dark" }}
               placeholder="Similar writers / voice (lyrics or poetry)"
             />
@@ -389,7 +389,7 @@ export function LyricChatPanel({
                       queueMicrotask(() => setQuickActionSelect(""));
                     }
                   }}
-                  className="w-full rounded border border-zinc-800 bg-zinc-900/70 px-2 py-1.5 text-xs text-zinc-100 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:opacity-50"
+                  className="w-full rounded border border-zinc-800 bg-zinc-900/70 px-2 py-1.5 text-xs text-zinc-100 focus:border-emerald-700/40 focus:outline-none focus:ring-1 focus:ring-emerald-600/25 disabled:opacity-50"
                   style={{ colorScheme: "dark" }}
                 >
                   <option value="">Choose an action…</option>
@@ -435,7 +435,7 @@ export function LyricChatPanel({
                   type="button"
                   disabled={loading}
                   onClick={() => applyActionPrefill(a.id)}
-                  className="rounded-lg border border-zinc-700/80 bg-zinc-900/50 px-3 py-2.5 text-left transition hover:border-amber-800/50 hover:bg-amber-950/15 disabled:opacity-40"
+                  className="rounded-lg border border-zinc-700/80 bg-zinc-900/50 px-3 py-2.5 text-left transition hover:border-emerald-800/50 hover:bg-emerald-950/15 disabled:opacity-40"
                 >
                   <span className="block text-sm font-medium text-zinc-100">
                     {a.title}
@@ -453,7 +453,7 @@ export function LyricChatPanel({
             key={i}
             className={
               m.role === "user"
-                ? "ml-6 rounded-lg border border-amber-900/35 bg-amber-950/20 px-3 py-2 text-sm text-zinc-100"
+                ? "ml-6 rounded-lg border border-emerald-900/35 bg-emerald-950/20 px-3 py-2 text-sm text-zinc-100"
                 : "mr-4 rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-sm leading-relaxed text-zinc-300"
             }
           >
@@ -463,7 +463,7 @@ export function LyricChatPanel({
             {m.role === "assistant" && m.structured ?
               <StructuredAssistantMessage structured={m.structured} />
             : m.role === "assistant" ?
-              <div className="prose prose-invert max-w-none break-words text-zinc-200 prose-headings:mb-3 prose-headings:mt-5 prose-headings:text-zinc-100 prose-p:my-4 prose-p:leading-8 prose-li:my-1.5 prose-ul:my-4 prose-ol:my-4 prose-a:text-amber-300 prose-a:no-underline hover:prose-a:underline prose-blockquote:border-zinc-700 prose-blockquote:text-zinc-400 prose-pre:my-4 prose-pre:rounded-md prose-pre:bg-zinc-900 prose-code:text-zinc-200 prose-strong:text-zinc-100 [&_br]:block [&_br]:content-[''] [&_br]:mt-4">
+              <div className="prose prose-invert max-w-none break-words text-zinc-200 prose-headings:mb-3 prose-headings:mt-5 prose-headings:text-zinc-100 prose-p:my-4 prose-p:leading-8 prose-li:my-1.5 prose-ul:my-4 prose-ol:my-4 prose-a:text-emerald-300 prose-a:no-underline hover:prose-a:underline prose-blockquote:border-zinc-700 prose-blockquote:text-zinc-400 prose-pre:my-4 prose-pre:rounded-md prose-pre:bg-zinc-900 prose-code:text-zinc-200 prose-strong:text-zinc-100 [&_br]:block [&_br]:content-[''] [&_br]:mt-4">
                 <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
                   {formatAssistantContent(m.content)}
                 </ReactMarkdown>
@@ -497,9 +497,9 @@ export function LyricChatPanel({
         ) : null}
         <div className="mb-2 space-y-2">
           {hasPinned ?
-            <div className="space-y-1.5 rounded-md border border-amber-900/40 bg-amber-950/25 px-2 py-1.5">
+            <div className="space-y-1.5 rounded-md border border-emerald-900/40 bg-emerald-950/25 px-2 py-1.5">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-amber-200/80">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-emerald-200/80">
                   In workshop ({trimmedPins.length})
                 </span>
                 <button
@@ -519,10 +519,10 @@ export function LyricChatPanel({
                   return (
                     <li
                       key={`${i}-${p.startLine}-${p.endLine}`}
-                      className="flex items-start gap-1.5 rounded border border-amber-900/25 bg-zinc-950/40 px-1.5 py-1"
+                      className="flex items-start gap-1.5 rounded border border-emerald-900/25 bg-zinc-950/40 px-1.5 py-1"
                     >
-                      <span className="min-w-0 flex-1 text-[10px] leading-snug text-amber-100/90">
-                        <span className="font-medium text-amber-200/90">
+                      <span className="min-w-0 flex-1 text-[10px] leading-snug text-emerald-100/90">
+                        <span className="font-medium text-emerald-200/90">
                           {p.startLine + 1}–{p.endLine + 1}
                         </span>
                         {preview ? ` · ${preview}` : null}
@@ -551,7 +551,7 @@ export function LyricChatPanel({
                 onClick={() => setBaseScope("section")}
                 className={`rounded-md border px-2 py-1 text-[11px] font-medium transition disabled:opacity-40 ${
                   baseScope === "section" ?
-                    "border-amber-600/50 bg-amber-950/30 text-amber-100"
+                    "border-emerald-600/50 bg-emerald-950/30 text-emerald-100"
                   : "border-zinc-700/80 bg-zinc-900/50 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"
                 }`}
               >
@@ -563,7 +563,7 @@ export function LyricChatPanel({
                 onClick={() => setBaseScope("full_draft")}
                 className={`rounded-md border px-2 py-1 text-[11px] font-medium transition disabled:opacity-40 ${
                   baseScope === "full_draft" ?
-                    "border-amber-600/50 bg-amber-950/30 text-amber-100"
+                    "border-emerald-600/50 bg-emerald-950/30 text-emerald-100"
                   : "border-zinc-700/80 bg-zinc-900/50 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"
                 }`}
               >
@@ -584,7 +584,7 @@ export function LyricChatPanel({
             }}
             rows={5}
             disabled={loading}
-            className="min-h-[7.5rem] max-h-64 flex-1 resize-y overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:opacity-50"
+            className="min-h-[7.5rem] max-h-64 flex-1 resize-y overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-700/40 focus:outline-none focus:ring-1 focus:ring-emerald-600/25 disabled:opacity-50"
             style={{ colorScheme: "dark" }}
             placeholder="Message…"
           />
@@ -592,7 +592,7 @@ export function LyricChatPanel({
             type="button"
             onClick={() => void send()}
             disabled={loading || !input.trim()}
-            className="shrink-0 self-end rounded-lg bg-amber-700/90 px-4 py-2.5 text-sm font-medium text-zinc-950 transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-40"
+            className="shrink-0 self-end rounded-lg bg-emerald-700/90 px-4 py-2.5 text-sm font-medium text-zinc-950 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Send
           </button>

@@ -731,11 +731,11 @@ export const DraftRecordingsPanel = forwardRef<
             type="button"
             onClick={() => void startRecording()}
             disabled={disabled || Boolean(pendingBlob) || uploading}
-            className={`${chip} border-amber-800/50 bg-amber-950/35 px-4 py-2.5 text-sm font-medium text-amber-100/95 hover:border-amber-600/45 hover:bg-amber-950/55`}
+            className={`${chip} border-emerald-800/50 bg-emerald-950/35 px-4 py-2.5 text-sm font-medium text-emerald-100/95 hover:border-emerald-600/45 hover:bg-emerald-950/55`}
           >
             <span className="flex items-center gap-2">
               <span
-                className="h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]"
+                className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]"
                 aria-hidden
               />
               Record
@@ -756,15 +756,15 @@ export const DraftRecordingsPanel = forwardRef<
       </div>
 
       {pendingBlob ?
-        <div className="rounded-lg border border-amber-800/35 bg-amber-950/20 p-3 ring-1 ring-amber-900/25">
-          <p className="mb-2 text-xs font-medium text-amber-100/90">
+        <div className="rounded-lg border border-emerald-800/35 bg-emerald-950/20 p-3 ring-1 ring-emerald-900/25">
+          <p className="mb-2 text-xs font-medium text-emerald-100/90">
             Name this memo
           </p>
           <input
             value={pendingName}
             onChange={(e) => setPendingName(e.target.value)}
             maxLength={120}
-            className="mb-3 w-full rounded-lg border border-zinc-700 bg-zinc-950/80 px-3 py-2.5 text-sm text-zinc-100 outline-none ring-0 placeholder:text-zinc-600 focus:border-amber-700/50 focus:ring-1 focus:ring-amber-600/30"
+            className="mb-3 w-full rounded-lg border border-zinc-700 bg-zinc-950/80 px-3 py-2.5 text-sm text-zinc-100 outline-none ring-0 placeholder:text-zinc-600 focus:border-emerald-700/50 focus:ring-1 focus:ring-emerald-600/30"
             placeholder="e.g. Chorus melody idea"
             disabled={uploading}
           />
@@ -773,7 +773,7 @@ export const DraftRecordingsPanel = forwardRef<
               type="button"
               onClick={() => void commitPending()}
               disabled={uploading}
-              className="min-h-[44px] flex-1 touch-manipulation rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-500 disabled:opacity-50 sm:flex-none"
+              className="min-h-[44px] flex-1 touch-manipulation rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-500 disabled:opacity-50 sm:flex-none"
             >
               {uploading ? "Saving…" : "Save memo"}
             </button>
@@ -862,7 +862,7 @@ export const DraftRecordingsPanel = forwardRef<
                     if (e.key === "Escape") setRenameId(null);
                   }}
                   maxLength={120}
-                  className="w-full rounded-md border border-zinc-600 bg-zinc-950 px-2 py-1 text-sm text-zinc-100 outline-none focus:border-amber-700/50"
+                  className="w-full rounded-md border border-zinc-600 bg-zinc-950 px-2 py-1 text-sm text-zinc-100 outline-none focus:border-emerald-700/50"
                 />
               : <button
                   type="button"
@@ -870,7 +870,7 @@ export const DraftRecordingsPanel = forwardRef<
                     setRenameId(rec.id);
                     setRenameValue(rec.name);
                   }}
-                  className="block w-full truncate text-left text-sm font-medium text-zinc-100 touch-manipulation hover:text-amber-100/90"
+                  className="block w-full truncate text-left text-sm font-medium text-zinc-100 touch-manipulation hover:text-emerald-100/90"
                 >
                   {rec.name}
                 </button>
@@ -1108,7 +1108,7 @@ export const DraftRecordingsPanel = forwardRef<
             aria-modal="true"
             aria-labelledby="delete-voice-memo-title"
             aria-describedby="delete-voice-memo-desc"
-            className="fixed left-1/2 top-1/2 z-[145] w-[min(calc(100vw-2rem),380px)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-zinc-700/90 bg-zinc-950 px-5 pb-5 pt-5 shadow-[0_24px_64px_rgba(0,0,0,0.55)] ring-1 ring-amber-900/15"
+            className="fixed left-1/2 top-1/2 z-[145] w-[min(calc(100vw-2rem),380px)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-zinc-700/90 bg-zinc-950 px-5 pb-5 pt-5 shadow-[0_24px_64px_rgba(0,0,0,0.55)] ring-1 ring-emerald-900/15"
           >
             <h3
               id="delete-voice-memo-title"
@@ -1182,7 +1182,7 @@ export const DraftRecordingsPanel = forwardRef<
               `Voice notes, ${count} saved`
             : "Open voice notes"
           }
-          className="inline-flex h-9 min-h-9 min-w-9 shrink-0 touch-manipulation items-center justify-center gap-1.5 rounded-lg border border-zinc-700/80 bg-zinc-900/50 px-1.5 text-amber-200/95 shadow-sm transition hover:border-amber-800/50 hover:bg-amber-950/35 hover:text-amber-100 disabled:cursor-not-allowed disabled:opacity-40 lg:h-8 lg:min-h-8 lg:min-w-8"
+          className="inline-flex h-9 min-h-9 min-w-9 shrink-0 touch-manipulation items-center justify-center gap-1.5 rounded-lg border border-zinc-700/80 bg-zinc-900/50 px-1.5 text-emerald-200/95 shadow-sm transition hover:border-emerald-800/50 hover:bg-emerald-950/35 hover:text-emerald-100 disabled:cursor-not-allowed disabled:opacity-40 lg:h-8 lg:min-h-8 lg:min-w-8"
         >
           <svg
             className="shrink-0"
@@ -1221,7 +1221,7 @@ export const DraftRecordingsPanel = forwardRef<
                 `Voice notes, ${count} saved`
               : "Open voice notes"
             }
-            className="relative fixed z-[60] flex h-14 w-14 touch-manipulation items-center justify-center rounded-full border border-amber-800/55 bg-amber-950/90 text-amber-100 shadow-lg shadow-black/40 transition hover:border-amber-600/60 hover:bg-amber-900/95 disabled:cursor-not-allowed disabled:opacity-40 lg:hidden"
+            className="relative fixed z-[60] flex h-14 w-14 touch-manipulation items-center justify-center rounded-full border border-emerald-800/55 bg-emerald-950/90 text-emerald-100 shadow-lg shadow-black/40 transition hover:border-emerald-600/60 hover:bg-emerald-900/95 disabled:cursor-not-allowed disabled:opacity-40 lg:hidden"
             style={{
               right:
                 "calc(100% / 6 - 1.75rem + max(0px, env(safe-area-inset-right, 0px)))",

@@ -28,7 +28,7 @@ export default async function LoginPage({ searchParams }: Props) {
         </p>
       ) : null}
       {q.message === "confirmed" ? (
-        <p className="mb-4 rounded-lg border border-amber-900/50 bg-amber-950/30 px-3 py-2 text-center text-sm text-amber-200">
+        <p className="mb-4 rounded-lg border border-emerald-900/50 bg-emerald-950/30 px-3 py-2 text-center text-sm text-emerald-200">
           Check your email or sign in to continue.
         </p>
       ) : null}

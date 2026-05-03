@@ -49,7 +49,7 @@ export function DeleteAccountSection({ userEmail }: Props) {
         subject to your privacy policy. This cannot be undone.
       </p>
       {message ?
-        <p className="mt-3 text-sm text-amber-200/90">{message}</p>
+        <p className="mt-3 text-sm text-emerald-200/90">{message}</p>
       : null}
       <label className="mt-4 block text-xs font-medium text-zinc-500">
         Type your email to confirm

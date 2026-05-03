@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { APP_TAGLINE } from "@/components/app-brand";
+import { lineroomRootViewport } from "@/lib/rootViewport";
 import "./globals.css";
 
 const inter = Inter({
@@ -12,6 +13,8 @@ export const metadata: Metadata = {
   title: "LineRoom — Lyrics & poetry workspace",
   description: APP_TAGLINE,
 };
+
+export const viewport: Viewport = lineroomRootViewport;
 
 export default function RootLayout({
   children,

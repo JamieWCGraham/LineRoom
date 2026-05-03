@@ -53,11 +53,11 @@ function SuccessContent() {
     <>
       <p className="mt-3 text-sm text-zinc-400">{note}</p>
       <p className="mt-8 text-sm">
-        <Link href="/account" className="text-amber-500/90 underline">
+        <Link href="/account" className="text-emerald-500/90 underline">
           Account
         </Link>
         {" · "}
-        <Link href="/dashboard" className="text-amber-500/90 underline">
+        <Link href="/dashboard" className="text-emerald-500/90 underline">
           Dashboard
         </Link>
       </p>

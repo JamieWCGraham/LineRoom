@@ -739,7 +739,7 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
         style={{ height: mobileToolbarInsetPx }}
         aria-hidden
       />
-      <div className="relative flex min-h-[min(50dvh,28rem)] flex-1 flex-col overflow-hidden overscroll-none rounded-lg border border-zinc-800 bg-zinc-900/60 focus-within:border-amber-700/40 focus-within:ring-1 focus-within:ring-amber-600/25 max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:focus-within:border-transparent max-lg:focus-within:ring-0 lg:min-h-0">
+      <div className="relative flex min-h-[min(50dvh,28rem)] flex-1 flex-col overflow-hidden overscroll-none rounded-lg border border-zinc-800 bg-zinc-900/60 focus-within:border-emerald-700/40 focus-within:ring-1 focus-within:ring-emerald-600/25 max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:focus-within:border-transparent max-lg:focus-within:ring-0 lg:min-h-0">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 z-0 overflow-hidden overscroll-none rounded-[inherit]"

@@ -102,7 +102,7 @@ export function UpgradeModal({ open, onClose }: Props) {
               type="button"
               onClick={() => void startCheckout()}
               disabled={busy}
-              className="rounded-lg bg-blue-700/90 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-600 disabled:opacity-50"
+              className="rounded-lg bg-blue-700/90 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-600 disabled:opacity-50"
             >
               {busy ? "Opening checkout…" : "Upgrade"}
             </button>

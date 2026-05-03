@@ -154,7 +154,7 @@ export function BillingSection({ initialAccess }: Props) {
         : null}
       </dl>
       {message ?
-        <p className="mt-3 text-sm text-amber-200/90">{message}</p>
+        <p className="mt-3 text-sm text-emerald-200/90">{message}</p>
       : null}
 
       <IosProSubscription
@@ -196,7 +196,7 @@ export function BillingSection({ initialAccess }: Props) {
             type="button"
             onClick={() => void upgrade()}
             disabled={checkoutBusy}
-            className="rounded-lg bg-amber-700/90 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-amber-600 disabled:opacity-50"
+            className="rounded-lg bg-emerald-700/90 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-600 disabled:opacity-50"
           >
             {checkoutBusy ? "Loading…" : "Upgrade to Pro (web)"}
           </button>

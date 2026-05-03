@@ -51,7 +51,7 @@ export function SignupForm() {
           ) : null}
         </div>
         {state?.message ? (
-          <p className="text-sm text-amber-400">{state.message}</p>
+          <p className="text-sm text-red-400">{state.message}</p>
         ) : null}
         <button
           type="submit"

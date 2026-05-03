@@ -3,6 +3,7 @@ import { AppBrandDash } from "@/components/app-brand";
 import { NewPieceButton } from "@/components/dashboard/new-piece-button";
 import { PiecesBrowser } from "@/components/dashboard/pieces-browser";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { isBillingBypassed } from "@/lib/billing/config";
 import { createClient } from "@/lib/supabase/server";
 import type { SongRow, SongVersionRow } from "@/types/database";
 
@@ -162,38 +163,49 @@ export async function AuthenticatedDashboard({
   });
 
   const continueSongs = songs.slice(0, 2);
+  const showEvalsNav = isBillingBypassed(email);
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-12">
-      <AppBrandDash />
+    <div className="mx-auto min-h-dvh w-full max-w-5xl bg-zinc-950 md:min-h-0 md:bg-transparent md:px-4 md:py-12">
+      <div className="hidden md:block">
+        <AppBrandDash />
 
-      <div className="mt-8 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-100">Dashboard</h1>
-          <p className="mt-2 text-sm text-zinc-400">
-            Signed in as{" "}
-            <span className="font-medium text-zinc-200">{email}</span>
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/account"
-            className="rounded-lg border border-zinc-600 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-900"
-          >
-            Account
-          </Link>
-          <SignOutButton />
+        <div className="mt-8 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold text-zinc-100">Dashboard</h1>
+            <p className="mt-2 text-sm text-zinc-400">
+              Signed in as{" "}
+              <span className="font-medium text-zinc-200">{email}</span>
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {showEvalsNav ?
+              <Link
+                href="/evals"
+                className="rounded-lg border border-emerald-800/50 bg-emerald-950/25 px-4 py-2 text-sm text-emerald-100 hover:border-emerald-600/60 hover:bg-emerald-950/40"
+              >
+                Evals
+              </Link>
+            : null}
+            <Link
+              href="/account"
+              className="rounded-lg border border-zinc-600 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-900"
+            >
+              Account
+            </Link>
+            <SignOutButton />
+          </div>
         </div>
       </div>
 
       {createError === "1" ?
-        <p className="mt-4 rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+        <p className="mx-4 mt-3 rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-2 text-sm text-red-200 md:mx-0 md:mt-4">
           Could not create a new piece. Check your connection and try again.
         </p>
       : null}
 
       {continueSongs.length > 0 ?
-        <section className="mt-8">
+        <section className="mt-8 hidden md:block">
           <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
             Continue working on
           </h2>
@@ -234,7 +246,7 @@ export async function AuthenticatedDashboard({
                         song.momentumTone === "up"
                           ? "border-emerald-900/70 bg-emerald-950/30 text-emerald-200"
                           : song.momentumTone === "down"
-                            ? "border-amber-900/70 bg-amber-950/30 text-amber-200"
+                            ? "border-stone-700/80 bg-stone-950/40 text-stone-300"
                             : "border-zinc-700 text-zinc-300"
                       }`}
                     >
@@ -253,14 +265,17 @@ export async function AuthenticatedDashboard({
         </section>
       : null}
 
-      <section className="mt-10">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+      <section className="mt-0 px-4 pb-8 md:mt-10 md:px-0 md:pb-0">
+        <div className="mb-3 hidden flex-wrap items-center gap-2 sm:gap-3 md:flex">
           <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
             Your pieces
           </h2>
           <NewPieceButton />
         </div>
-        <PiecesBrowser songs={songs} />
+        <PiecesBrowser
+          songs={songs}
+          mobileNav={{ email, showEvalsNav }}
+        />
       </section>
     </div>
   );

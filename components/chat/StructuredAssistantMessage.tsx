@@ -49,7 +49,7 @@ export function StructuredAssistantMessage({ structured }: Props) {
                 title={`Copy “${label}”`}
                 aria-label={`Copy rhyme: ${label}`}
                 onClick={() => void copyOption(opt, i)}
-                className="min-h-[2.75rem] rounded-lg border border-zinc-700/80 bg-zinc-900/55 px-2 py-2 text-center text-sm font-medium text-zinc-100 transition hover:border-amber-800/45 hover:bg-amber-950/25 hover:text-amber-50 active:bg-zinc-800/80"
+                className="min-h-[2.75rem] rounded-lg border border-zinc-700/80 bg-zinc-900/55 px-2 py-2 text-center text-sm font-medium text-zinc-100 transition hover:border-emerald-800/45 hover:bg-emerald-950/25 hover:text-emerald-50 active:bg-zinc-800/80"
               >
                 <span className="line-clamp-2 break-words">{label}</span>
                 <span className="mt-1 block text-[10px] font-normal text-zinc-500">

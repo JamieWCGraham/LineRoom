@@ -122,7 +122,7 @@ export function CritiqueDisplayPanel({
               <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
                 Overall rating
               </p>
-              <p className="mt-1 text-2xl font-semibold text-amber-200/95">
+              <p className="mt-1 text-2xl font-semibold text-emerald-200/95">
                 {critique.overallRatingBand}
               </p>
               {critique.analyzedSongVersion != null ? (
@@ -175,7 +175,7 @@ export function CritiqueDisplayPanel({
                     <span className="text-zinc-400">
                       {label}
                     </span>
-                    <span className="font-medium tabular-nums text-amber-100/95">
+                    <span className="font-medium tabular-nums text-emerald-100/95">
                       {critique.subscores[key]}/5
                       {groundTruthSubscores ? (
                         <span className="ml-2 text-zinc-500">
@@ -199,7 +199,7 @@ export function CritiqueDisplayPanel({
                 <button
                   type="button"
                   onClick={() => setShowFullGenrePrinciples((v) => !v)}
-                  className="mt-2 text-xs font-medium text-amber-300/90 hover:text-amber-200"
+                  className="mt-2 text-xs font-medium text-emerald-300/90 hover:text-emerald-200"
                 >
                   {showFullGenrePrinciples ? "See less" : "See more"}
                 </button>
@@ -359,8 +359,8 @@ export function CritiqueDisplayPanel({
                       </p>
                     )}
                   </div>
-                  <div className="min-w-0 rounded-lg border border-amber-800/45 bg-amber-950/20 px-3 py-2.5">
-                    <p className="text-[10px] font-medium uppercase tracking-wide text-amber-500/95">
+                  <div className="min-w-0 rounded-lg border border-emerald-800/45 bg-emerald-950/20 px-3 py-2.5">
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-emerald-500/95">
                       This run — line-level failures
                     </p>
                     {lineFeedbackEval != null ?
@@ -371,13 +371,13 @@ export function CritiqueDisplayPanel({
                             song.
                           </p>
                         : (
-                          <ul className="mt-1.5 list-disc space-y-1.5 pl-4 text-[12px] leading-relaxed text-amber-100/90">
+                          <ul className="mt-1.5 list-disc space-y-1.5 pl-4 text-[12px] leading-relaxed text-emerald-100/90">
                             {lineFeedbackEval.failure_flags
                               .map((f) => f.trim())
                               .filter(Boolean)
                               .map((flag) => (
                                 <li key={flag}>
-                                  <span className="font-mono text-[11px] text-amber-200/95">
+                                  <span className="font-mono text-[11px] text-emerald-200/95">
                                     {flag}
                                   </span>
                                   <span className="block text-[11px] text-zinc-400">
@@ -388,7 +388,7 @@ export function CritiqueDisplayPanel({
                           </ul>
                         )}
                         {lineFeedbackEval.notes?.trim() ?
-                          <p className="mt-2 border-t border-amber-900/40 pt-2 text-[12px] leading-relaxed text-zinc-400">
+                          <p className="mt-2 border-t border-emerald-900/40 pt-2 text-[12px] leading-relaxed text-zinc-400">
                             {lineFeedbackEval.notes}
                           </p>
                         : null}
@@ -445,7 +445,7 @@ export function CritiqueDisplayPanel({
             type="button"
             onClick={onRegenerate}
             disabled={loading || !critique || lyricsEmpty}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-900/50 px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:border-amber-800/50 hover:bg-zinc-800/50 disabled:cursor-not-allowed disabled:opacity-40"
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-900/50 px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:border-emerald-800/50 hover:bg-zinc-800/50 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {loading ? (
               <span className="inline-flex items-center gap-2">

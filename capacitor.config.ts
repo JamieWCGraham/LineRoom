@@ -36,7 +36,8 @@ const config: CapacitorConfig = {
   appName: "LineRoom",
   webDir: "capacitor-shell",
   ios: {
-    contentInset: "automatic",
+    /** Let the web layer paint edge-to-edge; use `env(safe-area-inset-*)` in CSS. */
+    contentInset: "never",
     /** Survives remote-URL loads: billing code + API routes match this token in `User-Agent`. */
     appendUserAgent: "LineRoomNativeShell/iOS",
   },

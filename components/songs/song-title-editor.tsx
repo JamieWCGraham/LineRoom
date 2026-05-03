@@ -75,7 +75,7 @@ export function SongTitleEditor({
             type="button"
             onClick={beginEdit}
             title="Edit title"
-            className="min-w-0 truncate text-left text-sm font-semibold text-zinc-100 transition hover:text-amber-100/90"
+            className="min-w-0 truncate text-left text-sm font-semibold text-zinc-100 transition hover:text-emerald-100/90"
           >
             {initialTitle.trim() || "Untitled piece"}
           </button>

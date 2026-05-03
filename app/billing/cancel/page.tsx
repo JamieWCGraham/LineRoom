@@ -10,11 +10,11 @@ export default function BillingCancelPage() {
         No charges were made. You can upgrade anytime from your account page.
       </p>
       <p className="mt-8 text-sm">
-        <Link href="/account" className="text-amber-500/90 underline">
+        <Link href="/account" className="text-emerald-500/90 underline">
           Account
         </Link>
         {" · "}
-        <Link href="/lineroom" className="text-amber-500/90 underline">
+        <Link href="/lineroom" className="text-emerald-500/90 underline">
           LineRoom
         </Link>
       </p>

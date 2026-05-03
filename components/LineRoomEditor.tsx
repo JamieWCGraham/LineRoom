@@ -177,7 +177,7 @@ function SongVersionBar(props: {
                 props.newVersionPending ||
                 props.editorBusy
               }
-              className="rounded-md border border-zinc-800 bg-zinc-900/70 px-2 py-1 text-xs text-zinc-100 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-zinc-800 bg-zinc-900/70 px-2 py-1 text-xs text-zinc-100 focus:border-emerald-700/40 focus:outline-none focus:ring-1 focus:ring-emerald-600/25 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {props.versions
                 .slice()
@@ -347,8 +347,8 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           onClick={() => setLyricDocPane("draft")}
           className={
             lyricDocPane === "draft" ?
-              "shrink-0 rounded-sm border-b border-zinc-400/90 pb-0.5 text-zinc-200 outline-none focus-visible:ring-1 focus-visible:ring-amber-600/35"
-            : "shrink-0 rounded-sm border-b border-transparent pb-0.5 text-zinc-500 outline-none transition hover:text-zinc-400 focus-visible:ring-1 focus-visible:ring-amber-600/35"
+              "shrink-0 rounded-sm border-b border-zinc-400/90 pb-0.5 text-zinc-200 outline-none focus-visible:ring-1 focus-visible:ring-emerald-600/35"
+            : "shrink-0 rounded-sm border-b border-transparent pb-0.5 text-zinc-500 outline-none transition hover:text-zinc-400 focus-visible:ring-1 focus-visible:ring-emerald-600/35"
           }
         >
           DRAFT
@@ -363,8 +363,8 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           onClick={() => setLyricDocPane("brainstorm")}
           className={
             lyricDocPane === "brainstorm" ?
-              "shrink-0 rounded-sm border-b border-zinc-400/90 pb-0.5 text-zinc-200 outline-none focus-visible:ring-1 focus-visible:ring-amber-600/35"
-            : "shrink-0 rounded-sm border-b border-transparent pb-0.5 text-zinc-500 outline-none transition hover:text-zinc-400 focus-visible:ring-1 focus-visible:ring-amber-600/35"
+              "shrink-0 rounded-sm border-b border-zinc-400/90 pb-0.5 text-zinc-200 outline-none focus-visible:ring-1 focus-visible:ring-emerald-600/35"
+            : "shrink-0 rounded-sm border-b border-transparent pb-0.5 text-zinc-500 outline-none transition hover:text-zinc-400 focus-visible:ring-1 focus-visible:ring-emerald-600/35"
           }
         >
           BRAINSTORM
@@ -1131,7 +1131,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                       newVersionPending ||
                       critiqueLoading
                     }
-                    className="mt-3 h-11 w-full rounded-lg border border-zinc-700/80 bg-zinc-900/70 px-3 text-sm text-zinc-100 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-3 h-11 w-full rounded-lg border border-zinc-700/80 bg-zinc-900/70 px-3 text-sm text-zinc-100 focus:border-emerald-700/40 focus:outline-none focus:ring-1 focus:ring-emerald-600/25 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {props.versions
                       .slice()
@@ -1523,7 +1523,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                   `Voice notes, ${meta.draftRecordings?.length ?? 0} saved`
                 : "Open voice notes"
               }
-              className="relative inline-flex shrink-0 touch-manipulation items-center justify-center rounded-lg border border-amber-800/50 bg-amber-950/40 px-2.5 py-2 text-amber-100/95 transition hover:border-amber-600/50 hover:bg-amber-950/55 disabled:cursor-not-allowed disabled:opacity-40"
+              className="relative inline-flex shrink-0 touch-manipulation items-center justify-center rounded-lg border border-emerald-800/50 bg-emerald-950/40 px-2.5 py-2 text-emerald-100/95 transition hover:border-emerald-600/50 hover:bg-emerald-950/55 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <svg
                 width="18"

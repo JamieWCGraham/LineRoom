@@ -125,7 +125,7 @@ export function IosProSubscription({
 
   if (!productId) {
     return (
-      <p className="mt-3 text-sm text-amber-200/90">
+      <p className="mt-3 text-sm text-emerald-200/90">
         iOS subscriptions are not configured. Set{" "}
         <code className="text-zinc-300">NEXT_PUBLIC_IOS_IAP_PRODUCT_ID</code> to
         your auto-renewable product id from App Store Connect, then rebuild the
@@ -138,14 +138,14 @@ export function IosProSubscription({
   return (
     <div className="mt-4 space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/40 p-4">
       {msg ?
-        <p className="text-sm text-amber-200/90">{msg}</p>
+        <p className="text-sm text-emerald-200/90">{msg}</p>
       : null}
       <div className="flex flex-wrap gap-3">
         <button
           type="button"
           onClick={() => void purchase()}
           disabled={busy}
-          className="rounded-lg bg-amber-700/90 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-amber-600 disabled:opacity-50"
+          className="rounded-lg bg-emerald-700/90 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-600 disabled:opacity-50"
         >
           {busy ? "Working…" : "Subscribe with App Store"}
         </button>

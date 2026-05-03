@@ -61,7 +61,7 @@ export function CritiqueSetupPanel({
             onChange={(e) => onSimilarArtistsChange(e.target.value)}
             disabled={loading}
             rows={3}
-            className="w-full resize-y rounded-lg border border-zinc-800 bg-zinc-900/60 p-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:opacity-50"
+            className="w-full resize-y rounded-lg border border-zinc-800 bg-zinc-900/60 p-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-700/40 focus:outline-none focus:ring-1 focus:ring-emerald-600/25 disabled:opacity-50"
             placeholder="Names or short notes on tone, era, scene…"
           />
         </label>
@@ -75,7 +75,7 @@ export function CritiqueSetupPanel({
             value={genre}
             onChange={(e) => onGenreChange(e.target.value)}
             disabled={loading}
-            className="w-full rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-600/25 disabled:opacity-50"
+            className="w-full rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-700/40 focus:outline-none focus:ring-1 focus:ring-emerald-600/25 disabled:opacity-50"
             placeholder="e.g. indie folk, spoken word, sonnet, UK drill…"
           />
         </label>
@@ -100,7 +100,7 @@ export function CritiqueSetupPanel({
           type="button"
           onClick={onGenerate}
           disabled={loading || lyricsEmpty}
-          className="w-full rounded-lg bg-amber-700/90 px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full rounded-lg bg-emerald-700/90 px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {loading ? (
             <span className="inline-flex items-center gap-2">
