@@ -1,7 +1,13 @@
 import { headers } from "next/headers";
+import { userAgentHasLineroomIosShellToken } from "@/lib/platform/lineroom-native-shell";
 
-/** Matches `billingClientPlatformHeaders` from the Capacitor iOS WebView. */
+/**
+ * True when the request comes from the LineRoom iOS Capacitor shell.
+ * Uses the client header and/or the iOS-only `appendUserAgent` token (see
+ * `capacitor.config.ts`) so Stripe routes stay blocked even if JS detection fails.
+ */
 export async function isIosCapacitorBillingRequest(): Promise<boolean> {
   const h = await headers();
-  return h.get("x-lineroom-client-platform") === "ios-capacitor";
+  if (h.get("x-lineroom-client-platform") === "ios-capacitor") return true;
+  return userAgentHasLineroomIosShellToken(h.get("user-agent"));
 }

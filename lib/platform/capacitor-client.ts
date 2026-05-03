@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
+import { userAgentHasLineroomIosShellToken } from "@/lib/platform/lineroom-native-shell";
 
 type WebKitWindow = Window & {
   androidBridge?: unknown;
@@ -10,8 +11,6 @@ type WebKitWindow = Window & {
 
 /**
  * Same signal @capacitor/core uses for iOS (`getPlatformId`).
- * Prefer this over `Capacitor.isNativePlatform()` alone — the bridge is present
- * in the Capacitor WKWebView before/without relying on the JS global being fully wired.
  */
 function hasCapacitorIosBridge(): boolean {
   if (typeof window === "undefined") return false;
@@ -24,9 +23,17 @@ function hasCapacitorIosBridge(): boolean {
   }
 }
 
+/**
+ * True in the installed LineRoom iOS app (Capacitor WKWebView).
+ *
+ * Order: (1) UA token from `ios.appendUserAgent` in capacitor.config — set at
+ * native build/sync and reliable for remote URL shells; (2) Capacitor bridge;
+ * (3) @capacitor/core APIs.
+ */
 export function isIosCapacitorApp(): boolean {
   if (typeof window === "undefined") return false;
   try {
+    if (userAgentHasLineroomIosShellToken(navigator.userAgent)) return true;
     if (hasCapacitorIosBridge()) return true;
     return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
   } catch {
@@ -35,8 +42,7 @@ export function isIosCapacitorApp(): boolean {
 }
 
 /**
- * iOS shell detection before paint, plus short follow-up reads so we still flip
- * to IAP if the native bridge appears slightly after first layout (remote URL loads).
+ * Before paint + short follow-up reads for late bridge / hydration edge cases.
  */
 export function useIosCapacitorAppLayout(): boolean {
   const [ios, setIos] = useState(false);
