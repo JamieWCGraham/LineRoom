@@ -137,12 +137,6 @@ export function IosProSubscription({
 
   return (
     <div className="mt-4 space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/40 p-4">
-      <p className="text-sm leading-relaxed text-zinc-400">
-        LineRoom Pro on iOS is purchased through the App Store. If you already
-        subscribe on the web (Stripe), manage that plan in a desktop browser;
-        Apple does not allow the same upgrade to be sold with Stripe inside this
-        app.
-      </p>
       {msg ?
         <p className="text-sm text-amber-200/90">{msg}</p>
       : null}
