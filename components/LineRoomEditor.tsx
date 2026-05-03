@@ -199,7 +199,7 @@ function SongVersionBar(props: {
               props.newVersionPending ||
               props.editorBusy
             }
-            title="Save draft, chat, and critique to the selected version now. Also happens automatically while you work."
+            title="Save draft, workshop, and critique to the selected version now. Also happens automatically while you work."
             className="shrink-0 rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-400 disabled:opacity-50"
           >
             {props.savePending ? "Saving…" : "Save"}
@@ -869,7 +869,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
     const label = active ? `Version ${active.versionNumber}` : "this version";
     if (
       !window.confirm(
-        `Delete ${label}? Its draft, brainstorm notes, chat, and critique will be removed. This cannot be undone.`,
+        `Delete ${label}? Its draft, brainstorm notes, workshop, and critique will be removed. This cannot be undone.`,
       )
     ) {
       return;
@@ -1501,7 +1501,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
               : "min-w-0 flex-1 rounded-lg border border-zinc-800 bg-zinc-900/50 px-2 py-2 text-sm text-zinc-300"
             }
           >
-            Chat
+            Workshop
           </button>
           {isSong &&
           props.mode === "song" &&

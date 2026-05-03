@@ -37,6 +37,8 @@ const config: CapacitorConfig = {
   webDir: "capacitor-shell",
   ios: {
     contentInset: "automatic",
+    /** Survives remote-URL loads: billing code + API routes match this token in `User-Agent`. */
+    appendUserAgent: "LineRoomNativeShell/iOS",
   },
 };
 

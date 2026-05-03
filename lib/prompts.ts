@@ -456,7 +456,7 @@ Respond with a single JSON object only (no markdown fences), using this exact sh
 # TASK-SPECIFIC REQUIREMENTS:
 
 A) "genrePrinciples": 2–4 short paragraphs structured as:
-  1) what this genre/form rewards,
+  1) what the musical genre(s) reward in general (without specific reference to the contents of the draft itself),
   2) what this specific draft appears to be aiming for,
   3) the key tradeoff or direction for improvement.
 

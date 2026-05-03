@@ -217,7 +217,7 @@ export async function POST(req: Request) {
         );
       }
       console.error("[chat-action]", message);
-      return NextResponse.json({ error: "Chat failed" }, { status: 500 });
+      return NextResponse.json({ error: "Workshop failed" }, { status: 500 });
     }
   }
 
@@ -277,6 +277,6 @@ export async function POST(req: Request) {
       );
     }
     console.error("[chat]", message);
-    return NextResponse.json({ error: "Chat failed" }, { status: 500 });
+    return NextResponse.json({ error: "Workshop failed" }, { status: 500 });
   }
 }

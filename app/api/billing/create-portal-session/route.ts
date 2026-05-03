@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAppUrl } from "@/lib/billing/config";
 import { fetchSubscriptionForUser } from "@/lib/billing/subscription-row";
 import { billingLog } from "@/lib/billing/logger";
+import { isIosCapacitorBillingRequest } from "@/lib/billing/ios-request";
 import { getStripe } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
 
@@ -15,6 +16,16 @@ import { createClient } from "@/lib/supabase/server";
  * to update the Supabase row.
  */
 export async function POST() {
+  if (await isIosCapacitorBillingRequest()) {
+    return NextResponse.json(
+      {
+        error:
+          "The Stripe customer portal is not available in the iOS app. Manage web subscriptions in a browser.",
+      },
+      { status: 403 },
+    );
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

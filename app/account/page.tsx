@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BillingSection } from "@/components/account/BillingSection";
+import { DeleteAccountSection } from "@/components/account/DeleteAccountSection";
 import { ProfileForm } from "@/components/account/profile-form";
 import { getCritiqueAccessForUser } from "@/lib/billing/access";
 import { reconcileSubscriptionForUser } from "@/lib/billing/reconcile";
@@ -61,6 +62,9 @@ export default async function AccountPage({ searchParams }: Props) {
         <ProfileForm profile={profile as ProfileRow | null} />
       </div>
       <BillingSection initialAccess={billingAccess} />
+      {user.email ?
+        <DeleteAccountSection userEmail={user.email} />
+      : null}
     </div>
   );
 }

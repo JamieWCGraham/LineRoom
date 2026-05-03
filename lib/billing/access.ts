@@ -43,6 +43,7 @@ export async function getCritiqueAccessForUser(
       canGenerateCritique: false,
       reason: "unauthenticated",
       currentPeriodEnd: null,
+      subscriptionBillingProvider: null,
     };
   }
 
@@ -59,6 +60,7 @@ export async function getCritiqueAccessForUser(
       canGenerateCritique: true,
       reason: "bypassed",
       currentPeriodEnd: null,
+      subscriptionBillingProvider: null,
     };
   }
 
@@ -87,6 +89,7 @@ export async function getCritiqueAccessForUser(
       canGenerateCritique: true,
       reason: "subscribed",
       currentPeriodEnd: sub?.current_period_end ?? null,
+      subscriptionBillingProvider: sub?.billing_provider ?? "stripe",
     };
   }
 
@@ -104,5 +107,6 @@ export async function getCritiqueAccessForUser(
     canGenerateCritique: canGenerate,
     reason: canGenerate ? "free_remaining" : "quota_exhausted",
     currentPeriodEnd: null,
+    subscriptionBillingProvider: null,
   };
 }

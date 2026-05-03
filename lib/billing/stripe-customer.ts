@@ -35,6 +35,7 @@ export async function getOrCreateStripeCustomer(
     {
       user_id: userId,
       email: email ? email.trim().toLowerCase() : null,
+      billing_provider: "stripe",
       stripe_customer_id: customer.id,
       updated_at: now,
       created_at: now,

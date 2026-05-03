@@ -15,6 +15,8 @@ export type CritiqueAccessState = {
   reason: CritiqueAccessReason;
   /** Present when the user has an active subscription (for account UI). */
   currentPeriodEnd: string | null;
+  /** Set when subscribed so account UI can route cancel/manage flows. */
+  subscriptionBillingProvider?: "stripe" | "app_store" | null;
 };
 
 export type PaywallPayload = {

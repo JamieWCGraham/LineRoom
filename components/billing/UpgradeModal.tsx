@@ -1,6 +1,13 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { IosProSubscription } from "@/components/billing/IosProSubscription";
+import {
+  billingClientPlatformHeaders,
+  isIosCapacitorApp,
+  useIosCapacitorAppLayout,
+} from "@/lib/platform/capacitor-client";
 
 type Props = {
   open: boolean;
@@ -8,17 +15,26 @@ type Props = {
 };
 
 export function UpgradeModal({ open, onClose }: Props) {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const iosShell = useIosCapacitorAppLayout();
 
   if (!open) return null;
 
   async function startCheckout() {
+    if (isIosCapacitorApp()) {
+      setError(
+        "Use “Subscribe with App Store” in this app. Stripe checkout is not available on iOS.",
+      );
+      return;
+    }
     setError(null);
     setBusy(true);
     try {
       const res = await fetch("/api/billing/create-checkout-session", {
         method: "POST",
+        headers: { ...billingClientPlatformHeaders() },
       });
       const data = (await res.json()) as { url?: string; error?: string };
       if (!res.ok) {
@@ -26,6 +42,12 @@ export function UpgradeModal({ open, onClose }: Props) {
         return;
       }
       if (data.url) {
+        if (isIosCapacitorApp()) {
+          setError(
+            "Use “Subscribe with App Store” in this app. Stripe checkout is not available on iOS.",
+          );
+          return;
+        }
         window.location.href = data.url;
         return;
       }
@@ -60,15 +82,31 @@ export function UpgradeModal({ open, onClose }: Props) {
             {error}
           </p>
         : null}
+
+        {iosShell ?
+          <div className="mt-4">
+            <IosProSubscription
+              hasActiveSubscription={false}
+              isBypassed={false}
+              onEntitlementUpdated={() => {
+                router.refresh();
+                onClose();
+              }}
+            />
+          </div>
+        : null}
+
         <div className="mt-6 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => void startCheckout()}
-            disabled={busy}
-            className="rounded-lg bg-blue-700/90 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-600 disabled:opacity-50"
-          >
-            {busy ? "Opening checkout…" : "Upgrade"}
-          </button>
+          {!iosShell ?
+            <button
+              type="button"
+              onClick={() => void startCheckout()}
+              disabled={busy}
+              className="rounded-lg bg-blue-700/90 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-600 disabled:opacity-50"
+            >
+              {busy ? "Opening checkout…" : "Upgrade"}
+            </button>
+          : null}
           <button
             type="button"
             onClick={onClose}

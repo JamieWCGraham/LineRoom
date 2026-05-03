@@ -11,7 +11,13 @@ const PAID_STATUSES: ReadonlySet<SubscriptionStatus> = new Set(["active", "trial
  */
 export function subscriptionIsPaid(row: SubscriptionRow | null): boolean {
   if (!row?.status) return false;
-  return PAID_STATUSES.has(row.status);
+  if (!PAID_STATUSES.has(row.status)) return false;
+  const provider = row.billing_provider ?? "stripe";
+  if (provider === "app_store") {
+    if (!row.current_period_end) return false;
+    return new Date(row.current_period_end) > new Date();
+  }
+  return true;
 }
 
 /**

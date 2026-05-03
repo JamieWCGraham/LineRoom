@@ -27,6 +27,15 @@ export async function POST() {
   }
 
   const sub = await fetchSubscriptionForUser(supabase, user.id);
+  if (sub?.billing_provider === "app_store") {
+    return NextResponse.json(
+      {
+        error:
+          "This subscription is billed through the App Store. Open Settings → Apple ID → Subscriptions to cancel.",
+      },
+      { status: 400 },
+    );
+  }
   if (!sub?.stripe_subscription_id) {
     return NextResponse.json({ error: "No active subscription found." }, { status: 400 });
   }
