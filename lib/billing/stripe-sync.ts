@@ -135,9 +135,12 @@ export async function upsertSubscriptionFromStripe(
     {
       user_id: userId,
       email,
+      billing_provider: "stripe",
       stripe_customer_id: customerId,
       stripe_subscription_id: stripeSub.id,
       stripe_price_id: priceId,
+      app_store_original_transaction_id: null,
+      app_store_product_id: null,
       status,
       current_period_end: periodEnd,
       cancel_at_period_end: stripeSub.cancel_at_period_end,

@@ -3,6 +3,7 @@ import { getAppUrl, getStripePriceIdMonthly } from "@/lib/billing/config";
 import { getCritiqueAccessForUser } from "@/lib/billing/access";
 import { getOrCreateStripeCustomer } from "@/lib/billing/stripe-customer";
 import { billingLog } from "@/lib/billing/logger";
+import { isIosCapacitorBillingRequest } from "@/lib/billing/ios-request";
 import { getStripe } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
@@ -21,6 +22,16 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
  *  - Early return if the user is bypassed or already subscribed
  */
 export async function POST() {
+  if (await isIosCapacitorBillingRequest()) {
+    return NextResponse.json(
+      {
+        error:
+          "Stripe checkout is not available in the iOS app. Use LineRoom Pro via in-app purchase.",
+      },
+      { status: 403 },
+    );
+  }
+
   const priceId = getStripePriceIdMonthly();
   if (!priceId) {
     return NextResponse.json(

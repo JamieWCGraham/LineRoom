@@ -7,8 +7,12 @@ Ship LineRoom as an **iOS app** by wrapping the existing web app with **Capacito
 ## Non-goals (initial phase)
 
 - Android (can follow the same spec later).
-- Replacing Stripe web checkout with StoreKit / IAP (separate product and App Review rules).
 - Offline-first or bundling the full Next server inside the app.
+
+## Billing (locked for App Store)
+
+- **iOS (Capacitor WebView)**: LineRoom Pro is sold with **StoreKit / IAP** (`capacitor-plugin-cdv-purchase`). Stripe checkout and the Stripe customer portal are **not** offered in-app.
+- **Web (browser)**: Stripe checkout and webhooks remain the path for Pro subscriptions.
 
 ## Architecture decision (required)
 
@@ -71,8 +75,9 @@ LineRoom is a **full-stack Next.js app**: `middleware.ts` (Supabase session refr
 
 ### Phase 5 — Payments and external flows
 
-1. **Stripe Checkout / Customer Portal** — Generally work in `WKWebView` if domains and return URLs are correct; test on device.
-2. Document **App Store guideline 3.1.1** risk: if the app is primarily digital content/subscription, Apple may expect IAP for **in-app** purchase flows; legal/product decision is out of scope for engineering-only spec—flag for stakeholder review.
+1. **iOS**: IAP product id via `NEXT_PUBLIC_IOS_IAP_PRODUCT_ID`; server verifies StoreKit 2 JWS (`/api/billing/ios/plugin-validator`) and optional ASN v2 (`/api/billing/ios/app-store-notifications`). See `MOBILE_DEPLOYMENT.md`.
+2. **Web**: Stripe Checkout / Customer Portal unchanged in the browser.
+3. **Guideline 3.1.1**: the binary must not send users to Stripe for the same digital Pro entitlement; platform detection uses Capacitor + `x-lineroom-client-platform` on billing API calls.
 
 ### Phase 6 — Media / uploads
 

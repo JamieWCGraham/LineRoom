@@ -1,28 +1,38 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import type { CritiqueAccessState } from "@/lib/billing/types";
+import { IosProSubscription } from "@/components/billing/IosProSubscription";
+import {
+  billingClientPlatformHeaders,
+  isIosCapacitorApp,
+  useIosCapacitorAppLayout,
+} from "@/lib/platform/capacitor-client";
 
 type Props = {
   initialAccess: CritiqueAccessState;
 };
 
 export function BillingSection({ initialAccess }: Props) {
+  const router = useRouter();
   const [access, setAccess] = useState(initialAccess);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const iosShell = useIosCapacitorAppLayout();
 
   const refetch = useCallback(async () => {
     try {
       const res = await fetch("/api/billing/access?sync=1");
       const data = (await res.json()) as { access?: CritiqueAccessState };
       if (data.access) setAccess(data.access);
+      router.refresh();
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [router]);
 
   const planLabel =
     access.isBypassed || access.hasActiveSubscription ? "LineRoom Pro"
@@ -30,11 +40,18 @@ export function BillingSection({ initialAccess }: Props) {
     : "Free";
 
   async function upgrade() {
+    if (isIosCapacitorApp()) {
+      setMessage(
+        "On iPhone, subscribe with the App Store section above. Stripe is not used inside this app.",
+      );
+      return;
+    }
     setMessage(null);
     setCheckoutBusy(true);
     try {
       const res = await fetch("/api/billing/create-checkout-session", {
         method: "POST",
+        headers: { ...billingClientPlatformHeaders() },
       });
       const data = (await res.json()) as {
         url?: string;
@@ -53,6 +70,12 @@ export function BillingSection({ initialAccess }: Props) {
         return;
       }
       if (data.url) {
+        if (isIosCapacitorApp()) {
+          setMessage(
+            "On iPhone, subscribe with the App Store section above. Stripe is not used inside this app.",
+          );
+          return;
+        }
         window.location.href = data.url;
         return;
       }
@@ -70,6 +93,7 @@ export function BillingSection({ initialAccess }: Props) {
     try {
       const res = await fetch("/api/billing/cancel-subscription", {
         method: "POST",
+        headers: { ...billingClientPlatformHeaders() },
       });
       const data = (await res.json()) as {
         canceled?: boolean;
@@ -90,6 +114,10 @@ export function BillingSection({ initialAccess }: Props) {
       setCancelBusy(false);
     }
   }
+
+  const stripeCancelable =
+    access.hasActiveSubscription &&
+    access.subscriptionBillingProvider !== "app_store";
 
   return (
     <section className="mt-10 rounded-xl border border-zinc-800 bg-zinc-900/20 p-5">
@@ -117,10 +145,23 @@ export function BillingSection({ initialAccess }: Props) {
             </dd>
           </div>
         : null}
+        {access.hasActiveSubscription &&
+        access.subscriptionBillingProvider === "app_store" ?
+          <p className="text-xs leading-relaxed text-zinc-500">
+            This plan is billed through Apple. To cancel or change plans, use
+            Settings → Apple ID → Subscriptions on your device.
+          </p>
+        : null}
       </dl>
       {message ?
         <p className="mt-3 text-sm text-amber-200/90">{message}</p>
       : null}
+
+      <IosProSubscription
+        hasActiveSubscription={access.hasActiveSubscription}
+        isBypassed={access.isBypassed}
+        onEntitlementUpdated={() => void refetch()}
+      />
 
       {confirmingCancel ?
         <div className="mt-4 rounded-lg border border-red-900/50 bg-red-950/30 p-4">
@@ -150,17 +191,17 @@ export function BillingSection({ initialAccess }: Props) {
       : null}
 
       <div className="mt-5 flex flex-wrap gap-3">
-        {!access.isBypassed && !access.hasActiveSubscription ?
+        {!access.isBypassed && !access.hasActiveSubscription && !iosShell ?
           <button
             type="button"
             onClick={() => void upgrade()}
             disabled={checkoutBusy}
             className="rounded-lg bg-amber-700/90 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-amber-600 disabled:opacity-50"
           >
-            {checkoutBusy ? "Loading…" : "Upgrade to Pro"}
+            {checkoutBusy ? "Loading…" : "Upgrade to Pro (web)"}
           </button>
         : null}
-        {access.hasActiveSubscription && !confirmingCancel ?
+        {stripeCancelable && !confirmingCancel ?
           <button
             type="button"
             onClick={() => { setMessage(null); setConfirmingCancel(true); }}

@@ -52,12 +52,18 @@ export type SubscriptionStatus =
   | "unpaid"
   | "paused";
 
+export type BillingProvider = "stripe" | "app_store";
+
 export type SubscriptionRow = {
   user_id: string;
   email: string | null;
+  /** Where the current entitlement is sourced from (defaults to stripe in DB). */
+  billing_provider?: BillingProvider;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   stripe_price_id: string | null;
+  app_store_original_transaction_id?: string | null;
+  app_store_product_id?: string | null;
   status: SubscriptionStatus | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;

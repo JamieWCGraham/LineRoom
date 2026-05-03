@@ -15,9 +15,12 @@
     "eval:patch-lyrics": "node evaluations/scripts/patch_eval_sql_lyrics.mjs",
     "eval:validate-sql": "node evaluations/scripts/validate_eval_sql.mjs",
     "cap:sync": "cap sync ios",
-    "cap:open": "cap open ios"
+    "cap:open": "cap open ios",
+    "cap:sync:ios:production": "bash scripts/cap-sync-ios-production.sh"
   },
   "dependencies": {
+    "@capacitor/core": "^8.3.1",
+    "@apple/app-store-server-library": "^3.0.0",
     "@langfuse/core": "^5.0.1",
     "@langfuse/openai": "^5.0.1",
     "@langfuse/otel": "^5.0.1",
@@ -25,6 +28,7 @@
     "@opentelemetry/sdk-trace-node": "^2.6.1",
     "@supabase/ssr": "^0.10.0",
     "@supabase/supabase-js": "^2.101.1",
+    "capacitor-plugin-cdv-purchase": "^13.15.4",
     "next": "^15.1.0",
     "openai": "^4.77.0",
     "react": "^19.0.0",
@@ -37,7 +41,6 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.3.0",
-    "@capacitor/core": "^8.3.0",
     "@capacitor/ios": "^8.3.0",
     "@eslint/eslintrc": "^3.2.0",
     "@testing-library/jest-dom": "^6.9.1",
