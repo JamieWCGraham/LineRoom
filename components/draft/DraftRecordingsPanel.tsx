@@ -13,11 +13,13 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import type { DraftRecordingMeta } from "@/lib/types";
+import { createClient } from "@/lib/supabase/client";
 import {
   idbDeleteRecording,
   idbGetRecording,
   idbPutRecording,
 } from "@/lib/draft-recordings/idb";
+import { DRAFT_RECORDING_MAX_BYTES } from "@/lib/draft-recordings/uploadLimits";
 
 const MAX_RECORDINGS = 40;
 
@@ -27,6 +29,9 @@ function formatMmSs(totalSec: number): string {
   const r = s % 60;
   return `${m}:${r.toString().padStart(2, "0")}`;
 }
+
+/** Opus / AAC bitrates that approximate native voice-memo clarity (default MediaRecorder is often ~32 kbps). */
+const VOICE_MEMO_BITS_PER_SECOND = [128_000, 96_000, 64_000] as const;
 
 function pickRecorderMime(): string {
   const candidates = [
@@ -40,6 +45,25 @@ function pickRecorderMime(): string {
     }
   }
   return "";
+}
+
+function instantiateMediaRecorder(stream: MediaStream, mime: string): MediaRecorder {
+  if (!mime) {
+    return new MediaRecorder(stream);
+  }
+  const withMime: MediaRecorderOptions = { mimeType: mime };
+  for (const bps of VOICE_MEMO_BITS_PER_SECOND) {
+    try {
+      return new MediaRecorder(stream, { ...withMime, audioBitsPerSecond: bps });
+    } catch {
+      /* browser may reject explicit bitrate for this mime */
+    }
+  }
+  try {
+    return new MediaRecorder(stream, withMime);
+  } catch {
+    return new MediaRecorder(stream);
+  }
 }
 
 function fileExtFromMime(mimeType: string): string {
@@ -387,13 +411,16 @@ export const DraftRecordingsPanel = forwardRef<
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
-          noiseSuppression: true,
+          // Softer processing preserves melody and scratch vocals vs. phone-call narrowband.
+          noiseSuppression: false,
+          autoGainControl: false,
+          channelCount: { ideal: 1 },
+          sampleRate: { ideal: 48_000 },
         },
       });
       streamRef.current = stream;
       const mime = pickRecorderMime();
-      const rec =
-        mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      const rec = instantiateMediaRecorder(stream, mime);
       chunksRef.current = [];
       rec.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
@@ -424,7 +451,8 @@ export const DraftRecordingsPanel = forwardRef<
       };
       mediaRecorderRef.current = rec;
       startedAtRef.current = Date.now();
-      rec.start(200);
+      /* ~500 ms slices: fewer chunks on long memos, still frequent enough for crash resilience. */
+      rec.start(500);
       setRecording(true);
       setElapsedSec(0);
       stopTicks();
@@ -439,6 +467,13 @@ export const DraftRecordingsPanel = forwardRef<
   const stopRecording = () => {
     const rec = mediaRecorderRef.current;
     if (rec && rec.state !== "inactive") {
+      if (rec.state === "recording" && typeof rec.requestData === "function") {
+        try {
+          rec.requestData();
+        } catch {
+          /* ignore */
+        }
+      }
       rec.stop();
     }
     mediaRecorderRef.current = null;
@@ -455,13 +490,13 @@ export const DraftRecordingsPanel = forwardRef<
     if (!pendingBlob) return;
     const name = pendingName.trim().slice(0, 120) || "Untitled memo";
     const id = crypto.randomUUID();
-    const createdAt = new Date().toISOString();
     const durationSec = Math.round(recordedDurationSecRef.current);
 
     setSaveError(null);
     setUploading(true);
     try {
       if (storageMode === "local") {
+        const createdAt = new Date().toISOString();
         await idbPutRecording(id, pendingBlob);
         const next: DraftRecordingMeta = {
           id,
@@ -481,30 +516,61 @@ export const DraftRecordingsPanel = forwardRef<
         return;
       }
 
-      const fd = new FormData();
-      fd.set("songId", songId);
-      fd.set("versionId", versionId);
-      fd.set("recordingId", id);
-      fd.set("name", name);
-      fd.set("mimeType", pendingMime || pendingBlob.type || "audio/webm");
-      fd.set("durationSec", String(Math.max(0, durationSec)));
-      fd.set("file", pendingBlob, `${id}.webm`);
+      const mime = pendingMime || pendingBlob.type || "audio/webm";
+      if (pendingBlob.size > DRAFT_RECORDING_MAX_BYTES) {
+        setSaveError("Recording is too large (max 30 MB). Try a shorter memo.");
+        return;
+      }
 
-      const res = await fetch("/api/draft-recordings/upload", {
+      const signPayload = {
+        songId,
+        versionId,
+        recordingId: id,
+        name,
+        mimeType: mime,
+        durationSec: Math.max(0, durationSec),
+        sizeBytes: pendingBlob.size,
+      };
+
+      const signRes = await fetch("/api/draft-recordings/upload-sign", {
         method: "POST",
-        body: fd,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(signPayload),
       });
-      const data = (await res.json().catch(() => ({}))) as {
+      const signData = (await signRes.json().catch(() => ({}))) as {
         error?: string;
+        bucket?: string;
+        path?: string;
+        token?: string;
         recording?: DraftRecordingMeta;
       };
-      if (!res.ok || !data.recording) {
+      if (!signRes.ok || !signData.recording || !signData.bucket || !signData.path || !signData.token) {
         throw new Error(
-          typeof data.error === "string" ? data.error : "Upload failed",
+          typeof signData.error === "string" ? signData.error : "Could not start upload.",
         );
       }
-      onRecordingsChange([data.recording, ...recordings]);
-      void fetchSignedUrl(data.recording.objectPath);
+
+      const supabase = createClient();
+      const uploadAttempts = 3;
+      let lastUploadMsg = "Upload failed.";
+      for (let attempt = 0; attempt < uploadAttempts; attempt++) {
+        const { error: upErr } = await supabase.storage
+          .from(signData.bucket)
+          .uploadToSignedUrl(signData.path, signData.token, pendingBlob, {
+            contentType: mime,
+            upsert: false,
+          });
+        if (!upErr) {
+          onRecordingsChange([signData.recording, ...recordings]);
+          void fetchSignedUrl(signData.recording.objectPath);
+          break;
+        }
+        lastUploadMsg = upErr.message || lastUploadMsg;
+        if (attempt === uploadAttempts - 1) {
+          throw new Error(lastUploadMsg);
+        }
+        await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+      }
       discardPending();
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Could not save memo.");

@@ -11,6 +11,8 @@ export function Header(props: { showDashboardLink?: boolean }) {
   useEffect(() => {
     if (!props.showDashboardLink) return;
     router.prefetch("/");
+    router.prefetch("/account");
+    router.prefetch("/lineroom");
   }, [props.showDashboardLink, router]);
 
   return (

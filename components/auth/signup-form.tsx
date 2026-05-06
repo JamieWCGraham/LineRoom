@@ -64,7 +64,7 @@ export function SignupForm() {
 
       <p className="text-center text-sm text-zinc-500">
         Already have an account?{" "}
-        <Link href="/login" className="text-zinc-300 underline">
+        <Link href="/login" prefetch className="text-zinc-300 underline">
           Sign in
         </Link>
       </p>

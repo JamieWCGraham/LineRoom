@@ -64,7 +64,7 @@ export function LoginForm() {
 
       <p className="text-center text-sm text-zinc-500">
         No account?{" "}
-        <Link href="/signup" className="text-zinc-300 underline">
+        <Link href="/signup" prefetch className="text-zinc-300 underline">
           Sign up
         </Link>
       </p>

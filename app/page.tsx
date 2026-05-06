@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { AppBrandDash, AppBrandLogo } from "@/components/app-brand";
+import {
+  PrefetchDashboardRoutes,
+  PrefetchPublicLandingAuth,
+} from "@/components/navigation/route-prefetch";
 import { LandingLyricPreview } from "@/components/LandingLyricPreview";
 import { NewPieceButton } from "@/components/dashboard/new-piece-button";
 import { PiecesBrowser } from "@/components/dashboard/pieces-browser";
@@ -106,6 +110,7 @@ export default async function HomePage({ searchParams }: Props) {
   if (!user) {
     return (
       <main className="relative isolate min-h-screen overflow-hidden">
+        <PrefetchPublicLandingAuth />
         <div
           className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.2),transparent_35%),radial-gradient(circle_at_80%_10%,rgba(16,185,129,0.12),transparent_35%),radial-gradient(circle_at_50%_95%,rgba(52,211,153,0.12),transparent_40%)]"
           aria-hidden
@@ -121,12 +126,14 @@ export default async function HomePage({ searchParams }: Props) {
             <div className="hidden gap-3 sm:flex">
               <Link
                 href="/login"
+                prefetch
                 className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-900/80"
               >
                 Login
               </Link>
               <Link
                 href="/signup"
+                prefetch
                 className="rounded-lg bg-zinc-100 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-white"
               >
                 Sign up
@@ -152,12 +159,14 @@ export default async function HomePage({ searchParams }: Props) {
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   href="/signup"
+                  prefetch
                   className="rounded-xl bg-zinc-100 px-6 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-white"
                 >
                   Start writing for free
                 </Link>
                 <Link
                   href="/login"
+                  prefetch
                   className="rounded-xl border border-zinc-700 px-6 py-3 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-900"
                 >
                   Log in
@@ -188,12 +197,14 @@ export default async function HomePage({ searchParams }: Props) {
           <div className="flex gap-3 sm:hidden">
             <Link
               href="/login"
+              prefetch
               className="flex-1 rounded-lg border border-zinc-700 px-4 py-2 text-center text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-900/80"
             >
               Login
             </Link>
             <Link
               href="/signup"
+              prefetch
               className="flex-1 rounded-lg bg-zinc-100 px-4 py-2 text-center text-sm font-semibold text-zinc-950 transition hover:bg-white"
             >
               Sign up
@@ -267,6 +278,7 @@ export default async function HomePage({ searchParams }: Props) {
 
   return (
     <div className="mx-auto min-h-dvh w-full max-w-5xl bg-zinc-950 md:min-h-0 md:bg-transparent md:px-4 md:py-12">
+      <PrefetchDashboardRoutes includeEvals={showEvalsNav} />
       <div className="hidden md:block">
         <AppBrandDash />
 
@@ -282,6 +294,7 @@ export default async function HomePage({ searchParams }: Props) {
             {showEvalsNav ?
               <Link
                 href="/evals"
+                prefetch
                 className="rounded-lg border border-emerald-800/50 bg-emerald-950/25 px-4 py-2 text-sm text-emerald-100 hover:border-emerald-600/60 hover:bg-emerald-950/40"
               >
                 Evals
@@ -289,6 +302,7 @@ export default async function HomePage({ searchParams }: Props) {
             : null}
             <Link
               href="/account"
+              prefetch
               className="rounded-lg border border-zinc-600 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-900"
             >
               Account
@@ -314,6 +328,7 @@ export default async function HomePage({ searchParams }: Props) {
               <Link
                 key={song.id}
                 href={`/song/${song.id}`}
+                prefetch
                 className="group rounded-xl border border-zinc-700/70 bg-zinc-900/80 px-5 py-4 shadow-[0_0_0_1px_rgba(255,255,255,0.02)] transition duration-200 hover:-translate-y-0.5 hover:border-zinc-500 hover:shadow-[0_0_0_1px_rgba(120,119,198,0.22),0_0_24px_rgba(99,102,241,0.12)]"
               >
                 <div className="flex items-start justify-between gap-3">

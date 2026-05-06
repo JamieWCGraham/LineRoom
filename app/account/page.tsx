@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PrefetchAccountNav } from "@/components/navigation/route-prefetch";
 import { BillingSection } from "@/components/account/BillingSection";
 import { DeleteAccountSection } from "@/components/account/DeleteAccountSection";
 import { ProfileForm } from "@/components/account/profile-form";
@@ -44,13 +45,14 @@ export default async function AccountPage({ searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-lg px-4 pb-12 pt-[max(3rem,calc(env(safe-area-inset-top,0px)+1.5rem))] max-lg:pb-[max(3rem,calc(env(safe-area-inset-bottom,0px)+1.5rem))] lg:py-12">
+      <PrefetchAccountNav />
       <h1 className="text-2xl font-semibold text-zinc-100">Account</h1>
       <p className="mt-2 text-sm text-zinc-500">
-        <Link href="/" className="text-zinc-400 underline">
+        <Link href="/" prefetch className="text-zinc-400 underline">
           Dashboard
         </Link>
         {" · "}
-        <Link href="/lineroom" className="text-zinc-400 underline">
+        <Link href="/lineroom" prefetch className="text-zinc-400 underline">
           LineRoom
         </Link>
       </p>

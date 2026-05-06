@@ -208,6 +208,7 @@ export function PiecesBrowser({ songs, mobileNav }: Props) {
           {mobileNav?.showEvalsNav ?
             <Link
               href="/evals"
+              prefetch
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-emerald-200/90 hover:bg-zinc-700/80"
               aria-label="Evals"
             >
@@ -219,6 +220,7 @@ export function PiecesBrowser({ songs, mobileNav }: Props) {
           : null}
           <Link
             href="/account"
+            prefetch
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-800/80 text-sm font-semibold text-emerald-50 ring-1 ring-zinc-600 hover:bg-emerald-700/90"
             aria-label="Account"
           >
@@ -290,6 +292,7 @@ export function PiecesBrowser({ songs, mobileNav }: Props) {
               <nav className="flex flex-col gap-1">
                 <Link
                   href="/account"
+                  prefetch
                   onClick={() => setDrawerOpen(false)}
                   className="rounded-lg px-3 py-2.5 text-sm text-zinc-100 hover:bg-zinc-900"
                 >
@@ -298,6 +301,7 @@ export function PiecesBrowser({ songs, mobileNav }: Props) {
                 {mobileNav?.showEvalsNav ?
                   <Link
                     href="/evals"
+                    prefetch
                     onClick={() => setDrawerOpen(false)}
                     className="rounded-lg px-3 py-2.5 text-sm text-emerald-100 hover:bg-emerald-950/30"
                   >

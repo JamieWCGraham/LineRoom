@@ -282,6 +282,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   const [newVersionPending, startNewVersionTransition] = useTransition();
   const [deleteVersionPending, startDeleteVersionTransition] = useTransition();
   const [savePending, startSaveTransition] = useTransition();
+  const [, startRouteTransition] = useTransition();
   const [autosaveError, setAutosaveError] = useState<string | null>(null);
   const [serverSubRevision, setServerSubRevision] = useState(
     isSong ? props.initialSaveSubRevision : 0,
@@ -305,6 +306,8 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   const songId = isSong ? props.songId : null;
   const songTitleFromProps = props.mode === "song" ? props.songTitle : null;
   const activeVersionId = props.mode === "song" ? props.activeVersionId : null;
+  const prefetchVersionsKey =
+    isSong ? props.versions.map((v) => v.id).join(",") : "";
 
   /** Keeps latest row id for races with in-flight autosave. */
   const activeVersionIdRef = useRef<string | null>(null);
@@ -328,6 +331,23 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   useEffect(() => {
     serverSubRevisionRef.current = serverSubRevision;
   }, [serverSubRevision]);
+
+  // Prefetch common exits + all version URLs (cheap; makes version switches and back-nav snappy).
+  useEffect(() => {
+    if (!isSong) {
+      router.prefetch("/");
+      router.prefetch("/account");
+      return;
+    }
+    if (!songId) return;
+    for (const v of props.versions) {
+      router.prefetch(`/song/${songId}?v=${v.id}`);
+    }
+    router.prefetch("/account");
+    router.prefetch("/");
+    // props.versions covered by prefetchVersionsKey (id set) + songId
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSong, router, songId, prefetchVersionsKey]);
   const priorVersionsContext = useMemo(
     () => (props.mode === "song" ? props.priorVersionsContext : []),
     [props],
@@ -1018,7 +1038,11 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           onPieceTitleSaved={setPieceTitle}
           versions={props.versions}
           activeVersionId={props.activeVersionId}
-          onSelectVersion={(versionId) => router.push(`/song/${props.songId}?v=${versionId}`)}
+          onSelectVersion={(versionId) => {
+            startRouteTransition(() => {
+              router.push(`/song/${props.songId}?v=${versionId}`);
+            });
+          }}
           onSaveVersion={handleSaveVersion}
           savePending={savePending}
           saveError={saveError}
@@ -1122,7 +1146,9 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                     value={props.activeVersionId}
                     onChange={(e) => {
                       setMobileMenuOpen(false);
-                      router.push(`/song/${props.songId}?v=${e.target.value}`);
+                      startRouteTransition(() => {
+                        router.push(`/song/${props.songId}?v=${e.target.value}`);
+                      });
                     }}
                     disabled={
                       deleteVersionPending ||

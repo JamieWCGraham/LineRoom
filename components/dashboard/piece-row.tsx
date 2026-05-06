@@ -109,6 +109,7 @@ export function PieceRow({
   const menuRef = useRef<HTMLDivElement>(null);
   const [titlePending, startTitleTransition] = useTransition();
   const [deletePending, startDeleteTransition] = useTransition();
+  const [, startNavTransition] = useTransition();
   const busy = titlePending || deletePending;
   const compact = rowLayout === "compact" || rowLayout === "grid";
 
@@ -181,14 +182,18 @@ export function PieceRow({
     if (editing) return;
     const target = e.target as HTMLElement | null;
     if (target?.closest("button, a, input, select, textarea, [data-piece-menu]")) return;
-    router.push(`/song/${songId}`);
+    startNavTransition(() => {
+      router.push(`/song/${songId}`);
+    });
   };
 
   const onRowKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     if (editing) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      router.push(`/song/${songId}`);
+      startNavTransition(() => {
+        router.push(`/song/${songId}`);
+      });
     }
   };
 

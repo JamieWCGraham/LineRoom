@@ -4,9 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getDraftRecordingsBucket } from "@/lib/draft-recordings/bucket";
 import { buildDraftRecordingObjectPath } from "@/lib/draft-recordings/storagePath";
+import { DRAFT_RECORDING_MAX_BYTES } from "@/lib/draft-recordings/uploadLimits";
 import { draftRecordingMetaSchema } from "@/lib/validators";
-
-const MAX_BYTES = 30 * 1024 * 1024;
 
 const formSchema = z.object({
   songId: z.string().uuid(),
@@ -58,7 +57,7 @@ export async function POST(req: Request) {
   if (!(file instanceof Blob) || file.size === 0) {
     return NextResponse.json({ error: "Missing audio file." }, { status: 400 });
   }
-  if (file.size > MAX_BYTES) {
+  if (file.size > DRAFT_RECORDING_MAX_BYTES) {
     return NextResponse.json(
       { error: "Recording is too large (max 30 MB)." },
       { status: 413 },

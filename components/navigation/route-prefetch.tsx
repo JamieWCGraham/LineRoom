@@ -1,0 +1,46 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
+/** Warm routes users open from the signed-in dashboard (desktop + mobile). */
+export function PrefetchDashboardRoutes({ includeEvals }: { includeEvals: boolean }) {
+  const router = useRouter();
+  useEffect(() => {
+    router.prefetch("/account");
+    router.prefetch("/lineroom");
+    if (includeEvals) router.prefetch("/evals");
+  }, [router, includeEvals]);
+  return null;
+}
+
+/** From account, back links go to dashboard and local LineRoom. */
+export function PrefetchAccountNav() {
+  const router = useRouter();
+  useEffect(() => {
+    router.prefetch("/");
+    router.prefetch("/lineroom");
+  }, [router]);
+  return null;
+}
+
+/** Landing (logged out): auth entry points. */
+export function PrefetchPublicLandingAuth() {
+  const router = useRouter();
+  useEffect(() => {
+    router.prefetch("/login");
+    router.prefetch("/signup");
+  }, [router]);
+  return null;
+}
+
+/** Login / signup layout: post-auth destinations. */
+export function PrefetchAuthLayoutRoutes() {
+  const router = useRouter();
+  useEffect(() => {
+    router.prefetch("/");
+    router.prefetch("/login");
+    router.prefetch("/signup");
+  }, [router]);
+  return null;
+}
