@@ -120,41 +120,54 @@ export function BillingSection({ initialAccess }: Props) {
     access.subscriptionBillingProvider !== "app_store";
 
   return (
-    <section className="mt-10 rounded-xl border border-zinc-800 bg-zinc-900/20 p-5">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+    <section>
+      <p className="px-1 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
         Billing
-      </h2>
-      <dl className="mt-4 space-y-3 text-sm">
-        <div className="flex justify-between gap-4">
-          <dt className="text-zinc-500">Current plan</dt>
-          <dd className="text-right font-medium text-zinc-200">{planLabel}</dd>
-        </div>
-        {!access.isBypassed && !access.hasActiveSubscription ?
-          <div className="flex justify-between gap-4">
-            <dt className="text-zinc-500">Free critiques left</dt>
-            <dd className="text-right text-zinc-200">
-              {access.remainingFreeCritiques} of {access.freeQuota}
-            </dd>
+      </p>
+      <div className="mt-2 overflow-hidden rounded-2xl border border-zinc-700/60 bg-zinc-900/80">
+        <dl className="text-sm">
+          <div className="flex items-center justify-between gap-4 border-b border-zinc-700/60 px-4 py-3">
+            <dt className="text-zinc-400">Current plan</dt>
+            <dd className="text-right font-medium text-zinc-100">{planLabel}</dd>
           </div>
-        : null}
-        {access.hasActiveSubscription && access.currentPeriodEnd ?
-          <div className="flex justify-between gap-4">
-            <dt className="text-zinc-500">Current period ends</dt>
-            <dd className="text-right text-zinc-300">
-              {new Date(access.currentPeriodEnd).toLocaleDateString()}
-            </dd>
+          {!access.isBypassed && !access.hasActiveSubscription ?
+            <div className="flex items-center justify-between gap-4 border-b border-zinc-700/60 px-4 py-3">
+              <dt className="text-zinc-400">Free critiques left</dt>
+              <dd className="text-right text-zinc-200">
+                {access.remainingFreeCritiques} of {access.freeQuota}
+              </dd>
+            </div>
+          : null}
+          {access.hasActiveSubscription && access.currentPeriodEnd ?
+            <div className="flex items-center justify-between gap-4 border-b border-zinc-700/60 px-4 py-3">
+              <dt className="text-zinc-400">Current period ends</dt>
+              <dd className="text-right text-zinc-200">
+                {new Date(access.currentPeriodEnd).toLocaleDateString()}
+              </dd>
+            </div>
+          : null}
+          <div className="px-4 py-3">
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="w-full rounded-lg border border-zinc-600/70 bg-zinc-950/70 px-4 py-2 text-sm text-zinc-300 transition hover:border-zinc-500 hover:text-zinc-100"
+            >
+              Refresh status
+            </button>
           </div>
-        : null}
-        {access.hasActiveSubscription &&
-        access.subscriptionBillingProvider === "app_store" ?
-          <p className="text-xs leading-relaxed text-zinc-500">
-            This plan is billed through Apple. To cancel or change plans, use
-            Settings → Apple ID → Subscriptions on your device.
-          </p>
-        : null}
-      </dl>
+        </dl>
+      </div>
+
+      {access.hasActiveSubscription &&
+      access.subscriptionBillingProvider === "app_store" ?
+        <p className="mt-2 px-1 text-xs leading-relaxed text-zinc-500">
+          Billed through Apple. Manage your plan in iOS Subscriptions settings.
+        </p>
+      : null}
       {message ?
-        <p className="mt-3 text-sm text-emerald-200/90">{message}</p>
+        <p className="mt-3 rounded-lg border border-emerald-900/50 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-200/90">
+          {message}
+        </p>
       : null}
 
       <IosProSubscription
@@ -164,7 +177,7 @@ export function BillingSection({ initialAccess }: Props) {
       />
 
       {confirmingCancel ?
-        <div className="mt-4 rounded-lg border border-red-900/50 bg-red-950/30 p-4">
+        <div className="mt-4 rounded-xl border border-red-900/50 bg-red-950/30 p-4">
           <p className="text-sm text-red-200">
             Your subscription will be canceled immediately and a refund will be
             issued for your most recent payment.
@@ -174,7 +187,7 @@ export function BillingSection({ initialAccess }: Props) {
               type="button"
               onClick={() => void cancelSubscription()}
               disabled={cancelBusy}
-              className="rounded-lg bg-red-700/90 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50"
+              className="rounded-xl bg-red-700/90 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50"
             >
               {cancelBusy ? "Canceling…" : "Confirm cancellation"}
             </button>
@@ -182,7 +195,7 @@ export function BillingSection({ initialAccess }: Props) {
               type="button"
               onClick={() => setConfirmingCancel(false)}
               disabled={cancelBusy}
-              className="rounded-lg px-4 py-2 text-sm text-zinc-400 transition hover:text-zinc-300 disabled:opacity-50"
+              className="rounded-xl px-4 py-2 text-sm text-zinc-400 transition hover:text-zinc-300 disabled:opacity-50"
             >
               Keep subscription
             </button>
@@ -190,13 +203,13 @@ export function BillingSection({ initialAccess }: Props) {
         </div>
       : null}
 
-      <div className="mt-5 flex flex-wrap gap-3">
+      <div className="mt-4 flex flex-wrap gap-3">
         {!access.isBypassed && !access.hasActiveSubscription && !iosShell ?
           <button
             type="button"
             onClick={() => void upgrade()}
             disabled={checkoutBusy}
-            className="rounded-lg bg-emerald-700/90 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-600 disabled:opacity-50"
+            className="rounded-xl bg-emerald-700/90 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-600 disabled:opacity-50"
           >
             {checkoutBusy ? "Loading…" : "Upgrade to Pro (web)"}
           </button>
@@ -205,18 +218,11 @@ export function BillingSection({ initialAccess }: Props) {
           <button
             type="button"
             onClick={() => { setMessage(null); setConfirmingCancel(true); }}
-            className="rounded-lg border border-zinc-600 bg-zinc-900/60 px-4 py-2 text-sm font-medium text-zinc-200 transition hover:border-red-800 hover:bg-red-950/30 hover:text-red-200"
+            className="rounded-xl border border-zinc-600 bg-zinc-900/60 px-4 py-2 text-sm font-medium text-zinc-200 transition hover:border-red-800 hover:bg-red-950/30 hover:text-red-200"
           >
             Cancel subscription
           </button>
         : null}
-        <button
-          type="button"
-          onClick={() => void refetch()}
-          className="rounded-lg px-4 py-2 text-sm text-zinc-500 underline-offset-2 hover:text-zinc-400 hover:underline"
-        >
-          Refresh status
-        </button>
       </div>
     </section>
   );
