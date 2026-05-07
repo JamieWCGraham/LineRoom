@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useIosCapacitorAppLayout } from "@/lib/platform/capacitor-client";
 
@@ -19,37 +19,55 @@ export function IosProSubscription({
 }: Props) {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loadingProduct, setLoadingProduct] = useState(false);
   const nativeIos = useIosCapacitorAppLayout();
-  const initDone = useRef(false);
+  const initPromise = useRef<Promise<boolean> | null>(null);
+  const initErrorRef = useRef<string | null>(null);
   const onUpdatedRef = useRef(onEntitlementUpdated);
   onUpdatedRef.current = onEntitlementUpdated;
 
-  useEffect(() => {
-    if (!nativeIos || !productId || isBypassed || hasActiveSubscription) return;
-    if (initDone.current) return;
-    let cancelled = false;
+  const rememberInitError = useCallback((text: string | null) => {
+    initErrorRef.current = text;
+  }, []);
 
-    void (async () => {
+  const ensureStoreReady = useCallback(async () => {
+    if (!nativeIos || !productId || isBypassed || hasActiveSubscription) {
+      return false;
+    }
+    if (initPromise.current) return initPromise.current;
+
+    setLoadingProduct(true);
+    rememberInitError(null);
+
+    initPromise.current = (async () => {
       const supabase = createClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user || cancelled) return;
+      if (!user) {
+        rememberInitError("Sign in before subscribing with the App Store.");
+        return false;
+      }
 
       const mod = await import("capacitor-plugin-cdv-purchase");
-      if (cancelled) return;
-
       const { store, ProductType, Platform } = mod;
 
       store.validator = `${window.location.origin}/api/billing/ios/plugin-validator`;
       store.applicationUsername = user.id;
 
       store.error((err) => {
-        setMsg(err.message ?? "Store error");
+        const text = err.message ?? "Store error";
+        rememberInitError(text);
+        setMsg(text);
       });
 
       store
         .when()
+        .productUpdated((p) => {
+          if (p.id !== productId) return;
+          const loaded = Boolean(p.getOffer());
+          if (loaded) rememberInitError(null);
+        })
         .approved((t) => {
           void t.verify();
         })
@@ -68,28 +86,56 @@ export function IosProSubscription({
       ]);
 
       const errs = await store.initialize([Platform.APPLE_APPSTORE]);
-      if (errs?.length) {
-        setMsg(errs.map((e) => e.message).join(" ") || "Store init failed");
-      }
-      initDone.current = true;
-    })();
+      const prod = store.get(productId, Platform.APPLE_APPSTORE);
+      const loaded = Boolean(prod?.getOffer());
 
-    return () => {
-      cancelled = true;
-    };
-  }, [nativeIos, hasActiveSubscription, isBypassed]);
+      if (errs?.length) {
+        const text = errs.map((e) => e.message).join(" ") || "Store init failed";
+        rememberInitError(text);
+        setMsg(text);
+        return loaded;
+      }
+
+      if (!loaded) {
+        rememberInitError(
+          "The App Store did not return this subscription product. Confirm the product id, bundle id, IAP status, and TestFlight/sandbox setup.",
+        );
+        initPromise.current = null;
+        return false;
+      }
+
+      return true;
+    })().finally(() => {
+      setLoadingProduct(false);
+    });
+
+    return initPromise.current;
+  }, [nativeIos, hasActiveSubscription, isBypassed, rememberInitError]);
+
+  useEffect(() => {
+    if (!nativeIos || !productId || isBypassed || hasActiveSubscription) return;
+    void ensureStoreReady();
+  }, [nativeIos, hasActiveSubscription, isBypassed, ensureStoreReady]);
 
   async function purchase() {
     if (!productId) return;
     setBusy(true);
     setMsg(null);
     try {
+      const ready = await ensureStoreReady();
+      if (!ready) {
+        setMsg(initErrorRef.current ?? "Product not loaded yet. Try again in a moment.");
+        return;
+      }
       const mod = await import("capacitor-plugin-cdv-purchase");
       const { store, Platform } = mod;
       const prod = store.get(productId, Platform.APPLE_APPSTORE);
       const offer = prod?.getOffer();
       if (!offer) {
-        setMsg("Product not loaded yet. Try again in a moment.");
+        setMsg(
+          initErrorRef.current ??
+            "The App Store did not return this subscription product. Confirm the product id, bundle id, IAP status, and TestFlight/sandbox setup.",
+        );
         return;
       }
       const err = await offer.order();
@@ -105,6 +151,11 @@ export function IosProSubscription({
     setBusy(true);
     setMsg(null);
     try {
+      const ready = await ensureStoreReady();
+      if (!ready) {
+        setMsg(initErrorRef.current ?? "Product not loaded yet. Try again in a moment.");
+        return;
+      }
       const mod = await import("capacitor-plugin-cdv-purchase");
       const { store } = mod;
       const err = await store.restorePurchases();
@@ -144,10 +195,12 @@ export function IosProSubscription({
         <button
           type="button"
           onClick={() => void purchase()}
-          disabled={busy}
+          disabled={busy || loadingProduct}
           className="rounded-lg bg-emerald-700/90 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-600 disabled:opacity-50"
         >
-          {busy ? "Working…" : "Subscribe with App Store"}
+          {busy ? "Working…"
+          : loadingProduct ? "Loading App Store product…"
+          : "Subscribe with App Store"}
         </button>
         <button
           type="button"
