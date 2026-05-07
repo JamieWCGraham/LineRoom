@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useMobileToolbarInset } from "@/hooks/useMobileToolbarInset";
-import type { CritiqueResult } from "@/lib/types";
+import type { CritiqueMeta, CritiqueResult } from "@/lib/types";
 import type { LyricSubscoresJson } from "@/lib/evals/subscoreCalibration";
 import type { GroundTruthStrengthsWeaknesses } from "@/lib/evals/strengthWeaknessGroundTruth";
 import type { GroundTruthLineFeedback } from "@/lib/evals/lineFeedbackGroundTruth";
@@ -53,6 +53,9 @@ type Props = {
   lineFeedbackEval?: LineFeedbackEvalSnapshot | null;
   /** Hide regenerate / quota footer (e.g. eval results viewer). */
   readOnly?: boolean;
+  pieceTitle?: string;
+  critiqueMeta?: CritiqueMeta;
+  onCritiqueMetaChange?: (next: CritiqueMeta) => void;
 };
 
 export function CritiqueDisplayPanel({
@@ -69,6 +72,9 @@ export function CritiqueDisplayPanel({
   groundTruthLineFeedbackApproved = null,
   lineFeedbackEval = null,
   readOnly = false,
+  pieceTitle = "",
+  critiqueMeta,
+  onCritiqueMetaChange,
 }: Props) {
   const mobileHeaderRef = useRef<HTMLDivElement>(null);
   const mobileFooterRef = useRef<HTMLDivElement>(null);
@@ -90,13 +96,9 @@ export function CritiqueDisplayPanel({
         ref={mobileHeaderRef}
         className="shrink-0 border-b border-zinc-800/80 px-3 py-2 max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-[50] max-lg:bg-zinc-950/95 max-lg:px-5 max-lg:pt-[max(0.75rem,calc(env(safe-area-inset-top)+0.5rem))] max-lg:backdrop-blur-md lg:relative lg:z-auto lg:bg-transparent lg:px-3 lg:pb-2 lg:pt-3"
       >
-        <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+        <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-300">
           Critique
         </h2>
-        <p className="mt-0.5 text-[11px] leading-snug text-zinc-600">
-          Saved after generation. Line notes below match the colored highlights in
-          the draft (hover there for the same detail).
-        </p>
       </div>
 
       <div
@@ -106,6 +108,47 @@ export function CritiqueDisplayPanel({
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-none px-3 pt-3 max-lg:px-5 [touch-action:pan-y] lg:pb-3 max-lg:pb-0">
+        {critiqueMeta && onCritiqueMetaChange ? (
+          <details className="mb-4 rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-2 py-1.5">
+            <summary className="cursor-pointer select-none text-[11px] font-medium text-zinc-300">
+              Piece context (for regenerate)
+            </summary>
+            <div className="mt-2 space-y-2 pb-1">
+              <p className="text-[11px] text-zinc-500">
+                <span className="font-medium text-zinc-400">Title:</span>{" "}
+                {pieceTitle.trim() || "Untitled piece"}
+              </p>
+              <input
+                type="text"
+                value={critiqueMeta.genre}
+                onChange={(e) =>
+                  onCritiqueMetaChange({
+                    ...critiqueMeta,
+                    genre: e.target.value,
+                  })
+                }
+                disabled={loading}
+                className="w-full rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-700/40 focus:outline-none focus:ring-1 focus:ring-emerald-600/25 disabled:opacity-50"
+                style={{ colorScheme: "dark" }}
+                placeholder="Genre"
+              />
+              <textarea
+                value={critiqueMeta.similarArtists}
+                onChange={(e) =>
+                  onCritiqueMetaChange({
+                    ...critiqueMeta,
+                    similarArtists: e.target.value,
+                  })
+                }
+                disabled={loading}
+                rows={2}
+                className="w-full resize-y rounded border border-zinc-800 bg-zinc-900/60 p-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-700/40 focus:outline-none focus:ring-1 focus:ring-emerald-600/25 disabled:opacity-50"
+                style={{ colorScheme: "dark" }}
+                placeholder="Similar writers / voice (lyrics or poetry)"
+              />
+            </div>
+          </details>
+        ) : null}
         {loading && !critique ? (
           <p className="inline-flex items-center gap-2 text-sm text-zinc-500">
             <span
@@ -434,7 +477,7 @@ export function CritiqueDisplayPanel({
       {!readOnly ?
         <div
           ref={mobileFooterRef}
-          className="shrink-0 border-t border-zinc-800/80 p-3 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom))] max-lg:z-[50] max-lg:border-zinc-800/80 max-lg:bg-zinc-950/95 max-lg:px-5 max-lg:pb-3 max-lg:pt-2 max-lg:shadow-[0_-12px_32px_rgba(0,0,0,0.45)] max-lg:backdrop-blur-md lg:relative lg:bottom-auto lg:z-auto lg:bg-transparent lg:shadow-none"
+          className="shrink-0 border-t border-zinc-800/80 p-3 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-[calc(4.25rem+env(safe-area-inset-bottom))] max-lg:z-[50] max-lg:border-zinc-800/80 max-lg:bg-zinc-950/95 max-lg:px-5 max-lg:pb-3 max-lg:pt-2 max-lg:shadow-[0_-12px_32px_rgba(0,0,0,0.45)] max-lg:backdrop-blur-md lg:relative lg:bottom-auto lg:z-auto lg:bg-transparent lg:shadow-none"
         >
           {quotaBadge ?
             <p className="mb-2 text-center text-[11px] font-medium text-zinc-500">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { StructuredAssistantMessage } from "@/components/chat/StructuredAssistantMessage";
 import { useMobileToolbarInset } from "@/hooks/useMobileToolbarInset";
@@ -15,8 +15,6 @@ import { chatActionResponseSchema } from "@/lib/validators";
 import type {
   ChatAction,
   ChatScope,
-  ChatSelectionPayload,
-  DraftEditorContext,
 } from "@/types/chat";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
@@ -54,11 +52,6 @@ type Props = {
   /** When null (before the first critique), workshop still works; structured critique context is omitted. */
   critique: CritiqueResult | null;
   critiqueMeta: CritiqueMeta;
-  onCritiqueMetaChange: (next: CritiqueMeta) => void;
-  draftContext: DraftEditorContext;
-  pinnedSelections: ChatSelectionPayload[];
-  onClearPinnedSelections: () => void;
-  onRemovePinnedSelection: (index: number) => void;
 };
 
 export function LyricChatPanel({
@@ -69,11 +62,6 @@ export function LyricChatPanel({
   onClearMessages,
   critique,
   critiqueMeta,
-  onCritiqueMetaChange,
-  draftContext,
-  pinnedSelections,
-  onClearPinnedSelections,
-  onRemovePinnedSelection,
 }: Props) {
   const formatAssistantContent = (content: string): string => {
     const normalized = content
@@ -112,24 +100,22 @@ export function LyricChatPanel({
   const [selectedChatAction, setSelectedChatAction] = useState<ChatAction | null>(
     null,
   );
-  const [quickActionSelect, setQuickActionSelect] = useState("");
-  /** When nothing is pinned from the draft, choose section vs full draft. */
-  const [baseScope, setBaseScope] = useState<"section" | "full_draft">(
-    "section",
-  );
-
-  const trimmedPins = pinnedSelections.filter((p) => p.text?.trim());
-  const hasPinned = trimmedPins.length > 0;
-  const chatScope: ChatScope =
-    hasPinned ? "selection"
-    : baseScope === "full_draft" ? "full_draft"
-    : "section";
+  const chatScope: ChatScope = "full_draft";
 
   const mobileHeaderRef = useRef<HTMLDivElement>(null);
   const mobileComposerRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
+  const composerInputRef = useRef<HTMLTextAreaElement>(null);
   const mobileHeaderInsetPx = useMobileToolbarInset(mobileHeaderRef);
   const mobileComposerInsetPx = useMobileToolbarInset(mobileComposerRef);
+
+  useLayoutEffect(() => {
+    const el = composerInputRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    const nextHeight = Math.min(el.scrollHeight, 240);
+    el.style.height = `${Math.max(nextHeight, 44)}px`;
+  }, [input]);
 
   useEffect(() => {
     const el = messagesScrollRef.current;
@@ -137,38 +123,14 @@ export function LyricChatPanel({
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, loading, mobileComposerInsetPx]);
 
-  useEffect(() => {
-    if (messages.length === 0) setQuickActionSelect("");
-  }, [messages.length]);
-
-  function lineForSectionTypeHint(scope: ChatScope): number {
-    if (scope === "selection" && trimmedPins[0] != null) {
-      return trimmedPins[0].startLine;
-    }
-    return draftContext.caretLine;
-  }
-
   function applyActionPrefill(action: ChatAction) {
     setSelectedChatAction(action);
-    const scope = chatScope;
-    const sectionType = getSectionForLine(
-      fullText,
-      lineForSectionTypeHint(scope),
-    ).type;
-    let rhymeTargetWord: string | undefined;
-    if (action === "find_rhymes" && trimmedPins.length === 0) {
-      if (scope === "section") {
-        rhymeTargetWord = extractRhymeAnchorWord(
-          getSectionForLine(fullText, draftContext.caretLine).text,
-        );
-      } else if (scope === "full_draft") {
-        rhymeTargetWord = extractRhymeAnchorWord(fullText);
-      }
-    }
+    const sectionType = getSectionForLine(fullText, 0).type;
+    const rhymeTargetWord =
+      action === "find_rhymes" ? extractRhymeAnchorWord(fullText) : undefined;
     setInput(
-      prefillChatAction(action, scope, sectionType, {
-        multipleSelections: trimmedPins.length > 1,
-        pins: trimmedPins,
+      prefillChatAction(action, chatScope, sectionType, {
+        pins: [],
         rhymeTargetWord,
       }),
     );
@@ -177,11 +139,6 @@ export function LyricChatPanel({
   async function send() {
     const trimmed = input.trim();
     if (!trimmed || loading) return;
-
-    if (selectedChatAction && chatScope === "selection" && !hasPinned) {
-      setError("Highlight lyrics in the draft and choose Add to workshop.");
-      return;
-    }
 
     setError(null);
     const nextHistory: ChatMessage[] = [
@@ -193,19 +150,12 @@ export function LyricChatPanel({
     setLoading(true);
     setModeBanner(null);
 
-    const sectionBlock =
-      chatScope === "section" ?
-        getSectionForLine(fullText, draftContext.caretLine)
-      : null;
-
     const chatActionPayload = selectedChatAction ?
       buildChatActionPayload({
         action: selectedChatAction,
         scope: chatScope,
         draft: fullText,
         critique: critique ?? undefined,
-        selections: hasPinned ? trimmedPins : null,
-        section: sectionBlock,
         userMessage: trimmed,
       })
     : undefined;
@@ -241,8 +191,6 @@ export function LyricChatPanel({
             `Deep reasoning mode: ${reasonTrace}`
           : "Deep reasoning mode enabled for this message.",
         );
-      } else if (mode === "fast") {
-        setModeBanner("Fast mode: low-latency concise response.");
       }
 
       if (!res.ok) {
@@ -309,10 +257,10 @@ export function LyricChatPanel({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/30 max-lg:rounded-none max-lg:border-x-0">
       <div
         ref={mobileHeaderRef}
-        className="shrink-0 border-b border-zinc-800/80 px-3 py-3 max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-[50] max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pt-[max(0.25rem,env(safe-area-inset-top))] max-lg:backdrop-blur-md lg:relative lg:z-auto lg:bg-transparent lg:px-3 lg:pt-0"
+        className="shrink-0 border-b border-zinc-800/80 px-3 py-3 max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-[50] max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pt-[max(0.625rem,env(safe-area-inset-top))] max-lg:backdrop-blur-md lg:relative lg:z-auto lg:bg-transparent lg:px-3 lg:pt-2"
       >
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-300">
             Workshop your lyrics
           </h2>
           <button
@@ -323,89 +271,13 @@ export function LyricChatPanel({
               setError(null);
               setModeBanner(null);
               setSelectedChatAction(null);
-              setBaseScope("section");
-              onClearPinnedSelections();
             }}
             disabled={loading || messages.length === 0}
-            className="rounded-md border border-zinc-700/80 bg-zinc-900/60 px-2.5 py-1 text-[11px] font-medium text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-800/70 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-md border border-zinc-500/90 bg-zinc-800/85 px-2.5 py-1 text-[11px] font-semibold text-zinc-50 transition hover:border-zinc-300 hover:bg-zinc-700/90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             New Session
           </button>
         </div>
-        <p className="mt-3 py-0.5 text-[11px] leading-relaxed text-zinc-600">
-          Highlight lines and use <span className="text-zinc-500">Add to workshop</span> to attach
-          excerpts. Choose a quick action when starting or from Piece context after your workshop.
-        </p>
-        <details className="mt-3 rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-2 py-1.5">
-          <summary className="cursor-pointer select-none text-[11px] font-medium text-zinc-500">
-            Piece context (for regenerate)
-          </summary>
-          <div className="mt-2 space-y-2 pb-1">
-            <p className="text-[11px] text-zinc-500">
-              <span className="font-medium text-zinc-400">Title:</span>{" "}
-              {pieceTitle.trim() || "Untitled piece"}
-            </p>
-            <input
-              type="text"
-              value={critiqueMeta.genre}
-              onChange={(e) =>
-                onCritiqueMetaChange({
-                  ...critiqueMeta,
-                  genre: e.target.value,
-                })
-              }
-              disabled={loading}
-              className="w-full rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-700/40 focus:outline-none focus:ring-1 focus:ring-emerald-600/25 disabled:opacity-50"
-              style={{ colorScheme: "dark" }}
-              placeholder="Genre"
-            />
-            <textarea
-              value={critiqueMeta.similarArtists}
-              onChange={(e) =>
-                onCritiqueMetaChange({
-                  ...critiqueMeta,
-                  similarArtists: e.target.value,
-                })
-              }
-              disabled={loading}
-              rows={2}
-              className="w-full resize-y rounded border border-zinc-800 bg-zinc-900/60 p-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-700/40 focus:outline-none focus:ring-1 focus:ring-emerald-600/25 disabled:opacity-50"
-              style={{ colorScheme: "dark" }}
-              placeholder="Similar writers / voice (lyrics or poetry)"
-            />
-            {messages.length > 0 ?
-              <label className="block border-t border-zinc-800/80 pt-2">
-                <span className="mb-1 block text-[11px] font-medium text-zinc-500">
-                  Quick actions
-                </span>
-                <select
-                  value={quickActionSelect}
-                  disabled={loading}
-                  onChange={(e) => {
-                    const v = e.target.value as ChatAction | "";
-                    setQuickActionSelect(v);
-                    if (v) {
-                      applyActionPrefill(v);
-                      queueMicrotask(() => setQuickActionSelect(""));
-                    }
-                  }}
-                  className="w-full rounded border border-zinc-800 bg-zinc-900/70 px-2 py-1.5 text-xs text-zinc-100 focus:border-emerald-700/40 focus:outline-none focus:ring-1 focus:ring-emerald-600/25 disabled:opacity-50"
-                  style={{ colorScheme: "dark" }}
-                >
-                  <option value="">Choose an action…</option>
-                  {CHAT_ACTIONS.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.title}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-[10px] leading-snug text-zinc-600">
-                  Prefills the message box; edit, then send.
-                </p>
-              </label>
-            : null}
-          </div>
-        </details>
       </div>
 
       <div
@@ -424,27 +296,29 @@ export function LyricChatPanel({
           </div>
         ) : null}
         {messages.length === 0 && !loading ?
-          <div className="flex min-h-[min(52vh,22rem)] flex-col justify-center gap-3 px-0.5 py-4">
-            <p className="text-center text-xs text-zinc-500">
+          <div className="flex min-h-full flex-col gap-3 px-0.5 pt-2">
+            <p className="text-center text-xs text-zinc-300">
               Start with a quick action or type your own message below.
             </p>
-            <div className="mx-auto flex w-full max-w-sm flex-col gap-2">
-              {CHAT_ACTIONS.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  disabled={loading}
-                  onClick={() => applyActionPrefill(a.id)}
-                  className="rounded-lg border border-zinc-700/80 bg-zinc-900/50 px-3 py-2.5 text-left transition hover:border-emerald-800/50 hover:bg-emerald-950/15 disabled:opacity-40"
-                >
-                  <span className="block text-sm font-medium text-zinc-100">
-                    {a.title}
-                  </span>
-                  <span className="mt-0.5 block text-[11px] leading-snug text-zinc-500">
-                    {a.example}
-                  </span>
-                </button>
-              ))}
+            <div className="flex flex-1 items-center">
+              <div className="mx-auto flex w-full max-w-sm flex-col gap-2">
+                {CHAT_ACTIONS.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => applyActionPrefill(a.id)}
+                    className="rounded-lg border border-zinc-700/80 bg-zinc-900/50 px-3 py-2.5 text-left transition hover:border-emerald-800/50 hover:bg-emerald-950/15 disabled:opacity-40"
+                  >
+                    <span className="block text-sm font-medium text-zinc-100">
+                      {a.title}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] leading-snug text-zinc-500">
+                      {a.example}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         : null}
@@ -485,7 +359,7 @@ export function LyricChatPanel({
 
       <div
         ref={mobileComposerRef}
-        className="shrink-0 border-t border-zinc-800/80 p-3 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom))] max-lg:z-[50] max-lg:border-zinc-800/80 max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pb-3 max-lg:pt-2 max-lg:shadow-[0_-12px_32px_rgba(0,0,0,0.45)] max-lg:backdrop-blur-md lg:relative lg:bottom-auto lg:z-auto lg:bg-transparent lg:shadow-none"
+        className="shrink-0 border-t border-zinc-800/80 px-3 pb-1.5 pt-2 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-[calc(4.25rem+env(safe-area-inset-bottom))] max-lg:z-[50] max-lg:border-zinc-800/80 max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pb-1.5 max-lg:pt-2 max-lg:shadow-[0_-12px_32px_rgba(0,0,0,0.45)] max-lg:backdrop-blur-md lg:relative lg:bottom-auto lg:z-auto lg:bg-transparent lg:shadow-none"
       >
         {error ? (
           <div
@@ -495,85 +369,9 @@ export function LyricChatPanel({
             {error}
           </div>
         ) : null}
-        <div className="mb-2 space-y-2">
-          {hasPinned ?
-            <div className="space-y-1.5 rounded-md border border-emerald-900/40 bg-emerald-950/25 px-2 py-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-emerald-200/80">
-                  In workshop ({trimmedPins.length})
-                </span>
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={() => onClearPinnedSelections()}
-                  className="shrink-0 rounded border border-zinc-600/80 bg-zinc-900/80 px-2 py-0.5 text-[10px] font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
-                >
-                  Clear all
-                </button>
-              </div>
-              <ul className="max-h-32 space-y-1 overflow-y-auto">
-                {pinnedSelections.map((p, i) => {
-                  if (!p.text?.trim()) return null;
-                  const preview =
-                    p.text.length > 40 ? `${p.text.slice(0, 40)}…` : p.text.trim();
-                  return (
-                    <li
-                      key={`${i}-${p.startLine}-${p.endLine}`}
-                      className="flex items-start gap-1.5 rounded border border-emerald-900/25 bg-zinc-950/40 px-1.5 py-1"
-                    >
-                      <span className="min-w-0 flex-1 text-[10px] leading-snug text-emerald-100/90">
-                        <span className="font-medium text-emerald-200/90">
-                          {p.startLine + 1}–{p.endLine + 1}
-                        </span>
-                        {preview ? ` · ${preview}` : null}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={loading}
-                        onClick={() => onRemovePinnedSelection(i)}
-                        className="shrink-0 rounded px-1 py-0.5 text-[10px] font-medium text-zinc-500 transition hover:bg-zinc-800/80 hover:text-zinc-200 disabled:opacity-40"
-                        aria-label={`Remove excerpt ${i + 1}`}
-                      >
-                        ×
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          : <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-600">
-                Target
-              </span>
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => setBaseScope("section")}
-                className={`rounded-md border px-2 py-1 text-[11px] font-medium transition disabled:opacity-40 ${
-                  baseScope === "section" ?
-                    "border-emerald-600/50 bg-emerald-950/30 text-emerald-100"
-                  : "border-zinc-700/80 bg-zinc-900/50 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"
-                }`}
-              >
-                Current section
-              </button>
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => setBaseScope("full_draft")}
-                className={`rounded-md border px-2 py-1 text-[11px] font-medium transition disabled:opacity-40 ${
-                  baseScope === "full_draft" ?
-                    "border-emerald-600/50 bg-emerald-950/30 text-emerald-100"
-                  : "border-zinc-700/80 bg-zinc-900/50 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"
-                }`}
-              >
-                Full draft
-              </button>
-            </div>
-          }
-        </div>
         <div className="flex gap-2">
           <textarea
+            ref={composerInputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -582,9 +380,9 @@ export function LyricChatPanel({
                 void send();
               }
             }}
-            rows={5}
+            rows={1}
             disabled={loading}
-            className="min-h-[7.5rem] max-h-64 flex-1 resize-y overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-700/40 focus:outline-none focus:ring-1 focus:ring-emerald-600/25 disabled:opacity-50"
+            className="h-11 max-h-60 flex-1 resize-none overflow-y-auto rounded-lg border border-zinc-600 bg-zinc-800/85 p-3 text-sm text-zinc-50 placeholder:text-zinc-400 focus:border-emerald-500/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/25 disabled:opacity-50"
             style={{ colorScheme: "dark" }}
             placeholder="Message…"
           />

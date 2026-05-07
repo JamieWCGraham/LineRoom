@@ -43,7 +43,6 @@ import type {
   DraftRecordingMeta,
   PriorVersionContext,
 } from "@/lib/types";
-import type { ChatSelectionPayload, DraftEditorContext } from "@/types/chat";
 import { critiqueResultSchema } from "@/lib/validators";
 
 const LS_DRAFT = "lineroom_draft";
@@ -291,13 +290,6 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   const [mobilePane, setMobilePane] = useState<MobilePane>("draft");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileTitleEditorOpen, setMobileTitleEditorOpen] = useState(false);
-  const [draftContext, setDraftContext] = useState<DraftEditorContext>({
-    selection: null,
-    caretLine: 0,
-  });
-  const [chatPinnedSelections, setChatPinnedSelections] = useState<
-    ChatSelectionPayload[]
-  >([]);
   const [critiqueAccess, setCritiqueAccess] = useState<CritiqueAccessState | null>(
     null,
   );
@@ -439,12 +431,6 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   useEffect(() => {
     setMeta((m) => ({ ...m, title: pieceTitle }));
   }, [pieceTitle]);
-
-  useEffect(() => {
-    setChatPinnedSelections((prev) =>
-      prev.filter((p) => p.text.trim() && fullText.includes(p.text)),
-    );
-  }, [fullText]);
 
   useEffect(() => {
     if (props.mode === "song") return;
@@ -1229,7 +1215,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
           </aside>
         </div>
       ) : null}
-      <main className="mx-auto flex min-h-0 w-full max-w-[1920px] flex-1 flex-col overflow-hidden overscroll-y-contain gap-6 p-4 pb-4 max-lg:gap-0 max-lg:overscroll-none max-lg:p-0 max-lg:pb-[calc(4.75rem+env(safe-area-inset-bottom))] max-lg:pt-2 lg:grid lg:grid-cols-[minmax(260px,320px)_minmax(0,1.35fr)_minmax(240px,320px)] lg:gap-6 lg:p-6 lg:pb-6">
+      <main className="mx-auto flex min-h-0 w-full max-w-[1920px] flex-1 flex-col overflow-hidden overscroll-y-contain gap-6 p-4 pb-4 max-lg:gap-0 max-lg:overscroll-none max-lg:p-0 max-lg:pb-[calc(4.25rem+env(safe-area-inset-bottom))] max-lg:pt-2 lg:grid lg:grid-cols-[minmax(260px,320px)_minmax(0,1.35fr)_minmax(240px,320px)] lg:gap-6 lg:p-6 lg:pb-6">
         <section className={`${mobilePane === "critique" ? "flex" : "hidden"} min-h-0 flex-1 flex-col overflow-hidden border-t border-zinc-800/80 px-4 pt-4 max-lg:px-0 max-lg:pt-0 lg:min-h-0 lg:flex lg:border-r lg:border-t-0 lg:border-zinc-800/80 lg:px-0 lg:pr-5 lg:pt-0`}>
           {critique || critiqueLoading ?
             <CritiqueDisplayPanel
@@ -1238,6 +1224,9 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
               onRegenerate={() => requestCritique({ regenerate: true })}
               lyricsEmpty={lyricsEmpty}
               quotaBadge={quotaBadge}
+              pieceTitle={pieceTitle}
+              critiqueMeta={meta}
+              onCritiqueMetaChange={setMeta}
             />
           : <CritiqueSetupPanel
               similarArtists={meta.similarArtists}
@@ -1265,8 +1254,6 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
               lineFeedbackAutoShowKey={lineFeedbackAutoShowKey}
               onPersistFlush={isSong ? flushPersist : undefined}
               externalMobileToolsTrigger={isSong}
-              onDraftContextChange={setDraftContext}
-              addToChatEnabled
               mobileTopRow={
                 <div className="flex w-full min-w-0 items-center gap-1.5">
                   <Link
@@ -1327,21 +1314,6 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
                 </div>
               }
               headerLeading={lyricPaneTabs}
-              onAddSelectionToChat={(sel) => {
-                setChatPinnedSelections((prev) => {
-                  const key = `${sel.startLine}:${sel.endLine}:${sel.text}`;
-                  if (
-                    prev.some(
-                      (p) => `${p.startLine}:${p.endLine}:${p.text}` === key,
-                    )
-                  ) {
-                    return prev;
-                  }
-                  if (prev.length >= 16) return prev;
-                  return [...prev, sel];
-                });
-                setMobilePane("chat");
-              }}
               headerTrailing={
                 <DraftRecordingsPanel
                   ref={voiceNotesRef}
@@ -1482,15 +1454,6 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
             onClearMessages={() => setChatMessages([])}
             critique={critique}
             critiqueMeta={meta}
-            onCritiqueMetaChange={setMeta}
-            draftContext={draftContext}
-            pinnedSelections={chatPinnedSelections}
-            onClearPinnedSelections={() => setChatPinnedSelections([])}
-            onRemovePinnedSelection={(index) =>
-              setChatPinnedSelections((prev) =>
-                prev.filter((_, i) => i !== index),
-              )
-            }
           />
         </section>
       </main>
