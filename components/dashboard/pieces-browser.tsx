@@ -270,7 +270,7 @@ export function PiecesBrowser({ songs, mobileNav }: Props) {
             aria-label="Close menu"
             onClick={() => setDrawerOpen(false)}
           />
-          <div className="absolute left-0 top-0 flex h-full w-[min(100%,280px)] flex-col border-r border-zinc-800 bg-zinc-950 shadow-2xl">
+          <div className="absolute left-0 top-0 flex h-full w-[min(100%,280px)] flex-col border-r border-zinc-800 bg-zinc-950 pt-[max(0.5rem,env(safe-area-inset-top))] shadow-2xl">
             <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
               <p className="text-sm font-semibold text-zinc-100">LineRoom</p>
               <button
