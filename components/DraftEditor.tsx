@@ -474,19 +474,17 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
     setAddToChatAnchor(null);
   }, [onAddSelectionToChat, totalChars, value]);
 
-  const updateTooltip = useCallback(
-    (clientX: number, clientY: number) => {
+  /**
+   * Resolve a viewport Y into a textarea line index using current rect / scrollTop.
+   * Do not use caretPositionFromPoint / caretRangeFromPoint on `<textarea>`: Chromium
+   * and WebKit often report offset 0 for almost every hit, which pins the tooltip to
+   * the first line (or hides it when line 0 has no feedback). Geometry matches the
+   * highlight layer for typical short lines.
+   */
+  const resolveLineFromClientY = useCallback(
+    (clientY: number): number | null => {
       const el = taRef.current;
-      if (!el || !showHighlights || lineFeedbackByIndex.size === 0) {
-        setTooltip(null);
-        return;
-      }
-      /**
-       * Map pointer Y into a logical line index. Do not use caretPositionFromPoint /
-       * caretRangeFromPoint on `<textarea>`: Chromium and WebKit often report offset 0 for
-       * almost every hit, which pins the tooltip to the first line (or hides it when line 0
-       * has no feedback). Geometry matches the highlight layer for typical short lines.
-       */
+      if (!el) return null;
       const rect = el.getBoundingClientRect();
       const style = getComputedStyle(el);
       const padTop = parseFloat(style.paddingTop) || 0;
@@ -496,8 +494,14 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
         lh = fs * 1.625;
       }
       const yIn = clientY - rect.top + el.scrollTop - padTop;
-      const idx = lineIndexFromContentY(yIn, lh, lines.length);
-      if (idx === null) {
+      return lineIndexFromContentY(yIn, lh, lines.length);
+    },
+    [lines.length],
+  );
+
+  const showTooltipForLine = useCallback(
+    (idx: number, anchorX: number, anchorY: number) => {
+      if (!showHighlights || lineFeedbackByIndex.size === 0) {
         setTooltip(null);
         return;
       }
@@ -517,14 +521,21 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
           : "Suggestion";
         return { label, feedback: note.feedback };
       });
-      setTooltip({
-        anchorX: clientX,
-        anchorY: clientY,
-        tier,
-        entries,
-      });
+      setTooltip({ anchorX, anchorY, tier, entries });
     },
-    [lineFeedbackByIndex, lines.length, showHighlights],
+    [lineFeedbackByIndex, showHighlights],
+  );
+
+  const updateTooltip = useCallback(
+    (clientX: number, clientY: number) => {
+      const idx = resolveLineFromClientY(clientY);
+      if (idx === null) {
+        setTooltip(null);
+        return;
+      }
+      showTooltipForLine(idx, clientX, clientY);
+    },
+    [resolveLineFromClientY, showTooltipForLine],
   );
 
   const highlightLayer = useMemo(() => {
@@ -835,9 +846,16 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
             const cx = t.clientX;
             const cy = t.clientY;
             touchTooltipScrollGuardUntilRef.current = performance.now() + 1000;
-            const run = () => {
-              updateTooltip(cx, cy);
-            };
+            /**
+             * Resolve the tapped line BEFORE iOS focuses the textarea: focus pops the
+             * soft keyboard (changing rect.top) and may auto-scroll-to-caret (changing
+             * scrollTop). Recomputing from clientY against post-reflow geometry would
+             * resolve to the wrong line and clear the tooltip on retry. Lock the line
+             * index now and retry only the React state set, which is idempotent.
+             */
+            const idx = resolveLineFromClientY(cy);
+            if (idx === null) return;
+            const run = () => showTooltipForLine(idx, cx, cy);
             run();
             requestAnimationFrame(run);
             requestAnimationFrame(() => {

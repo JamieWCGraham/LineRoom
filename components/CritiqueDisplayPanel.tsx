@@ -496,15 +496,17 @@ export function CritiqueDisplayPanel({
                   className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-500/40 border-t-zinc-300"
                   aria-hidden
                 />
-                Regenerating critique...
+                {critique ? "Regenerating critique..." : "Generating critique..."}
               </span>
             ) : (
-              "Regenerate Critique"
+              critique ? "Regenerate Critique" : "Generate Critique"
             )}
           </button>
           {loading ? (
             <p className="mt-2 text-center text-[11px] text-zinc-500">
-              Regenerating critique can take up to 1-2 minutes.
+              {critique
+                ? "Regenerating critique can take up to 1-2 minutes."
+                : "Generating a new critique can take up to 1-2 minutes."}
             </p>
           ) : null}
         </div>

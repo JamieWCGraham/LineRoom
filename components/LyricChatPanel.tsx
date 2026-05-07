@@ -296,12 +296,12 @@ export function LyricChatPanel({
           </div>
         ) : null}
         {messages.length === 0 && !loading ?
-          <div className="flex min-h-full flex-col gap-3 px-0.5 pt-2">
-            <p className="text-center text-xs text-zinc-300">
-              Start with a quick action or type your own message below.
-            </p>
+          <div className="flex min-h-full flex-col px-0.5 pt-2">
             <div className="flex flex-1 items-center">
               <div className="mx-auto flex w-full max-w-sm flex-col gap-2">
+                <p className="text-center text-xs text-zinc-300">
+                  Start with a quick action or type your own message below.
+                </p>
                 {CHAT_ACTIONS.map((a) => (
                   <button
                     key={a.id}
@@ -359,7 +359,7 @@ export function LyricChatPanel({
 
       <div
         ref={mobileComposerRef}
-        className="shrink-0 border-t border-zinc-800/80 px-3 pb-1.5 pt-2 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-[calc(4.25rem+env(safe-area-inset-bottom))] max-lg:z-[50] max-lg:border-zinc-800/80 max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pb-1.5 max-lg:pt-2 max-lg:shadow-[0_-12px_32px_rgba(0,0,0,0.45)] max-lg:backdrop-blur-md lg:relative lg:bottom-auto lg:z-auto lg:bg-transparent lg:shadow-none"
+        className="shrink-0 border-t border-zinc-800/80 px-3 py-2 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-[calc(4.25rem+env(safe-area-inset-bottom))] max-lg:z-[50] max-lg:border-zinc-800/80 max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:py-2 max-lg:shadow-[0_-12px_32px_rgba(0,0,0,0.45)] max-lg:backdrop-blur-md lg:relative lg:bottom-auto lg:z-auto lg:bg-transparent lg:shadow-none"
       >
         {error ? (
           <div
@@ -390,7 +390,7 @@ export function LyricChatPanel({
             type="button"
             onClick={() => void send()}
             disabled={loading || !input.trim()}
-            className="shrink-0 self-end rounded-lg bg-emerald-700/90 px-4 py-2.5 text-sm font-medium text-zinc-950 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
+            className="h-11 shrink-0 self-end rounded-lg bg-emerald-700/90 px-4 text-sm font-medium text-zinc-950 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Send
           </button>

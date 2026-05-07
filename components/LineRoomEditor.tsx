@@ -1011,6 +1011,30 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
 
   const persistInFlight = persistInFlightCount > 0;
 
+  const editorBusyForSave =
+    savePending ||
+    deleteVersionPending ||
+    newVersionPending ||
+    critiqueLoading ||
+    persistInFlight;
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const isSaveShortcut =
+        (e.metaKey || e.ctrlKey) &&
+        !e.shiftKey &&
+        !e.altKey &&
+        (e.key === "s" || e.key === "S");
+      if (!isSaveShortcut) return;
+      e.preventDefault();
+      if (!isSong) return;
+      if (editorBusyForSave) return;
+      handleSaveVersion();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [editorBusyForSave, handleSaveVersion, isSong]);
+
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden overscroll-y-contain bg-zinc-950">
       <div className="hidden lg:block">
