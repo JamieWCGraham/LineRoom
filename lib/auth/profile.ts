@@ -28,6 +28,22 @@ function pickDisplayName(user: User, email: string): string {
   if (full) return full;
   const name = typeof meta?.name === "string" ? meta.name.trim() : "";
   if (name) return name;
+  const rawNameObj = meta?.name;
+  if (rawNameObj && typeof rawNameObj === "object" && rawNameObj !== null) {
+    const obj = rawNameObj as Record<string, unknown>;
+    const first =
+      typeof obj.firstName === "string" ? obj.firstName.trim() : "";
+    const last =
+      typeof obj.lastName === "string" ? obj.lastName.trim() : "";
+    const appleCombined = [first, last].filter(Boolean).join(" ").trim();
+    if (appleCombined) return appleCombined;
+  }
+  const given =
+    typeof meta?.given_name === "string" ? meta.given_name.trim() : "";
+  const family =
+    typeof meta?.family_name === "string" ? meta.family_name.trim() : "";
+  const oidcCombined = [given, family].filter(Boolean).join(" ").trim();
+  if (oidcCombined) return oidcCombined;
   const userName =
     typeof meta?.user_name === "string" ? meta.user_name.trim() : "";
   if (userName) return userName;

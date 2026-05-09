@@ -31,11 +31,11 @@ Keep this comma-separated list in sync with **Supabase Auth redirect allowlists*
 - Your production app host (e.g. `line-room.com`, `*.line-room.com` if you use subdomains).
 - Supabase hosted auth: `*.supabase.co` (or your custom auth host if configured).
 - Stripe: `*.stripe.com`, `checkout.stripe.com`, `billing.stripe.com` (only needed if you still open Stripe in WebView on other platforms; iOS app blocks Stripe for Pro).
-- OAuth IdPs you use (examples: `accounts.google.com`, `login.microsoftonline.com`).
+- OAuth IdPs you use (examples: `accounts.google.com`, `appleid.apple.com`, `login.microsoftonline.com`).
 
 Example:
 
-`CAPACITOR_ALLOW_NAVIGATION=line-room.com,*.supabase.co,*.stripe.com,accounts.google.com`
+`CAPACITOR_ALLOW_NAVIGATION=line-room.com,*.supabase.co,*.stripe.com,accounts.google.com,appleid.apple.com`
 
 ### Apple IAP & server env (Vercel / hosting)
 

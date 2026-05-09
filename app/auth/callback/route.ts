@@ -1,22 +1,37 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { ensureProfile } from "@/lib/auth/profile";
-import { getSiteUrl } from "@/lib/auth/oauth";
+import {
+  OAUTH_NEXT_COOKIE,
+  getSiteUrl,
+  sanitizeAuthNext,
+} from "@/lib/auth/oauth";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const next = requestUrl.searchParams.get("next") ?? "/";
   const site = getSiteUrl();
+  const jar = await cookies();
+  const fromCookie = jar.get(OAUTH_NEXT_COOKIE)?.value;
+  const next = sanitizeAuthNext(fromCookie);
 
   if (!code) {
-    return NextResponse.redirect(new URL("/login?error=oauth_callback", site));
+    const res = NextResponse.redirect(
+      new URL("/login?error=oauth_callback", site),
+    );
+    res.cookies.set(OAUTH_NEXT_COOKIE, "", { path: "/", maxAge: 0 });
+    return res;
   }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
-    return NextResponse.redirect(new URL("/login?error=oauth_callback", site));
+    const res = NextResponse.redirect(
+      new URL("/login?error=oauth_callback", site),
+    );
+    res.cookies.set(OAUTH_NEXT_COOKIE, "", { path: "/", maxAge: 0 });
+    return res;
   }
 
   const {
@@ -30,5 +45,7 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(new URL(next, site));
+  const res = NextResponse.redirect(new URL(next, site));
+  res.cookies.set(OAUTH_NEXT_COOKIE, "", { path: "/", maxAge: 0 });
+  return res;
 }

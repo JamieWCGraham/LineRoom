@@ -57,6 +57,21 @@ describe("normalizeAuthUserToProfile", () => {
     expect(row.avatar_url).toBe("https://example.com/a.png");
   });
 
+  it("uses Apple-style nested name object when present", () => {
+    const row = normalizeAuthUserToProfile(
+      baseUser({
+        email: "apple@privaterelay.example.com",
+        app_metadata: { provider: "apple" },
+        user_metadata: {
+          name: { firstName: "Pat", lastName: "Smith" },
+        },
+        identities: [{ provider: "apple" } as never],
+      }),
+    );
+    expect(row.display_name).toBe("Pat Smith");
+    expect(row.auth_provider).toBe("apple");
+  });
+
   it("falls back to user_name for GitHub-style metadata", () => {
     const row = normalizeAuthUserToProfile(
       baseUser({

@@ -1,8 +1,13 @@
 import { AppBrandHero } from "@/components/app-brand";
 import { LoginForm } from "@/components/auth/login-form";
+import { OAuthSignInLinks } from "@/components/auth/oauth-sign-in-links";
 
 type Props = {
-  searchParams: Promise<{ error?: string; message?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    message?: string;
+    next?: string;
+  }>;
 };
 
 export default async function LoginPage({ searchParams }: Props) {
@@ -15,6 +20,11 @@ export default async function LoginPage({ searchParams }: Props) {
       {q.error === "oauth_callback" ? (
         <p className="mb-4 rounded-lg border border-red-900/50 bg-red-950/40 px-3 py-2 text-center text-sm text-red-300">
           Could not complete sign-in. Try again.
+        </p>
+      ) : null}
+      {q.error === "oauth_provider" ? (
+        <p className="mb-4 rounded-lg border border-red-900/50 bg-red-950/40 px-3 py-2 text-center text-sm text-red-300">
+          Unknown sign-in provider. Use Google or Apple.
         </p>
       ) : null}
       {q.error === "confirm" ? (
@@ -40,6 +50,15 @@ export default async function LoginPage({ searchParams }: Props) {
         <p className="mb-6 mt-1 text-center text-xs text-zinc-500">
           Access your saved pieces and the LineRoom editor.
         </p>
+        <OAuthSignInLinks nextPath={q.next} />
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center" aria-hidden>
+            <span className="w-full border-t border-zinc-800" />
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-zinc-900/40 px-2 text-zinc-500">Or use email</span>
+          </div>
+        </div>
         <LoginForm />
       </div>
     </div>
