@@ -3,15 +3,15 @@
 import { createClient } from "@/lib/supabase/client";
 
 /**
- * API origin for IAP validator calls. Prefer env so Capacitor remote shells
- * always hit the deployed host even if `window.location` is unusual during boot.
+ * Base URL for IAP validator `fetch` calls.
+ *
+ * Prefer the WebView’s current origin so requests stay first-party (cookies +
+ * same-site rules). A mismatched `NEXT_PUBLIC_APP_URL` (www vs apex, or
+ * staging vs prod) can break auth or routing on mobile.
  */
 function billingApiOrigin(): string {
   if (typeof window === "undefined") return "";
-  const fromEnv =
-    process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "") ||
-    process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
-  return fromEnv || window.location.origin;
+  return window.location.origin;
 }
 
 type ValidatorPayload = Record<string, unknown>;
