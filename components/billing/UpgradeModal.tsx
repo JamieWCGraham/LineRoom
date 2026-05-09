@@ -89,8 +89,15 @@ export function UpgradeModal({ open, onClose }: Props) {
               hasActiveSubscription={false}
               isBypassed={false}
               onEntitlementUpdated={() => {
-                router.refresh();
-                onClose();
+                void (async () => {
+                  try {
+                    await fetch("/api/billing/access");
+                  } catch {
+                    /* ignore */
+                  }
+                  router.refresh();
+                  onClose();
+                })();
               }}
             />
           </div>

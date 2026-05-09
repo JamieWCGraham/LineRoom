@@ -1,7 +1,9 @@
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getStripe } from "@/lib/stripe";
 import { upsertSubscriptionFromStripe } from "@/lib/billing/stripe-sync";
+import { subscriptionIsPaid } from "@/lib/billing/subscription-row";
 import { billingLog } from "@/lib/billing/logger";
+import type { SubscriptionRow } from "@/types/database";
 
 export interface ReconcileResult {
   attempted: boolean;
@@ -63,13 +65,27 @@ export async function reconcileSubscriptionForUser(
 
   const { data: row, error } = await admin
     .from("subscriptions")
-    .select("stripe_customer_id, stripe_subscription_id")
+    .select(
+      "stripe_customer_id, stripe_subscription_id, billing_provider, status, current_period_end, app_store_original_transaction_id",
+    )
     .eq("user_id", userId)
     .maybeSingle();
 
   if (error) {
     billingLog.error("Reconcile: failed to read local row", { userId, error: error.message });
     return { attempted: false, hasPaidSubscription: false };
+  }
+
+  const subRow = row as SubscriptionRow | null;
+  const appleBilling = subRow?.billing_provider === "app_store";
+  const appleLooksCurrent =
+    appleBilling &&
+    (subRow.status === "active" || subRow.status === "trialing") &&
+    Boolean(subRow.app_store_original_transaction_id?.trim());
+
+  if (appleLooksCurrent) {
+    const paid = subscriptionIsPaid(subRow);
+    return { attempted: false, hasPaidSubscription: paid };
   }
 
   const normalizedEmail = email?.trim().toLowerCase() || null;

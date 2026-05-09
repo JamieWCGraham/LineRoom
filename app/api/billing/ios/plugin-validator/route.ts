@@ -9,6 +9,17 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 type AppleSk2Body = { type: "apple-sk2"; jwsRepresentation: string };
 
+/** `capacitor-plugin-cdv-purchase` adds this on validator POST bodies. */
+function applicationUsernameFromBody(body: unknown): string | null {
+  if (!body || typeof body !== "object") return null;
+  const extra = (body as { additionalData?: unknown }).additionalData;
+  if (!extra || typeof extra !== "object") return null;
+  const u = (extra as { applicationUsername?: unknown }).applicationUsername;
+  if (typeof u !== "string") return null;
+  const t = u.trim();
+  return t.length ? t.toLowerCase() : null;
+}
+
 function extractSk2Jws(body: unknown): string | null {
   if (!body || typeof body !== "object") return null;
   const tx = (body as { transaction?: unknown }).transaction;
@@ -98,11 +109,24 @@ export async function POST(req: Request) {
     return pluginError("Bundle id mismatch", 15);
   }
 
-  const token = decoded.appAccountToken?.trim().toLowerCase();
   const uid = user.id.trim().toLowerCase();
-  if (!token || token !== uid) {
+  const token = decoded.appAccountToken?.trim().toLowerCase() ?? "";
+  const fromPlugin = applicationUsernameFromBody(body);
+
+  const tokenMatches = token.length > 0 && token === uid;
+  const usernameMatches = fromPlugin === uid;
+  if (token.length > 0 && !tokenMatches) {
     billingLog.error("IAP appAccountToken mismatch", { userId: user.id });
     return pluginError("App account token mismatch", 15);
+  }
+  if (token.length === 0 && fromPlugin && !usernameMatches) {
+    billingLog.error("IAP applicationUsername mismatch", { userId: user.id });
+    return pluginError("App account token mismatch", 15);
+  }
+  if (token.length === 0 && !fromPlugin) {
+    billingLog.warn("IAP transaction has no appAccountToken or applicationUsername; binding to session user", {
+      userId: user.id,
+    });
   }
 
   const sub = await fetchSubscriptionForUser(supabase, user.id);
