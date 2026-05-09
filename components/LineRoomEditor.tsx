@@ -316,6 +316,17 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
   const persistChainRef = useRef(Promise.resolve());
   const lyricDraftEditorRef = useRef<DraftEditorHandle>(null);
   const voiceNotesRef = useRef<DraftRecordingsPanelHandle>(null);
+  /**
+   * Synchronous re-entry guard for `/api/critique`. The Generate button's
+   * `disabled` state only updates after React commits a re-render, so on iOS
+   * WKWebView a fast second tap (or a synthetic ghost click after touchend)
+   * could fire `runCritique` twice — the server then reserved two free
+   * critique slots in a row (charging the user's quota by 2 per generation).
+   *
+   * A ref check is synchronous and runs before any await, so the second tap
+   * is rejected before it can hit the network.
+   */
+  const critiqueInFlightRef = useRef(false);
 
   useEffect(() => {
     activeVersionIdRef.current = activeVersionId;

@@ -14,6 +14,9 @@ export function oauthCallbackUrl(): string {
 /** Short-lived cookie set when starting OAuth; read after callback (keeps Supabase redirect allowlist to one URL). */
 export const OAUTH_NEXT_COOKIE = "lr_oauth_next";
 
+/** Google / Apple buttons on login & signup. Set `true` when providers are configured in Supabase. */
+export const oauthSignInUiEnabled = false;
+
 /**
  * Only same-origin relative paths; default "/". Blocks open redirects.
  */

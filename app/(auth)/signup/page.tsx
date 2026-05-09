@@ -1,6 +1,7 @@
 import { AppBrandHero } from "@/components/app-brand";
 import { SignupForm } from "@/components/auth/signup-form";
 import { OAuthSignInLinks } from "@/components/auth/oauth-sign-in-links";
+import { oauthSignInUiEnabled } from "@/lib/auth/oauth";
 
 type Props = {
   searchParams: Promise<{ next?: string }>;
@@ -19,15 +20,21 @@ export default async function SignupPage({ searchParams }: Props) {
         <p className="mb-6 mt-1 text-center text-xs text-zinc-500">
           Save pieces in the cloud and pick up where you left off.
         </p>
-        <OAuthSignInLinks nextPath={q.next} />
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center" aria-hidden>
-            <span className="w-full border-t border-zinc-800" />
-          </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="bg-zinc-900/40 px-2 text-zinc-500">Or use email</span>
-          </div>
-        </div>
+        {oauthSignInUiEnabled ? (
+          <>
+            <OAuthSignInLinks nextPath={q.next} />
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center" aria-hidden>
+                <span className="w-full border-t border-zinc-800" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-zinc-900/40 px-2 text-zinc-500">
+                  Or use email
+                </span>
+              </div>
+            </div>
+          </>
+        ) : null}
         <SignupForm />
       </div>
     </div>
