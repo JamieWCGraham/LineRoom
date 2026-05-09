@@ -100,6 +100,7 @@ export function CritiqueSetupPanel({
           type="button"
           onClick={onGenerate}
           disabled={loading || lyricsEmpty}
+          style={{ touchAction: "manipulation" }}
           className="w-full rounded-lg bg-emerald-700/90 px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {loading ? (

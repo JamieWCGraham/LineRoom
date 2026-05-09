@@ -726,8 +726,16 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
 
   const runCritique = useCallback(
     async (options?: { regenerate?: boolean }) => {
+      // Synchronous dedup — see `critiqueInFlightRef` declaration. Must run
+      // before any await/state read so a near-simultaneous second tap can't
+      // slip through and double-charge the user's free critique quota.
+      if (critiqueInFlightRef.current) return;
+      critiqueInFlightRef.current = true;
       const regenerate = options?.regenerate ?? false;
-      if (!fullText.trim()) return;
+      if (!fullText.trim()) {
+        critiqueInFlightRef.current = false;
+        return;
+      }
       const priorCritiqueForPayload =
         regenerate && critique ? critique : undefined;
 
@@ -849,6 +857,7 @@ export function LineRoomEditor(props: LineRoomEditorProps) {
         setCritiqueError("Network error.");
       } finally {
         setCritiqueLoading(false);
+        critiqueInFlightRef.current = false;
       }
     },
     [
