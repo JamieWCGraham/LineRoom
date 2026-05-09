@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { configureIosPurchasePluginValidator } from "@/lib/billing/configure-ios-purchase-validator";
 import { createClient } from "@/lib/supabase/client";
 import { useIosCapacitorAppLayout } from "@/lib/platform/capacitor-client";
 
@@ -38,7 +39,7 @@ export function IosAppStoreManageSubscription() {
       const mod = await import("capacitor-plugin-cdv-purchase");
       const { store, ProductType, Platform } = mod;
 
-      store.validator = `${window.location.origin}/api/billing/ios/plugin-validator`;
+      configureIosPurchasePluginValidator(store);
       store.applicationUsername = user.id;
 
       store.error((err) => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { configureIosPurchasePluginValidator } from "@/lib/billing/configure-ios-purchase-validator";
 import { createClient } from "@/lib/supabase/client";
 import { useIosCapacitorAppLayout } from "@/lib/platform/capacitor-client";
 
@@ -39,7 +40,7 @@ export function IosProSubscription({
     setLoadingProduct(true);
     rememberInitError(null);
 
-    initPromise.current = (async () => {
+    const run = async (): Promise<boolean> => {
       const supabase = createClient();
       const {
         data: { user },
@@ -52,7 +53,7 @@ export function IosProSubscription({
       const mod = await import("capacitor-plugin-cdv-purchase");
       const { store, ProductType, Platform } = mod;
 
-      store.validator = `${window.location.origin}/api/billing/ios/plugin-validator`;
+      configureIosPurchasePluginValidator(store);
       store.applicationUsername = user.id;
 
       store.error((err) => {
@@ -93,23 +94,31 @@ export function IosProSubscription({
         const text = errs.map((e) => e.message).join(" ") || "Store init failed";
         rememberInitError(text);
         setMsg(text);
-        return loaded;
+        if (!loaded) return false;
       }
 
       if (!loaded) {
         rememberInitError(
           "The App Store did not return this subscription product. Confirm the product id, bundle id, IAP status, and TestFlight/sandbox setup.",
         );
-        initPromise.current = null;
         return false;
       }
 
       return true;
-    })().finally(() => {
+    };
+
+    const p = run().finally(() => {
       setLoadingProduct(false);
     });
-
-    return initPromise.current;
+    initPromise.current = p;
+    try {
+      const ok = await p;
+      if (!ok) initPromise.current = null;
+      return ok;
+    } catch {
+      initPromise.current = null;
+      return false;
+    }
   }, [nativeIos, hasActiveSubscription, isBypassed, rememberInitError]);
 
   useEffect(() => {
