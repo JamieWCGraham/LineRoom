@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import type { CritiqueAccessState } from "@/lib/billing/types";
+import { IosAppStoreManageSubscription } from "@/components/billing/IosAppStoreManageSubscription";
 import { IosProSubscription } from "@/components/billing/IosProSubscription";
 import {
   billingClientPlatformHeaders,
@@ -119,6 +120,11 @@ export function BillingSection({ initialAccess }: Props) {
     access.hasActiveSubscription &&
     access.subscriptionBillingProvider !== "app_store";
 
+  const appStorePro =
+    access.hasActiveSubscription &&
+    access.subscriptionBillingProvider === "app_store" &&
+    !access.isBypassed;
+
   return (
     <section>
       <p className="px-1 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
@@ -158,10 +164,10 @@ export function BillingSection({ initialAccess }: Props) {
         </dl>
       </div>
 
-      {access.hasActiveSubscription &&
-      access.subscriptionBillingProvider === "app_store" ?
+      {appStorePro ?
         <p className="mt-2 px-1 text-xs leading-relaxed text-zinc-500">
-          Billed through Apple. Manage your plan in iOS Subscriptions settings.
+          Billed through Apple. Use the button below to open subscription
+          settings, or on the web use your Apple ID account page.
         </p>
       : null}
       {message ?
@@ -222,6 +228,19 @@ export function BillingSection({ initialAccess }: Props) {
           >
             Cancel subscription
           </button>
+        : null}
+        {appStorePro && !confirmingCancel && iosShell ?
+          <IosAppStoreManageSubscription />
+        : null}
+        {appStorePro && !confirmingCancel && !iosShell ?
+          <a
+            href="https://apps.apple.com/account/subscriptions"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center rounded-xl border border-zinc-600 bg-zinc-900/60 px-4 py-2 text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800"
+          >
+            Cancel or manage subscription
+          </a>
         : null}
       </div>
     </section>
