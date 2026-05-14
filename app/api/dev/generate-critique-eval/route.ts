@@ -14,7 +14,14 @@ function unauthorized() {
 
 function getEvalSecret(): string | null {
   const s = process.env.LINEROOM_CRITIQUE_EVAL_SECRET?.trim();
-  return s && s.length > 0 ? s : null;
+  if (!s || s.length === 0) return null;
+  if (
+    process.env.NODE_ENV === "production" &&
+    (s.length < 32 || /^lineroom/i.test(s))
+  ) {
+    return null;
+  }
+  return s;
 }
 
 function checkBearer(req: Request, secret: string): boolean {

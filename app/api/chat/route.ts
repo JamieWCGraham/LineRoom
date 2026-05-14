@@ -8,6 +8,8 @@ import {
   buildChatActionSystemPrompt,
   buildLyricChatSystemPrompt,
 } from "@/lib/prompts";
+import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/auth/guards";
 import type { CritiqueMeta, CritiqueResult } from "@/lib/types";
 import type { ChatActionPayload, ChatActionResponse } from "@/types/chat";
 import {
@@ -92,6 +94,12 @@ function validateChatActionPayload(payload: ChatActionPayload): string | null {
 }
 
 export async function POST(req: Request) {
+  const supabase = await createClient();
+  const user = await getAuthUser(supabase);
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await req.json();
