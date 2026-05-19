@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1778877823036" clover="3.2.0">
+  <project timestamp="1778877823036" name="All files">
+    <metrics statements="45" coveredstatements="34" conditionals="39" coveredconditionals="21" methods="20" coveredmethods="15" elements="104" coveredelements="70" complexity="0" loc="45" ncloc="45" packages="2" files="3" classes="3"/>
+    <package name="billing">
+      <metrics statements="16" coveredstatements="12" conditionals="18" coveredconditionals="8" methods="5" coveredmethods="3"/>
+      <file name="config.ts" path="/Users/jamiegraham/Documents/PhaseSpaceStudio/Experiments/LineRoom/lib/billing/config.ts">
+        <metrics statements="16" coveredstatements="12" conditionals="18" coveredconditionals="8" methods="5" coveredmethods="3"/>
+        <line num="5" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="7" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="11" count="2" type="stmt"/>
+        <line num="12" count="2" type="cond" truecount="1" falsecount="1"/>
+        <line num="13" count="2" type="cond" truecount="4" falsecount="0"/>
+        <line num="14" count="1" type="stmt"/>
+        <line num="18" count="2" type="cond" truecount="1" falsecount="1"/>
+        <line num="19" count="2" type="stmt"/>
+        <line num="20" count="2" type="stmt"/>
+        <line num="21" count="4" type="stmt"/>
+        <line num="22" count="4" type="cond" truecount="1" falsecount="1"/>
+        <line num="24" count="2" type="stmt"/>
+        <line num="28" count="2" type="cond" truecount="1" falsecount="1"/>
+        <line num="29" count="2" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="cond" truecount="0" falsecount="2"/>
+      </file>
+    </package>
+    <package name="songs.persist">
+      <metrics statements="29" coveredstatements="22" conditionals="21" coveredconditionals="13" methods="15" coveredmethods="12"/>
+      <file name="buildAutosavePayload.ts" path="/Users/jamiegraham/Documents/PhaseSpaceStudio/Experiments/LineRoom/lib/songs/persist/buildAutosavePayload.ts">
+        <metrics statements="4" coveredstatements="3" conditionals="0" coveredconditionals="0" methods="4" coveredmethods="3"/>
+        <line num="11" count="2" type="stmt"/>
+        <line num="22" count="1" type="stmt"/>
+        <line num="38" count="1" type="stmt"/>
+        <line num="45" count="0" type="stmt"/>
+      </file>
+      <file name="persistQueue.ts" path="/Users/jamiegraham/Documents/PhaseSpaceStudio/Experiments/LineRoom/lib/songs/persist/persistQueue.ts">
+        <metrics statements="25" coveredstatements="19" conditionals="21" coveredconditionals="13" methods="11" coveredmethods="9"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="17" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="18" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="19" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="20" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="28" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="29" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="34" count="1" type="cond" truecount="3" falsecount="1"/>
+        <line num="35" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="44" count="2" type="stmt"/>
+        <line num="45" count="2" type="stmt"/>
+        <line num="46" count="2" type="stmt"/>
+        <line num="47" count="0" type="stmt"/>
+        <line num="49" count="2" type="stmt"/>
+        <line num="55" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="56" count="0" type="stmt"/>
+        <line num="57" count="0" type="stmt"/>
+        <line num="66" count="1" type="stmt"/>
+        <line num="67" count="1" type="stmt"/>
+        <line num="68" count="1" type="stmt"/>
+        <line num="69" count="1" type="stmt"/>
+        <line num="71" count="1" type="stmt"/>
+      </file>
+    </package>
+  </project>
+</coverage>

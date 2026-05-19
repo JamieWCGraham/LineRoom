@@ -1,12 +1,13 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useMobileToolbarInset } from "@/hooks/useMobileToolbarInset";
+import { useMobileToolbarInset } from "@/lib/hooks/useMobileToolbarInset";
 import type { CritiqueMeta, CritiqueResult } from "@/lib/types";
 import type { LyricSubscoresJson } from "@/lib/evals/subscoreCalibration";
 import type { GroundTruthStrengthsWeaknesses } from "@/lib/evals/strengthWeaknessGroundTruth";
 import type { GroundTruthLineFeedback } from "@/lib/evals/lineFeedbackGroundTruth";
 import type { LineFeedbackEvalSnapshot } from "@/lib/evals/lineFeedbackMetrics";
+import { genrePrinciplesReflectionsForDisplay } from "@/lib/critique/genrePrinciplesDisplay";
 
 /** Short copy for judge `failure_flags` (line-level eval module). */
 const LINE_FEEDBACK_FLAG_LABELS: Record<string, string> = {
@@ -81,7 +82,9 @@ export function CritiqueDisplayPanel({
   const mobileHeaderInsetPx = useMobileToolbarInset(mobileHeaderRef);
   const mobileFooterInsetPx = useMobileToolbarInset(mobileFooterRef);
   const [showFullGenrePrinciples, setShowFullGenrePrinciples] = useState(false);
-  const genrePrinciplesText = critique?.genrePrinciples ?? "";
+  const genrePrinciplesText = genrePrinciplesReflectionsForDisplay(
+    critique?.genrePrinciples ?? "",
+  );
   const genrePrinciplesMaxChars = 420;
   const genrePrinciplesIsLong =
     genrePrinciplesText.length > genrePrinciplesMaxChars;
@@ -231,10 +234,11 @@ export function CritiqueDisplayPanel({
               </ul>
             </div>
 
-            <div>
-              <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-                Genre principles
-              </p>
+            {genrePrinciplesText ? (
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+                  Reflections
+                </p>
               <p className="mt-1 whitespace-pre-wrap leading-relaxed text-zinc-300">
                 {visibleGenrePrinciples}
               </p>
@@ -247,7 +251,8 @@ export function CritiqueDisplayPanel({
                   {showFullGenrePrinciples ? "See less" : "See more"}
                 </button>
               ) : null}
-            </div>
+              </div>
+            ) : null}
 
             <div>
               <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">

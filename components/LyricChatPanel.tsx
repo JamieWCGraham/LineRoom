@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { StructuredAssistantMessage } from "@/components/chat/StructuredAssistantMessage";
-import { useMobileToolbarInset } from "@/hooks/useMobileToolbarInset";
+import { useMobileToolbarInset } from "@/lib/hooks/useMobileToolbarInset";
 import { buildChatActionPayload } from "@/lib/chat/buildChatActionPayload";
 import { getSectionForLine } from "@/lib/chat/sectionFromDraft";
 import {

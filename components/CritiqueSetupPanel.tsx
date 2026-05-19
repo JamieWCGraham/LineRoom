@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { useMobileToolbarInset } from "@/hooks/useMobileToolbarInset";
+import { useMobileToolbarInset } from "@/lib/hooks/useMobileToolbarInset";
 
 type Props = {
   similarArtists: string;

@@ -1,15 +1,15 @@
 # LineRoom
 
-Lyric workspace: **draft** and **Workshop** for the full draft (“talk to your lyrics”).
+Lyric workspace: **draft**, **Workshop** (chat), **critique**, voice memos, and cloud-saved **pieces** with version history.
 
-This MVP is a **Next.js** app meant to deploy on **Vercel** with **serverless API routes**, **client-side state**, and **localStorage** autosave.
+Built with **Next.js 15**, **Supabase** (auth + Postgres + storage), **Stripe** and **iOS IAP** billing, and **Capacitor** for the iOS shell.
 
 ## Features
 
-- Two-column layout on desktop (draft, Workshop); stacks on small screens.
-- Main **draft** editor.
-- **Workshop your lyrics** — conversational panel backed by `POST /api/chat` (full draft injected each turn so edits stay in sync).
-- Autosave: draft and Workshop history in `localStorage`.
+- **Dashboard** — create and open pieces; multiple saved versions per piece.
+- **Editor** — draft + brainstorm panes, workshop chat, AI critique, draft recordings (local or cloud).
+- **Billing** — LineRoom Pro (Stripe web, StoreKit iOS); free-tier critique quota.
+- **Evals** (internal) — batch critique evaluation, metrics, HITL ground truth — see `app/evals/EVAL_ARCHITECTURE.md`.
 
 ## Setup
 
@@ -17,45 +17,41 @@ This MVP is a **Next.js** app meant to deploy on **Vercel** with **serverless AP
 cd Experiments/LineRoom
 npm install
 cp .env.example .env.local
-# Set OPENAI_API_KEY (Workshop) and AI_GATEWAY_API_KEY (generate critique) in .env.local
+# Configure Supabase, OPENAI_API_KEY, AI_GATEWAY_API_KEY, Stripe, etc.
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Next.js dev server |
+| `npm run build` | Production build |
+| `npm test` | Vitest unit tests |
+| `npm run test:coverage` | Vitest with coverage thresholds |
+| `npm run test:e2e` | Playwright smoke tests |
+| `npm run lint` | ESLint |
+
 ## Environment
 
-| Variable               | Required | Description |
-|------------------------|----------|-------------|
-| `OPENAI_API_KEY`       | Yes      | Server-only; `/api/chat`. Never exposed to the client. |
-| `AI_GATEWAY_API_KEY`   | Yes      | Server-only; `/api/critique` via [Vercel AI Gateway](https://vercel.com/docs/ai-gateway/openai-compat). |
-| `CRITIQUE_LLM_PROVIDER`| No       | `openai` (default) → gateway `openai/gpt-5-mini`, or `gemini` → `google/gemini-3.1-pro-preview`. Override fully with `CRITIQUE_GATEWAY_MODEL`. |
-| `OPENAI_MODEL`         | No       | Workshop default; see `lib/openai.ts`. |
-| `LANGFUSE_SECRET_KEY`  | No       | Enables [Langfuse](https://langfuse.com) tracing when set with `LANGFUSE_PUBLIC_KEY`. |
-| `LANGFUSE_PUBLIC_KEY`  | No       | Pair with secret key for Langfuse. |
-| `LANGFUSE_BASE_URL`    | No       | Defaults to `https://cloud.langfuse.com` (EU). US: `https://us.cloud.langfuse.com`. |
+See [.env.example](.env.example) for the full list. Minimum for local dev:
 
-### Langfuse
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (server routes, webhooks)
+- `OPENAI_API_KEY` (Workshop `/api/chat`)
+- `AI_GATEWAY_API_KEY` (Critique `/api/critique`)
 
-When both Langfuse keys are set, OpenAI calls from `/api/chat` are wrapped with [`observeOpenAI`](https://langfuse.com/docs/integrations/openai/js/get-started) and exported via OpenTelemetry (`LangfuseSpanProcessor`, `exportMode: "immediate"`). Each route schedules `after(() => forceFlush())` so traces flush on Vercel serverless. Without keys, behavior is unchanged and no Langfuse code paths run.
+## Architecture
 
-Requires **Node.js 20+** (for `@langfuse/otel`). Set the same variables in Vercel for production traces.
+See [ARCHITECTURE.md](ARCHITECTURE.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Deploy on Vercel
+## Deploy
 
-1. Import the repo (or this folder as the project root).
-2. Add `OPENAI_API_KEY` and `AI_GATEWAY_API_KEY` in **Project → Settings → Environment Variables** (see table above).
-3. Deploy. No database or extra services required for this MVP.
+Deploy on **Vercel** with env vars from `.env.example`. Apply Supabase migrations from `supabase/migrations/`. For iOS, see [MOBILE_DEPLOYMENT.md](MOBILE_DEPLOYMENT.md).
 
-## Project layout
+## Docs
 
-- `app/page.tsx` — client UI and state.
-- `app/api/chat/route.ts` — Workshop route handler.
-- `instrumentation.ts` — registers Langfuse OpenTelemetry on the Node runtime when configured.
-- `lib/langfuse-server.ts` — Langfuse span processor, `observeOpenAI` wrapper, `after` flush for serverless.
-- `components/` — `DraftEditor`, `LyricChatPanel`, `Header`.
-- `lib/` — types, Zod validators, prompts, OpenAI client.
-
-## Non-goals (MVP)
-
-Auth, billing, cloud project storage, DAW integration, rhyme/scan engines, and full-song generation modes are out of scope for this version but will be included later.
+- [docs/CRITIQUE.md](docs/CRITIQUE.md) — critique LLM pipeline
+- [app/evals/EVAL_ARCHITECTURE.md](app/evals/EVAL_ARCHITECTURE.md) — eval system

@@ -21,7 +21,7 @@ export function useMobileToolbarInset(ref: RefObject<HTMLElement | null>): numbe
       ro.disconnect();
       mq.removeEventListener("change", update);
     };
-  }, []);
+  }, [ref]);
 
   return insetPx;
 }

@@ -11,6 +11,12 @@ const compat = new FlatCompat({
 
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    files: ["components/**/*.{ts,tsx}", "lib/**/*.{ts,tsx}"],
+    rules: {
+      "max-lines": ["warn", { max: 400, skipBlankLines: true, skipComments: true }],
+    },
+  },
 ];
 
 export default eslintConfig;
