@@ -377,7 +377,7 @@ export async function updateSongVersionState(
     return {
       ok: false,
       message:
-        "This version was saved elsewhere. Reload the page to continue safely.",
+        "This version was saved elsewhere. Save, then reload the page to continue safely.",
       reason: "stale",
       currentSubRevision,
     };

@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { APP_TAGLINE } from "@/components/app-brand";
+import { ChunkLoadRecovery } from "@/components/navigation/ChunkLoadRecovery";
+import { getAppBuildId } from "@/lib/navigation/appBuildId";
 import { lineroomRootViewport } from "@/lib/rootViewport";
 import "./globals.css";
 
@@ -21,9 +23,14 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const buildId = getAppBuildId();
+
   return (
     <html lang="en" className={inter.variable}>
-      <body className="min-h-screen font-sans antialiased">{children}</body>
+      <body className="min-h-screen font-sans antialiased">
+        <ChunkLoadRecovery initialBuildId={buildId} />
+        {children}
+      </body>
     </html>
   );
 }

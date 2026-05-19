@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { getAppBuildId } from "./lib/navigation/appBuildId";
 
 /**
  * OpenTelemetry + Langfuse are loaded from `instrumentation.ts` and API routes.
@@ -6,6 +7,7 @@ import type { NextConfig } from "next";
  * in dev (stale or split chunks). Keeping them external matches Node resolution and avoids that.
  */
 const nextConfig: NextConfig = {
+  generateBuildId: async () => getAppBuildId(),
   serverExternalPackages: [
     "@opentelemetry/api",
     "@opentelemetry/api-logs",
