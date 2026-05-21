@@ -13,6 +13,7 @@ import { LyricChatPanel } from "@/components/LyricChatPanel";
 import { SongTitleEditor } from "@/components/songs/song-title-editor";
 import { SongVersionBar } from "@/components/lineroom/SongVersionBar";
 import {
+  MOBILE_DOC_HEADER_BACK_BTN,
   MOBILE_DOC_HEADER_ICON_BTN,
   type LineRoomEditorViewModel,
 } from "@/lib/hooks/useLineRoomEditorState";
@@ -328,7 +329,7 @@ export function LineRoomEditorLayout({
                     href={isSong ? "/" : "/lineroom"}
                     prefetch
                     aria-label={isSong ? "Back to dashboard" : "Back to LineRoom"}
-                    className={MOBILE_DOC_HEADER_ICON_BTN}
+                    className={MOBILE_DOC_HEADER_BACK_BTN}
                   >
                     <span aria-hidden>←</span>
                   </Link>
@@ -352,8 +353,8 @@ export function LineRoomEditorLayout({
                       aria-label="Open or close draft tools"
                     >
                       <svg
-                        width="16"
-                        height="16"
+                        width="18"
+                        height="18"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -373,10 +374,10 @@ export function LineRoomEditorLayout({
                     className={MOBILE_DOC_HEADER_ICON_BTN}
                     aria-label="Open mobile controls menu"
                   >
-                    <span className="inline-flex flex-col gap-0.5" aria-hidden>
-                      <span className="h-0.5 w-3.5 rounded bg-zinc-200" />
-                      <span className="h-0.5 w-3.5 rounded bg-zinc-200" />
-                      <span className="h-0.5 w-3.5 rounded bg-zinc-200" />
+                    <span className="inline-flex flex-col gap-1" aria-hidden>
+                      <span className="h-0.5 w-4 rounded bg-zinc-200" />
+                      <span className="h-0.5 w-4 rounded bg-zinc-200" />
+                      <span className="h-0.5 w-4 rounded bg-zinc-200" />
                     </span>
                   </button>
                 </div>
@@ -426,7 +427,7 @@ export function LineRoomEditorLayout({
                     href={isSong ? "/" : "/lineroom"}
                     prefetch
                     aria-label={isSong ? "Back to dashboard" : "Back to LineRoom"}
-                    className={MOBILE_DOC_HEADER_ICON_BTN}
+                    className={MOBILE_DOC_HEADER_BACK_BTN}
                   >
                     <span aria-hidden>←</span>
                   </Link>
@@ -450,8 +451,8 @@ export function LineRoomEditorLayout({
                       aria-label="Open or close draft tools"
                     >
                       <svg
-                        width="16"
-                        height="16"
+                        width="18"
+                        height="18"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -471,10 +472,10 @@ export function LineRoomEditorLayout({
                     className={MOBILE_DOC_HEADER_ICON_BTN}
                     aria-label="Open mobile controls menu"
                   >
-                    <span className="inline-flex flex-col gap-0.5" aria-hidden>
-                      <span className="h-0.5 w-3.5 rounded bg-zinc-200" />
-                      <span className="h-0.5 w-3.5 rounded bg-zinc-200" />
-                      <span className="h-0.5 w-3.5 rounded bg-zinc-200" />
+                    <span className="inline-flex flex-col gap-1" aria-hidden>
+                      <span className="h-0.5 w-4 rounded bg-zinc-200" />
+                      <span className="h-0.5 w-4 rounded bg-zinc-200" />
+                      <span className="h-0.5 w-4 rounded bg-zinc-200" />
                     </span>
                   </button>
                 </div>

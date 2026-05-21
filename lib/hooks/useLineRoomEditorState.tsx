@@ -32,8 +32,11 @@ import type {
 
 const EMPTY_LINE_FEEDBACK = new Map<number, LineAnnotation[]>();
 
+export const MOBILE_DOC_HEADER_BACK_BTN =
+  "inline-flex size-9 shrink-0 touch-manipulation items-center justify-center rounded-md border border-zinc-700/80 bg-zinc-900/60 text-base leading-none text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800/80";
+
 export const MOBILE_DOC_HEADER_ICON_BTN =
-  "inline-flex size-8 shrink-0 touch-manipulation items-center justify-center rounded-md border border-zinc-700/80 bg-zinc-900/60 text-sm leading-none text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800/80";
+  "inline-flex h-[42px] min-h-[42px] min-w-[42px] shrink-0 touch-manipulation items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900/70 text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800/80";
 
 export function useLineRoomEditorState(props: LineRoomEditorProps) {
   const router = useRouter();
