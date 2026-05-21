@@ -353,8 +353,7 @@ export function LineRoomEditorLayout({
                       aria-label="Open or close draft tools"
                     >
                       <svg
-                        width="18"
-                        height="18"
+                        className="size-[18px] shrink-0"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -451,8 +450,7 @@ export function LineRoomEditorLayout({
                       aria-label="Open or close draft tools"
                     >
                       <svg
-                        width="18"
-                        height="18"
+                        className="size-[18px] shrink-0"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
