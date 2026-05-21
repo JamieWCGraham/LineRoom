@@ -13,8 +13,15 @@ import {
   rethrowIfBadRequest,
   sleepMs,
 } from "@/lib/critique/critiqueNetworkRetry";
+import type { DraftCritiqueGateContext } from "@/lib/critique/draftCritiqueGate";
 import {
+  applyCanonicalScores,
+  scoresMatchCanonical,
+} from "@/lib/critique/enforceCanonicalScores";
+import {
+  buildCritiqueScoreInvarianceRepairHint,
   buildCritiqueUserPayload,
+  CANONICAL_SCORE_LOCK_SYSTEM_ADDENDUM,
   CRITIQUE_JSON_INSTRUCTIONS,
 } from "@/lib/prompts";
 import type { CritiqueResult } from "@/lib/types";
@@ -71,6 +78,9 @@ export type RunCritiqueModelOptions = {
   traceTags?: string[];
   rootObservationName?: string;
   generationName?: string;
+  /** When true, skip draft registry lookup context (eval / dev paths). */
+  skipDraftCritiqueGate?: boolean;
+  gate?: DraftCritiqueGateContext;
 };
 
 /**
@@ -114,6 +124,33 @@ function parseModelJsonToCritique(
   return attachSongVersionContext(validated.data, payload);
 }
 
+function resolveGateContext(
+  options?: RunCritiqueModelOptions,
+): DraftCritiqueGateContext {
+  if (options?.skipDraftCritiqueGate) return { kind: "off" };
+  return options?.gate ?? { kind: "miss" };
+}
+
+function enforceGateScoresIfNeeded(
+  critique: CritiqueResult,
+  gate: DraftCritiqueGateContext,
+): { critique: CritiqueResult; scoreEnforced: boolean } {
+  if (gate.kind !== "hit") {
+    return { critique, scoreEnforced: false };
+  }
+  if (scoresMatchCanonical(critique, gate.canonical)) {
+    return { critique, scoreEnforced: false };
+  }
+  console.warn(
+    "[runCritiqueModel] draft_gate_score_enforced",
+    gate.fingerprintPrefix,
+  );
+  return {
+    critique: applyCanonicalScores(critique, gate.canonical),
+    scoreEnforced: true,
+  };
+}
+
 /**
  * Runs the lyric critique LLM call via **Vercel AI Gateway** (same path as POST /api/critique).
  */
@@ -122,8 +159,25 @@ export async function runCritiqueModel(
   options?: RunCritiqueModelOptions,
 ): Promise<{ critique: CritiqueResult; userContent: string }> {
   scheduleLangfuseFlush();
-  const userContent = sanitizeForLlmRequest(buildCritiqueUserPayload(payload));
-  const tags = options?.traceTags ?? ["lineroom", "critique"];
+  const gate = resolveGateContext(options);
+  const userContent = sanitizeForLlmRequest(
+    buildCritiqueUserPayload({
+      ...payload,
+      canonicalPriorScores:
+        gate.kind === "hit" ? gate.canonical : undefined,
+    }),
+  );
+  const systemContent =
+    gate.kind === "hit" ?
+      `${CRITIQUE_JSON_INSTRUCTIONS}\n\n${CANONICAL_SCORE_LOCK_SYSTEM_ADDENDUM}`
+    : CRITIQUE_JSON_INSTRUCTIONS;
+
+  const baseTags = options?.traceTags ?? ["lineroom", "critique"];
+  const gateTag =
+    gate.kind === "hit" ? "draft_gate_hit"
+    : gate.kind === "off" ? null
+    : "draft_gate_miss";
+  const tags = gateTag ? [...baseTags, gateTag] : baseTags;
   const rootObservationName =
     options?.rootObservationName ?? "lineroom-critique";
   const generationName = options?.generationName ?? "lyric-critique";
@@ -151,7 +205,7 @@ export async function runCritiqueModel(
       const openai = createTracedOpenAI(createCritiqueGatewayOpenAI());
 
       const completeOnce = async (
-        repairHint?: string,
+        extraSystemHints: string[] = [],
       ): Promise<CritiqueResult> => {
         const completion = await openai.chat.completions.create({
           model: gatewayModelId,
@@ -159,8 +213,10 @@ export async function runCritiqueModel(
             { response_format: { type: "json_object" as const } }
           : {}),
           messages: [
-            { role: "system", content: CRITIQUE_JSON_INSTRUCTIONS },
-            ...(repairHint ? [{ role: "system" as const, content: repairHint }] : []),
+            { role: "system", content: systemContent },
+            ...extraSystemHints.map(
+              (content) => ({ role: "system" as const, content }),
+            ),
             { role: "user", content: userContent },
           ],
         });
@@ -173,9 +229,33 @@ export async function runCritiqueModel(
         return parseModelJsonToCritique(raw, payload);
       };
 
+      const completeWithGateEnforcement = async (
+        extraSystemHints: string[] = [],
+      ): Promise<CritiqueResult> => {
+        let c = await completeOnce(extraSystemHints);
+        if (gate.kind !== "hit") return c;
+        if (scoresMatchCanonical(c, gate.canonical)) return c;
+
+        const invarianceHint = buildCritiqueScoreInvarianceRepairHint(
+          gate.canonical,
+        );
+        c = await completeOnce([...extraSystemHints, invarianceHint]);
+        const { critique: enforced, scoreEnforced } = enforceGateScoresIfNeeded(
+          c,
+          gate,
+        );
+        if (scoreEnforced) {
+          console.warn(
+            "[runCritiqueModel] draft_gate_score_enforced after repair",
+            gate.fingerprintPrefix,
+          );
+        }
+        return enforced;
+      };
+
       let c: CritiqueResult;
       try {
-        c = await completeOnce();
+        c = await completeWithGateEnforcement();
       } catch (first) {
         rethrowIfBadRequest(first);
 
@@ -184,7 +264,7 @@ export async function runCritiqueModel(
 
         if (isRetriableOpenAICritiqueError(first)) {
           await sleepMs(getCritiqueNetworkRetryDelayMs());
-          c = await completeOnce();
+          c = await completeWithGateEnforcement();
           setTraceIO({
             input: tracePayload,
             output: c,
@@ -197,7 +277,7 @@ export async function runCritiqueModel(
           firstMessage === "__BAD_JSON__" ||
           firstMessage === "__BAD_SHAPE__"
         ) {
-          c = await completeOnce(CRITIQUE_REPAIR_HINT);
+          c = await completeWithGateEnforcement([CRITIQUE_REPAIR_HINT]);
         } else {
           throw first;
         }

@@ -9,7 +9,7 @@ Critique produces a **single structured evaluation** of the current draft (lyric
 ## End-to-end flow
 
 1. **Client** (`components/LineRoomEditor.tsx`): The user triggers critique (first generation or **Regenerate**). The client `POST`s JSON to `/api/critique` with the draft, title, genre/similar-artists meta, and optional song-version context.
-2. **API route** (`app/api/critique/route.ts`): Validates the body with Zod, builds the **user** message from `buildCritiqueUserPayload`, calls **Vercel AI Gateway** OpenAI-compatible **Chat Completions** with a fixed **system** prompt (`CRITIQUE_JSON_INSTRUCTIONS`) and `response_format: { type: "json_object" }`.
+2. **API route** (`app/api/critique/route.ts`): Validates the body with Zod, runs the **draft critique gate** (fingerprint lookup in `lyric_draft_critique_registry`), builds the **user** message from `buildCritiqueUserPayload`, calls **Vercel AI Gateway** OpenAI-compatible **Chat Completions** with a fixed **system** prompt (`CRITIQUE_JSON_INSTRUCTIONS`) and `response_format: { type: "json_object" }`.
 3. **Response handling**: The assistant message is parsed as JSON and validated again with `critiqueResultSchema`. Server code then **attaches** song-version metadata (`attachSongVersionContext`) that the model does not emit.
 4. **Client**: On success, the critique is stored in React state; in **song** mode the editor may persist and version the result (save + new version + navigation)—that persistence is product flow, not part of the LLM call itself.
 
@@ -38,6 +38,7 @@ sequenceDiagram
 | Gateway OpenAI client + critique model id | `lib/aiGatewayCritique.ts` (`createCritiqueGatewayOpenAI`, `getCritiqueGatewayModelId`) |
 | Critique provider toggle (`openai` vs `gemini` default) | `lib/critique/critiqueLlmProvider.ts` (`getCritiqueLlmProvider`) |
 | Critique LLM call + validation | `lib/critique/runCritiqueModel.ts` |
+| Draft fingerprint + global score registry gate | `lib/draftFingerprint.ts`, `lib/critique/draftCritiqueGate.ts` |
 | OpenAI client for **chat** (not critique) | `lib/openai.ts` |
 | Langfuse trace/generation | `lib/langfuse-server.ts` (`runWithLangfuseTrace`, `scheduleLangfuseFlush`) |
 | UI trigger + payload assembly | `components/LineRoomEditor.tsx` (`runCritique`) |
@@ -100,6 +101,18 @@ When Langfuse env vars are set, the route runs inside `runWithLangfuseTrace` wit
 | **Large static system prompt** | Encodes product voice, calibration, and JSON shape without bloating every user message. |
 | **Prior versions in user message** | Grounds iteration in real saved drafts/critiques; truncation (~1800 chars per prior draft) caps tokens. |
 | **Regeneration as explicit mode** | Forces comparative rationale when the user replaces a critique, improving transparency of “what changed.” |
+
+## Draft critique gate (score invariance)
+
+Before the LLM call, production `POST /api/critique` fingerprints the draft (`lib/draftFingerprint.ts`: strip all Unicode whitespace, SHA-256) and looks up `public.lyric_draft_critique_registry` via `resolve_lyric_draft_critique_registry` (one RPC, parallel with free-tier slot reservation).
+
+- **Miss**: normal generation; on success, `register_lyric_draft_critique_registry` stores canonical band + subscores (first insert wins globally).
+- **Hit**: user payload includes canonical scores + `CANONICAL_SCORE_LOCK` system addendum; model must keep band/subscores identical. `runCritiqueModel` may repair once, then deterministically overwrites mismatched scores.
+- **Skipped**: normalized draft length &lt; 40 chars — no lookup/register.
+- **Eval/dev**: `skipDraftCritiqueGate: true` on `runCritiqueModel` so benchmarks are not anchored to production registry.
+- **Kill switch**: `DRAFT_CRITIQUE_GATE_ENABLED=false`.
+
+Backfill existing critiques: `node scripts/backfill-lyric-draft-registry.mjs` (service role).
 
 ## Related: chat, not critique generation
 

@@ -6,6 +6,9 @@ const mockCreateClient = vi.hoisted(() => vi.fn());
 const mockGetAuthUser = vi.hoisted(() => vi.fn());
 const mockGetCritiqueAccessForUser = vi.hoisted(() => vi.fn());
 const mockRunCritiqueModel = vi.hoisted(() => vi.fn());
+const mockLookupDraftCritiqueRegistry = vi.hoisted(() => vi.fn());
+const mockRegisterDraftCritiqueRegistry = vi.hoisted(() => vi.fn());
+const mockIsDraftCritiqueGateEnabled = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: mockCreateClient,
@@ -18,6 +21,19 @@ vi.mock("@/lib/auth/guards", () => ({
 vi.mock("@/lib/billing/access", () => ({
   getCritiqueAccessForUser: mockGetCritiqueAccessForUser,
 }));
+
+vi.mock("@/lib/critique/draftCritiqueGateConfig", () => ({
+  isDraftCritiqueGateEnabled: mockIsDraftCritiqueGateEnabled,
+}));
+
+vi.mock("@/lib/critique/draftCritiqueGate", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/critique/draftCritiqueGate")>();
+  return {
+    ...actual,
+    lookupDraftCritiqueRegistry: mockLookupDraftCritiqueRegistry,
+    registerDraftCritiqueRegistry: mockRegisterDraftCritiqueRegistry,
+  };
+});
 
 vi.mock("@/lib/critique/runCritiqueModel", () => ({
   runCritiqueModel: mockRunCritiqueModel,
@@ -65,6 +81,28 @@ describe("POST /api/critique", () => {
     vi.clearAllMocks();
     mockSupabase();
     vi.stubEnv("AI_GATEWAY_API_KEY", "test-key");
+    mockIsDraftCritiqueGateEnabled.mockReturnValue(true);
+    mockLookupDraftCritiqueRegistry.mockResolvedValue({ kind: "miss" });
+    mockRegisterDraftCritiqueRegistry.mockResolvedValue(undefined);
+    mockRunCritiqueModel.mockResolvedValue({
+      critique: {
+        genrePrinciples: "g",
+        overallRatingBand: "Strong",
+        subscores: {
+          emotional_impact: 4,
+          imagery_specificity: 4,
+          originality_voice: 4,
+          prosody_singability: 4,
+          structure_cohesion: 4,
+          lyrical_economy: 4,
+          hook_strength: 4,
+        },
+        overallStrengths: [],
+        overallWeaknesses: [],
+        lineFeedback: [],
+      },
+    });
+    mockGetCritiqueAccessForUser.mockResolvedValue(allowedAccess);
   });
 
   afterEach(() => {
@@ -139,5 +177,77 @@ describe("POST /api/critique", () => {
     expect(body.error).toBe("Validation failed");
     expect(body.details).toBeDefined();
     expect(mockRunCritiqueModel).not.toHaveBeenCalled();
+  });
+
+  it("runs gate lookup in parallel and registers on miss", async () => {
+    mockGetAuthUser.mockResolvedValue(testUser);
+
+    const res = await POST(
+      new Request("http://localhost/api/critique", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullText: "line one ".repeat(20),
+          title: "",
+          similarArtists: "",
+          genre: "",
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockLookupDraftCritiqueRegistry).toHaveBeenCalled();
+    expect(mockRunCritiqueModel).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ gate: { kind: "miss" } }),
+    );
+    expect(mockRegisterDraftCritiqueRegistry).toHaveBeenCalled();
+  });
+
+  it("passes gate hit context to runCritiqueModel", async () => {
+    mockGetAuthUser.mockResolvedValue(testUser);
+    const canonical = {
+      overallRatingBand: "Promising" as const,
+      subscores: {
+        emotional_impact: 3 as const,
+        imagery_specificity: 3 as const,
+        originality_voice: 3 as const,
+        prosody_singability: 3 as const,
+        structure_cohesion: 3 as const,
+        lyrical_economy: 3 as const,
+        hook_strength: 3 as const,
+      },
+    };
+    mockLookupDraftCritiqueRegistry.mockResolvedValue({
+      kind: "hit",
+      canonical,
+      fingerprintPrefix: "deadbeef",
+    });
+
+    const res = await POST(
+      new Request("http://localhost/api/critique", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullText: "line one ".repeat(20),
+          title: "",
+          similarArtists: "",
+          genre: "",
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockRunCritiqueModel).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        gate: {
+          kind: "hit",
+          canonical,
+          fingerprintPrefix: "deadbeef",
+        },
+      }),
+    );
+    expect(mockRegisterDraftCritiqueRegistry).not.toHaveBeenCalled();
   });
 });

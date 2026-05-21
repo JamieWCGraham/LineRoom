@@ -71,7 +71,7 @@ export default async function SongPage({ params, searchParams }: Props) {
 
   return (
     <LineRoomEditor
-      key={activeRow.id}
+      key={`${typedSong.id}:${activeRow.id}`}
       mode="song"
       songId={typedSong.id}
       songTitle={typedSong.title}

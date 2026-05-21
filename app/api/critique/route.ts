@@ -3,6 +3,14 @@ import { getCritiqueAccessForUser } from "@/lib/billing/access";
 import { getFreeCritiqueQuota } from "@/lib/billing/config";
 import type { CritiqueAccessState } from "@/lib/billing/types";
 import { getAuthUser } from "@/lib/auth/guards";
+import {
+  isDraftCritiqueGateEnabled,
+} from "@/lib/critique/draftCritiqueGateConfig";
+import {
+  lookupDraftCritiqueRegistry,
+  registerDraftCritiqueRegistry,
+  toGateContext,
+} from "@/lib/critique/draftCritiqueGate";
 import { runCritiqueModel } from "@/lib/critique/runCritiqueModel";
 import type { CritiqueResult } from "@/lib/types";
 import { critiqueRequestSchema } from "@/lib/validators";
@@ -69,12 +77,26 @@ export async function POST(req: Request) {
   let slotReserved = false;
   let success = false;
 
+  const payload = parsed.data;
+  const gateEnabled = isDraftCritiqueGateEnabled();
+
   try {
+    const gateLookupPromise = gateEnabled ?
+      lookupDraftCritiqueRegistry(supabase, payload.fullText)
+    : Promise.resolve({ kind: "miss" as const });
+
+    const reservePromise =
+      needsSlot ?
+        supabase.rpc("reserve_free_critique_slot", { p_quota: freeQuota })
+      : Promise.resolve({ data: true, error: null });
+
+    const [gateLookup, reserveResult] = await Promise.all([
+      gateLookupPromise,
+      reservePromise,
+    ]);
+
     if (needsSlot) {
-      const { data: reserved, error: reserveError } = await supabase.rpc(
-        "reserve_free_critique_slot",
-        { p_quota: freeQuota },
-      );
+      const { data: reserved, error: reserveError } = reserveResult;
       if (reserveError) {
         console.error("[critique] reserve slot", reserveError.message);
         return NextResponse.json(
@@ -89,10 +111,11 @@ export async function POST(req: Request) {
       slotReserved = true;
     }
 
-    const payload = parsed.data;
+    const gateContext = toGateContext(gateLookup, gateEnabled);
+
     let critique: CritiqueResult;
     try {
-      ({ critique } = await runCritiqueModel(payload));
+      ({ critique } = await runCritiqueModel(payload, { gate: gateContext }));
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unknown error";
       if (message === "AI_GATEWAY_API_KEY is not set") {
@@ -133,6 +156,15 @@ export async function POST(req: Request) {
     }
 
     success = true;
+
+    if (gateContext.kind === "miss" && gateEnabled) {
+      await registerDraftCritiqueRegistry(
+        supabase,
+        payload.fullText,
+        critique,
+      );
+    }
+
     const accessAfter = await getCritiqueAccessForUser(supabase, user);
     return NextResponse.json({ critique, access: accessAfter });
   } finally {

@@ -1,3 +1,50 @@
+export type CanonicalPriorScores = {
+  overallRatingBand: string;
+  subscores: {
+    emotional_impact: number;
+    imagery_specificity: number;
+    originality_voice: number;
+    prosody_singability: number;
+    structure_cohesion: number;
+    lyrical_economy: number;
+    hook_strength: number;
+  };
+};
+
+function formatCanonicalScoresOnly(c: CanonicalPriorScores): string {
+  return `Prior rating band: ${c.overallRatingBand}
+Prior subscores:
+- emotional_impact: ${c.subscores.emotional_impact}/5
+- imagery_specificity: ${c.subscores.imagery_specificity}/5
+- originality_voice: ${c.subscores.originality_voice}/5
+- prosody_singability: ${c.subscores.prosody_singability}/5
+- structure_cohesion: ${c.subscores.structure_cohesion}/5
+- lyrical_economy: ${c.subscores.lyrical_economy}/5
+- hook_strength: ${c.subscores.hook_strength}/5`;
+}
+
+export const CANONICAL_SCORE_LOCK_SYSTEM_ADDENDUM = `
+CANONICAL_SCORE_LOCK (overrides all other subscore/band guidance including prior-version baselines):
+- overallRatingBand MUST equal the canonical prior band exactly.
+- Each subscore key MUST equal the canonical prior integer exactly.
+- You may rewrite lineFeedback, overallStrengths, overallWeaknesses, genrePrinciples, and overallBandRationale.
+- Do not explain or justify score changes; scores are not allowed to change on this run.
+`.trim();
+
+export function buildCritiqueScoreInvarianceRepairHint(
+  canonical: CanonicalPriorScores,
+): string {
+  const s = canonical.subscores;
+  return [
+    "Your JSON violated CANONICAL_SCORE_LOCK.",
+    "Re-emit valid JSON with overallRatingBand=",
+    JSON.stringify(canonical.overallRatingBand),
+    "and subscores exactly:",
+    JSON.stringify(s),
+    "Do not change any other required fields' structure.",
+  ].join(" ");
+}
+
 function formatCritiqueSnapshotForPrompt(critique: {
   overallRatingBand: string;
   subscores: {
@@ -69,6 +116,7 @@ export function buildCritiqueUserPayload(input: {
       strength?: "strong" | "promising" | "suggestion";
     }>;
   };
+  canonicalPriorScores?: CanonicalPriorScores;
   priorVersions?: Array<{
     versionNumber: number;
     draftText: string;
@@ -131,6 +179,14 @@ export function buildCritiqueUserPayload(input: {
   };
 
   const changeSummarySection = summarizeDraftChanges();
+
+  const canonicalSection =
+    input.canonicalPriorScores ?
+      `\n\nCanonical prior critique (identical lyric draft previously critiqued in LineRoom):
+You have already critiqued this song previously. Keep the same overall score and subscores invariant on this new critique.
+${formatCanonicalScoresOnly(input.canonicalPriorScores)}`
+    : "";
+
   const priorVersionsSection =
     input.priorVersions?.length ?
       `\n\nPrior versions context (for grounding):
@@ -177,6 +233,7 @@ Genre (user-provided): ${input.genre || "(unspecified)"}
 Similar writers or artists / voice reference (user-provided): ${input.similarArtists || "(none)"}
 ${versionContextSection}
 ${changeSummarySection}
+${canonicalSection}
 ${priorVersionsSection}
 ${regenerationSection}
 

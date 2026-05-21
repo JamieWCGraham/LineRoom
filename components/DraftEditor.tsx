@@ -66,9 +66,13 @@ export type DraftEditorProps = {
   externalMobileToolsTrigger?: boolean;
 };
 
-/** Synthetic overlay: hide glyphs in WebKit (caret stays visible); other engines use caret-color + transparent color. */
-const TEXTAREA_CLASSES =
-  "box-border h-full min-h-[min(50dvh,28rem)] w-full flex-1 resize-none rounded-lg border-0 bg-transparent p-4 max-lg:pl-5 max-lg:pt-8 text-sm font-sans leading-[1.625] whitespace-pre caret-zinc-100 outline-none [touch-action:pan-x_pan-y] overscroll-none [-webkit-text-fill-color:transparent] [color:rgb(244_244_245)] placeholder:text-zinc-500/45 placeholder:[-webkit-text-fill-color:rgb(161_161_170_/_0.45)] sm:min-h-[min(56dvh,32rem)] sm:resize-y lg:min-h-0 lg:text-base";
+/** Base textarea layout; transparent glyph layer is applied after first paint (see `paintReady`). */
+const TEXTAREA_CLASSES_BASE =
+  "box-border h-full min-h-[min(50dvh,28rem)] w-full flex-1 resize-none rounded-lg border-0 bg-transparent p-4 max-lg:pl-5 max-lg:pt-8 text-sm font-sans leading-[1.625] whitespace-pre text-zinc-100 caret-zinc-100 outline-none [touch-action:pan-x_pan-y] overscroll-none placeholder:text-zinc-500/45 sm:min-h-[min(56dvh,32rem)] sm:resize-y lg:min-h-0 lg:text-base";
+
+/** Synthetic overlay: hide glyphs in WebKit once backdrop is mounted (caret stays visible). */
+const TEXTAREA_TRANSPARENT_GLYPHS =
+  "[-webkit-text-fill-color:transparent] [color:rgb(244_244_245)] placeholder:[-webkit-text-fill-color:rgb(161_161_170_/_0.45)]";
 
 type LineHighlightTier = "suggestion" | "promising" | "strong";
 
@@ -134,6 +138,8 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
   const [showHighlights, setShowHighlights] = useState(true);
   const [copyLabel, setCopyLabel] = useState(copyButtonIdleLabel);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  /** Avoid a blank draft pane before the highlight backdrop is painted (textarea glyphs are transparent). */
+  const [paintReady, setPaintReady] = useState(false);
 
   useImperativeHandle(
     ref,
@@ -364,6 +370,7 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
   useLayoutEffect(() => {
     const el = taRef.current;
     if (el) applyBackdropScroll(el);
+    setPaintReady(true);
   }, [value, applyBackdropScroll]);
 
   useLayoutEffect(() => {
@@ -818,7 +825,7 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
               applyFontDelta(-1);
             }
           }}
-          className={`pointer-events-auto relative z-20 flex-1 overflow-auto ${TEXTAREA_CLASSES}`}
+          className={`pointer-events-auto relative z-20 flex-1 overflow-auto ${TEXTAREA_CLASSES_BASE} ${paintReady ? TEXTAREA_TRANSPARENT_GLYPHS : ""}`}
           style={{
             fontSize: `${uiFontSize}px`,
             lineHeight: 1.625,

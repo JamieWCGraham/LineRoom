@@ -93,6 +93,7 @@ async function processOneEvalRow(
   const started = Date.now();
   try {
     const { critique, userContent } = await runCritiqueModel(requestPayload, {
+      skipDraftCritiqueGate: true,
       traceTags: ["lineroom", "critique", "critique-eval-batch"],
       rootObservationName: "lineroom-critique-eval-batch",
       generationName: "lyric-critique-eval-batch",

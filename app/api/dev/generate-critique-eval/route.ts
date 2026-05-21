@@ -147,6 +147,7 @@ export async function POST(req: Request) {
   const started = Date.now();
   try {
     const { critique, userContent } = await runCritiqueModel(requestPayload, {
+      skipDraftCritiqueGate: true,
       traceTags: ["lineroom", "critique", "critique-eval"],
       rootObservationName: "lineroom-critique-eval",
       generationName: "lyric-critique-eval",

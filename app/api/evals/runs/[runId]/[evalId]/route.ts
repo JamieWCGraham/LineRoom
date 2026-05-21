@@ -106,6 +106,7 @@ export async function POST(_req: Request, { params }: Params) {
   let payload: Record<string, unknown>;
   try {
     const { critique, userContent } = await runCritiqueModel(requestPayload, {
+      skipDraftCritiqueGate: true,
       traceTags: ["lineroom", "critique", "critique-eval-retry"],
       rootObservationName: "lineroom-critique-eval-retry",
       generationName: "lyric-critique-eval-retry",

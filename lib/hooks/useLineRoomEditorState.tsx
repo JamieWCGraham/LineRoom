@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -72,6 +73,11 @@ export function useLineRoomEditorState(props: LineRoomEditorProps) {
   const [serverSubRevision, setServerSubRevision] = useState(
     isSong ? props.initialSaveSubRevision : 0,
   );
+
+  const songVersionSyncKey =
+    props.mode === "song" ?
+      `${props.songId}:${props.activeVersionId}`
+    : "local";
 
   const songId = isSong ? props.songId : null;
   const songTitleFromProps = props.mode === "song" ? props.songTitle : null;
@@ -148,6 +154,18 @@ export function useLineRoomEditorState(props: LineRoomEditorProps) {
     setSaveError,
     setCritique,
   });
+
+  useLayoutEffect(() => {
+    if (props.mode !== "song") return;
+    setFullText(props.initialDraftText);
+    setBrainstormText(props.initialBrainstormText);
+    setChatMessages(props.initialChatMessages);
+    setCritique(props.initialCritique);
+    setMeta(props.initialMeta);
+    setPieceTitle(props.songTitle);
+    setServerSubRevision(props.initialSaveSubRevision);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync full server snapshot when song/version changes
+  }, [songVersionSyncKey]);
 
   useEffect(() => {
     if (songTitleFromProps === null) return;
