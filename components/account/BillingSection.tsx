@@ -176,11 +176,27 @@ export function BillingSection({ initialAccess }: Props) {
         </p>
       : null}
 
-      <IosProSubscription
-        hasActiveSubscription={access.hasActiveSubscription}
-        isBypassed={access.isBypassed}
-        onEntitlementUpdated={() => void refetch()}
-      />
+      {!access.isBypassed && !access.hasActiveSubscription && iosShell ?
+        <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-700/60 bg-zinc-900/80 p-4 sm:p-5">
+          <h2 className="text-base font-semibold text-zinc-100">Upgrade to Pro</h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            Unlimited critiques via an auto-renewable App Store subscription.
+          </p>
+          <IosProSubscription
+            hasActiveSubscription={access.hasActiveSubscription}
+            isBypassed={access.isBypassed}
+            onEntitlementUpdated={() => void refetch()}
+            subscribeCtaLabel="Upgrade to Pro"
+            showRequiredLabels
+          />
+        </div>
+      : (
+        <IosProSubscription
+          hasActiveSubscription={access.hasActiveSubscription}
+          isBypassed={access.isBypassed}
+          onEntitlementUpdated={() => void refetch()}
+        />
+      )}
 
       {confirmingCancel ?
         <div className="mt-4 rounded-xl border border-red-900/50 bg-red-950/30 p-4">

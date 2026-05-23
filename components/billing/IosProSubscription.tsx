@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { IosSubscriptionDisclosure } from "@/components/billing/IosSubscriptionDisclosure";
 import { configureIosPurchasePluginValidator } from "@/lib/billing/configure-ios-purchase-validator";
+import {
+  buildIosSubscriptionDisplay,
+  type IosSubscriptionDisplay,
+} from "@/lib/billing/ios-subscription-disclosure";
 import { createClient } from "@/lib/supabase/client";
 import { useIosCapacitorAppLayout } from "@/lib/platform/capacitor-client";
 
@@ -37,6 +42,7 @@ type StoreSnapshot = {
   offerReady: boolean;
   initError: string | null;
   busyMessage: string | null;
+  subscriptionDisplay: IosSubscriptionDisplay | null;
 };
 
 let snapshot: StoreSnapshot = {
@@ -44,7 +50,22 @@ let snapshot: StoreSnapshot = {
   offerReady: false,
   initError: null,
   busyMessage: null,
+  subscriptionDisplay: null,
 };
+
+function refreshSubscriptionDisplay(mod: CdvPurchaseModule): void {
+  if (!productId) return;
+  const { store, Platform } = mod;
+  const product = store.get(productId, Platform.APPLE_APPSTORE);
+  const offer = product?.getOffer();
+  if (!product || !offer) {
+    setSnapshot({ subscriptionDisplay: null });
+    return;
+  }
+  setSnapshot({
+    subscriptionDisplay: buildIosSubscriptionDisplay(product, offer),
+  });
+}
 
 const subscribers = new Set<() => void>();
 
@@ -125,9 +146,14 @@ async function ensureStoreReadySingleton(): Promise<boolean> {
           .when()
           .productUpdated((p) => {
             if (p.id !== productId) return;
-            const ready = Boolean(p.getOffer());
-            if (ready) {
-              setSnapshot({ offerReady: true, initError: null });
+            const offer = p.getOffer();
+            const ready = Boolean(offer);
+            if (ready && offer) {
+              setSnapshot({
+                offerReady: true,
+                initError: null,
+                subscriptionDisplay: buildIosSubscriptionDisplay(p, offer),
+              });
             }
           })
           .approved((t) => {
@@ -174,6 +200,7 @@ async function ensureStoreReadySingleton(): Promise<boolean> {
 
       const ready = offerLoaded(mod);
       if (ready) {
+        refreshSubscriptionDisplay(mod);
         setSnapshot({ offerReady: true, initError: null });
         return true;
       }
@@ -216,12 +243,18 @@ type Props = {
   hasActiveSubscription: boolean;
   isBypassed: boolean;
   onEntitlementUpdated?: () => void;
+  /** Primary purchase button label (Account page uses “Upgrade to Pro”). */
+  subscribeCtaLabel?: string;
+  /** Show Subscription / Length / Price labels (Account billing). */
+  showRequiredLabels?: boolean;
 };
 
 export function IosProSubscription({
   hasActiveSubscription,
   isBypassed,
   onEntitlementUpdated,
+  subscribeCtaLabel = "Subscribe with App Store",
+  showRequiredLabels = false,
 }: Props) {
   const [busy, setBusy] = useState(false);
   const [localMsg, setLocalMsg] = useState<string | null>(null);
@@ -349,7 +382,18 @@ export function IosProSubscription({
   );
 
   return (
-    <div className="mt-4 space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/40 p-4">
+    <div
+      className={
+        showRequiredLabels ?
+          "mt-4 space-y-4"
+        : "mt-4 space-y-4 rounded-lg border border-zinc-800 bg-zinc-950/40 p-4"
+      }
+    >
+      <IosSubscriptionDisclosure
+        display={snap.subscriptionDisplay}
+        loading={!snap.offerReady && !busy}
+        showRequiredLabels={showRequiredLabels}
+      />
       {displayMessage ?
         <p
           className={`text-sm ${isPositive ? "text-emerald-200/90" : "text-rose-200/90"}`}
@@ -362,11 +406,15 @@ export function IosProSubscription({
         <button
           type="button"
           onClick={purchase}
-          disabled={busy}
+          disabled={busy || !snap.offerReady}
           style={{ touchAction: "manipulation" }}
-          className="rounded-lg bg-emerald-700/90 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-600 disabled:opacity-50"
+          className={
+            showRequiredLabels ?
+              "w-full rounded-xl bg-emerald-700/90 px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-600 disabled:opacity-50 sm:w-auto"
+            : "rounded-lg bg-emerald-700/90 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-600 disabled:opacity-50"
+          }
         >
-          {busy ? "Working…" : "Subscribe with App Store"}
+          {busy ? "Working…" : subscribeCtaLabel}
         </button>
         <button
           type="button"
@@ -378,11 +426,6 @@ export function IosProSubscription({
           Restore purchases
         </button>
       </div>
-      {!snap.offerReady && !busy ?
-        <p className="text-[11px] text-zinc-500">
-          Loading subscription details from the App Store…
-        </p>
-      : null}
     </div>
   );
 }

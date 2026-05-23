@@ -88,6 +88,8 @@ export function UpgradeModal({ open, onClose }: Props) {
             <IosProSubscription
               hasActiveSubscription={false}
               isBypassed={false}
+              subscribeCtaLabel="Upgrade to Pro"
+              showRequiredLabels
               onEntitlementUpdated={() => {
                 void (async () => {
                   try {

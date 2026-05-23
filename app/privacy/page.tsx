@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { APPLE_STANDARD_EULA_URL } from "@/lib/legal/urls";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — LineRoom",
@@ -191,6 +192,15 @@ export default function PrivacyPolicyPage() {
         <Link href="/terms" className="text-emerald-500/90 underline">
           Terms of Service
         </Link>
+        {" · "}
+        <a
+          href={APPLE_STANDARD_EULA_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-emerald-500/90 underline"
+        >
+          Terms of Use (EULA)
+        </a>
       </p>
     </div>
   );
