@@ -14,6 +14,18 @@ export function PrefetchDashboardRoutes({ includeEvals }: { includeEvals: boolea
   return null;
 }
 
+/** Prefetch song editor RSC payloads for visible dashboard rows. */
+export function PrefetchDashboardSongs({ songIds }: { songIds: string[] }) {
+  const router = useRouter();
+  const idsKey = songIds.join(",");
+  useEffect(() => {
+    for (const id of songIds) {
+      router.prefetch(`/song/${id}`);
+    }
+  }, [router, idsKey, songIds]);
+  return null;
+}
+
 /** From account, back links go to dashboard and local LineRoom. */
 export function PrefetchAccountNav() {
   const router = useRouter();

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DashboardBackLink } from "@/components/navigation/dashboard-back-link";
 import { UpgradeModal } from "@/components/billing/UpgradeModal";
 import { CritiqueDisplayPanel } from "@/components/CritiqueDisplayPanel";
 import { CritiqueSetupPanel } from "@/components/CritiqueSetupPanel";
@@ -151,9 +152,7 @@ export function LineRoomEditorLayout({
 
             {songProps ? (
               <div className="px-4 pb-6">
-                <Link
-                  href="/"
-                  prefetch
+                <DashboardBackLink
                   className="mt-5 flex min-h-12 items-center rounded-lg px-3 text-sm font-medium text-zinc-200 transition hover:bg-zinc-900/70 active:bg-zinc-800/80"
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -161,7 +160,7 @@ export function LineRoomEditorLayout({
                     <span aria-hidden>←</span>
                     Back to Dashboard
                   </span>
-                </Link>
+                </DashboardBackLink>
                 <div className="mt-5">
                   <div className="flex items-center justify-between gap-3">
                     <button
@@ -325,14 +324,22 @@ export function LineRoomEditorLayout({
               externalMobileToolsTrigger={isSong}
               mobileTopRow={
                 <div className="flex w-full min-w-0 items-center gap-1.5">
-                  <Link
-                    href={isSong ? "/" : "/lineroom"}
-                    prefetch
-                    aria-label={isSong ? "Back to dashboard" : "Back to LineRoom"}
-                    className={MOBILE_DOC_HEADER_BACK_BTN}
-                  >
-                    <span aria-hidden>←</span>
-                  </Link>
+                  {isSong ?
+                    <DashboardBackLink
+                      aria-label="Back to dashboard"
+                      className={MOBILE_DOC_HEADER_BACK_BTN}
+                    >
+                      <span aria-hidden>←</span>
+                    </DashboardBackLink>
+                  : <Link
+                      href="/lineroom"
+                      prefetch
+                      aria-label="Back to LineRoom"
+                      className={MOBILE_DOC_HEADER_BACK_BTN}
+                    >
+                      <span aria-hidden>←</span>
+                    </Link>
+                  }
                   <div className="min-w-0 flex-1 pl-1.5">
                     {songProps ?
                       <SongTitleEditor
@@ -422,14 +429,22 @@ export function LineRoomEditorLayout({
               externalMobileToolsTrigger={isSong}
               mobileTopRow={
                 <div className="flex w-full min-w-0 items-center gap-1.5">
-                  <Link
-                    href={isSong ? "/" : "/lineroom"}
-                    prefetch
-                    aria-label={isSong ? "Back to dashboard" : "Back to LineRoom"}
-                    className={MOBILE_DOC_HEADER_BACK_BTN}
-                  >
-                    <span aria-hidden>←</span>
-                  </Link>
+                  {isSong ?
+                    <DashboardBackLink
+                      aria-label="Back to dashboard"
+                      className={MOBILE_DOC_HEADER_BACK_BTN}
+                    >
+                      <span aria-hidden>←</span>
+                    </DashboardBackLink>
+                  : <Link
+                      href="/lineroom"
+                      prefetch
+                      aria-label="Back to LineRoom"
+                      className={MOBILE_DOC_HEADER_BACK_BTN}
+                    >
+                      <span aria-hidden>←</span>
+                    </Link>
+                  }
                   <div className="min-w-0 flex-1 pl-1.5">
                     {songProps ?
                       <SongTitleEditor

@@ -1,3 +1,4 @@
+import { PrefetchDashboardFromEditor } from "@/components/navigation/prefetch-dashboard-from-editor";
 import { lineroomEditorViewport } from "@/lib/editorViewport";
 
 export const viewport = lineroomEditorViewport;
@@ -9,6 +10,7 @@ export default function SongLayout({
 }>) {
   return (
     <div className="h-dvh min-h-0 overflow-hidden [text-size-adjust:100%] [-webkit-text-size-adjust:100%]">
+      <PrefetchDashboardFromEditor />
       {children}
     </div>
   );

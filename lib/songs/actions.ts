@@ -363,8 +363,6 @@ export async function updateSongVersionState(
 
   const obj = row as Record<string, unknown>;
   if (obj.ok === true && typeof obj.newSubRevision === "number") {
-    revalidatePath("/");
-    revalidatePath(`/song/${songId}`);
     return { ok: true, newSubRevision: obj.newSubRevision };
   }
 
@@ -394,4 +392,9 @@ export async function updateSongVersionState(
   }
 
   return { ok: false, message: "Could not update current version." };
+}
+
+/** Bust dashboard cache when navigating back from the editor (not on every autosave). */
+export async function revalidateDashboardCache(): Promise<void> {
+  revalidatePath("/");
 }

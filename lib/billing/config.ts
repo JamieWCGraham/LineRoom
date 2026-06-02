@@ -10,7 +10,7 @@ export function getAppUrl(): string {
 export function getFreeCritiqueQuota(): number {
   const raw = process.env.FREE_CRITIQUE_QUOTA;
   const n = raw ? Number.parseInt(raw, 10) : Number.NaN;
-  if (!Number.isFinite(n) || n < 0) return 5;
+  if (!Number.isFinite(n) || n < 0) return 25;
   return n;
 }
 

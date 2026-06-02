@@ -24,6 +24,7 @@ import {
   saveNewSongVersion,
   updateSongVersionState,
 } from "@/lib/songs/actions";
+import { scheduleDashboardWarm } from "@/lib/navigation/warmDashboard";
 import { buildAutosavePayloadString } from "@/lib/songs/persist";
 import type {
   ChatMessage,
@@ -103,6 +104,10 @@ export function useLineRoomEditorState(props: LineRoomEditorProps) {
     setMeta,
   });
 
+  const onAutosaveCommitted = useCallback(() => {
+    if (isSong) scheduleDashboardWarm(router);
+  }, [isSong, router]);
+
   const persist = useSongPersist({
     enabled: isSong,
     songId,
@@ -115,6 +120,7 @@ export function useLineRoomEditorState(props: LineRoomEditorProps) {
     critique,
     meta,
     flushTrigger: [layout.mobilePane, layout.lyricDocPane],
+    onAutosaveCommitted,
   });
 
   const priorVersionsContext = useMemo(

@@ -27,6 +27,8 @@ export type UseSongPersistArgs = {
   meta: CritiqueMeta;
   /** Bump when mobile pane / lyric doc pane changes to flush immediately. */
   flushTrigger?: unknown;
+  /** Called after a successful autosave (debounced dashboard warm). */
+  onAutosaveCommitted?: () => void;
 };
 
 export type UseSongPersistResult = {
@@ -60,6 +62,7 @@ export function useSongPersist(args: UseSongPersistArgs): UseSongPersistResult {
     critique,
     meta,
     flushTrigger,
+    onAutosaveCommitted,
   } = args;
 
   const [persistInFlightCount, setPersistInFlightCount] = useState(0);
@@ -225,6 +228,7 @@ export function useSongPersist(args: UseSongPersistArgs): UseSongPersistResult {
           }
         } else {
           setAutosaveError(null);
+          onAutosaveCommitted?.();
         }
       } catch {
         setAutosaveError("Could not reach the server to save.");
@@ -232,7 +236,7 @@ export function useSongPersist(args: UseSongPersistArgs): UseSongPersistResult {
         setPersistInFlightCount((c) => c - 1);
       }
     });
-  }, [enabled, persistSongState]);
+  }, [enabled, onAutosaveCommitted, persistSongState]);
 
   useEffect(() => {
     if (!enabled) return;

@@ -109,7 +109,6 @@ export function PieceRow({
   const menuRef = useRef<HTMLDivElement>(null);
   const [titlePending, startTitleTransition] = useTransition();
   const [deletePending, startDeleteTransition] = useTransition();
-  const [, startNavTransition] = useTransition();
   const busy = titlePending || deletePending;
   const compact = rowLayout === "compact" || rowLayout === "grid";
 
@@ -117,9 +116,8 @@ export function PieceRow({
     setTitle(initialTitle);
   }, [initialTitle]);
 
-  useEffect(() => {
-    router.prefetch(`/song/${songId}`);
-  }, [router, songId]);
+  const songHref = `/song/${songId}`;
+  const warmSongRoute = () => router.prefetch(songHref);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -178,25 +176,6 @@ export function PieceRow({
     });
   };
 
-  const onOpenFromRow = (e: React.MouseEvent<HTMLElement>) => {
-    if (editing) return;
-    const target = e.target as HTMLElement | null;
-    if (target?.closest("button, a, input, select, textarea, [data-piece-menu]")) return;
-    startNavTransition(() => {
-      router.push(`/song/${songId}`);
-    });
-  };
-
-  const onRowKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
-    if (editing) return;
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      startNavTransition(() => {
-        router.push(`/song/${songId}`);
-      });
-    }
-  };
-
   const overflowMenu = !editing ? (
     <div className="relative shrink-0" ref={menuRef} data-piece-menu>
       <button
@@ -219,7 +198,7 @@ export function PieceRow({
           role="menu"
         >
           <Link
-            href={`/song/${songId}`}
+            href={songHref}
             prefetch
             role="menuitem"
             className="block px-3 py-2 text-sm text-zinc-100 hover:bg-zinc-800"
@@ -293,37 +272,36 @@ export function PieceRow({
               </p>
             : null}
           </div>
-        : <div
-            className="flex min-h-[148px] flex-col rounded-xl border border-zinc-800 bg-zinc-900/50 p-3 active:bg-zinc-900"
-            onClick={onOpenFromRow}
-            onKeyDown={onRowKeyDown}
-            role="link"
-            tabIndex={0}
-            aria-label={`Open ${initialTitle}`}
-          >
-            <div className="flex items-start justify-between gap-2">
+        : <>
+            <div className="absolute right-2 top-2 z-10">{overflowMenu}</div>
+            <Link
+              href={songHref}
+              prefetch
+              onPointerEnter={warmSongRoute}
+              className="flex min-h-[148px] flex-col rounded-xl border border-zinc-800 bg-zinc-900/50 p-3 active:bg-zinc-900"
+              aria-label={`Open ${initialTitle}`}
+            >
               <PieceListLogoMark />
-              {overflowMenu}
-            </div>
-            <p className="mt-2 line-clamp-2 text-sm font-medium leading-snug text-zinc-100">
-              {initialTitle}
-            </p>
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              {overallRatingBand ?
-                <span
-                  className={`rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${overallBandClassName(overallRatingBand)}`}
-                >
-                  {overallRatingBand}
-                </span>
-              : null}
-              {typeof latestVersionNumber === "number" ?
-                <span className="rounded-md border border-zinc-700 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
-                  v{latestVersionNumber}
-                </span>
-              : null}
-            </div>
-            <p className="mt-auto pt-2 text-xs text-zinc-500">{formatShortDate(updatedAt)}</p>
-          </div>
+              <p className="mt-2 line-clamp-2 text-sm font-medium leading-snug text-zinc-100">
+                {initialTitle}
+              </p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                {overallRatingBand ?
+                  <span
+                    className={`rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${overallBandClassName(overallRatingBand)}`}
+                  >
+                    {overallRatingBand}
+                  </span>
+                : null}
+                {typeof latestVersionNumber === "number" ?
+                  <span className="rounded-md border border-zinc-700 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
+                    v{latestVersionNumber}
+                  </span>
+                : null}
+              </div>
+              <p className="mt-auto pt-2 text-xs text-zinc-500">{formatShortDate(updatedAt)}</p>
+            </Link>
+          </>
         }
       </li>
     );
@@ -331,14 +309,7 @@ export function PieceRow({
 
   if (rowLayout === "compact") {
     return (
-      <li
-        className="border-b border-zinc-800/90 transition hover:bg-zinc-900/50"
-        onClick={onOpenFromRow}
-        onKeyDown={onRowKeyDown}
-        role="link"
-        tabIndex={editing ? -1 : 0}
-        aria-label={`Open ${initialTitle}`}
-      >
+      <li className="border-b border-zinc-800/90 transition hover:bg-zinc-900/50">
         {editing ?
           <div className="flex flex-col gap-2 px-3 py-3">
             <input
@@ -379,27 +350,35 @@ export function PieceRow({
               </p>
             : null}
           </div>
-        : <div className="flex items-center gap-3 px-3 py-3 pr-1">
-            <PieceListLogoMark />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[15px] font-medium text-zinc-100">{initialTitle}</p>
-              <p className="mt-0.5 text-xs text-zinc-500">{formatShortDate(updatedAt)}</p>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                {overallRatingBand ?
-                  <span
-                    className={`rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${overallBandClassName(overallRatingBand)}`}
-                  >
-                    {overallRatingBand}
-                  </span>
-                : null}
-                {typeof latestVersionNumber === "number" ?
-                  <span className="rounded-md border border-zinc-700 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
-                    v{latestVersionNumber}
-                  </span>
-                : null}
+        : <div className="relative flex items-center">
+            <Link
+              href={songHref}
+              prefetch
+              onPointerEnter={warmSongRoute}
+              className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 pr-12"
+              aria-label={`Open ${initialTitle}`}
+            >
+              <PieceListLogoMark />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[15px] font-medium text-zinc-100">{initialTitle}</p>
+                <p className="mt-0.5 text-xs text-zinc-500">{formatShortDate(updatedAt)}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  {overallRatingBand ?
+                    <span
+                      className={`rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${overallBandClassName(overallRatingBand)}`}
+                    >
+                      {overallRatingBand}
+                    </span>
+                  : null}
+                  {typeof latestVersionNumber === "number" ?
+                    <span className="rounded-md border border-zinc-700 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
+                      v{latestVersionNumber}
+                    </span>
+                  : null}
+                </div>
               </div>
-            </div>
-            {overflowMenu}
+            </Link>
+            <div className="absolute right-1 top-1/2 z-10 -translate-y-1/2">{overflowMenu}</div>
           </div>
         }
       </li>
@@ -407,128 +386,147 @@ export function PieceRow({
   }
 
   return (
-    <li
-      className="px-4 py-4 transition hover:bg-zinc-900/60 hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]"
-      onClick={onOpenFromRow}
-      onKeyDown={onRowKeyDown}
-      role="link"
-      tabIndex={editing ? -1 : 0}
-      aria-label={`Open ${initialTitle}`}
-    >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1">
-          {editing ?
-            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && dirty && !titlePending) {
-                    e.preventDefault();
-                    saveTitle();
-                  }
-                  if (e.key === "Escape") {
-                    e.preventDefault();
-                    cancelEdit();
-                  }
-                }}
-                maxLength={200}
-                className="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-900/80 px-2 py-1.5 text-sm font-medium text-zinc-100 outline-none ring-zinc-500 placeholder:text-zinc-600 focus:ring-2"
-                placeholder="Piece title"
-                autoFocus
-                aria-label="Piece title"
-              />
-              <div className="flex shrink-0 flex-wrap gap-2">
+    <li className="transition hover:bg-zinc-900/60 hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
+      {editing ?
+        <div className="px-4 py-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && dirty && !titlePending) {
+                      e.preventDefault();
+                      saveTitle();
+                    }
+                    if (e.key === "Escape") {
+                      e.preventDefault();
+                      cancelEdit();
+                    }
+                  }}
+                  maxLength={200}
+                  className="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-900/80 px-2 py-1.5 text-sm font-medium text-zinc-100 outline-none ring-zinc-500 placeholder:text-zinc-600 focus:ring-2"
+                  placeholder="Piece title"
+                  autoFocus
+                  aria-label="Piece title"
+                />
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={cancelEdit}
+                    disabled={busy}
+                    className={btnSecondary}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveTitle}
+                    disabled={!dirty || busy}
+                    className={btnPrimary}
+                  >
+                    {titlePending ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          {error ?
+            <p className="mt-2 text-xs text-red-400" role="alert">
+              {error}
+            </p>
+          : null}
+        </div>
+      : <Link
+          href={songHref}
+          prefetch
+          onPointerEnter={warmSongRoute}
+          className="block px-4 py-4"
+          aria-label={`Open ${initialTitle}`}
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 flex-col gap-1">
+                <p className="truncate text-sm font-medium text-zinc-100 underline-offset-2 group-hover:text-white">
+                  {initialTitle}
+                </p>
+                <p className="text-xs text-zinc-500">Updated {formatUpdatedAt(updatedAt)}</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {overallRatingBand ?
+                    <span
+                      className={`rounded-md border px-2 py-0.5 text-[11px] ${overallBandClassName(overallRatingBand)}`}
+                    >
+                      {overallRatingBand}
+                    </span>
+                  : null}
+                  {latestVersionNumber ?
+                    <span className="rounded-md border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-300">
+                      v{latestVersionNumber}
+                    </span>
+                  : null}
+                  {momentumLabel ?
+                    <span
+                      className={`rounded-md border px-2 py-0.5 text-[11px] ${
+                        momentumTone === "up"
+                          ? "border-emerald-900/70 bg-emerald-950/30 text-emerald-200"
+                          : momentumTone === "down"
+                            ? "border-stone-700/80 bg-stone-950/40 text-stone-300"
+                            : "border-zinc-700 text-zinc-300"
+                      }`}
+                    >
+                      {momentumLabel}
+                    </span>
+                  : null}
+                </div>
+                {genres.length > 0 ?
+                  <p className="mt-1 truncate text-[11px] text-zinc-500">
+                    Genres: {genres.join(" · ")}
+                  </p>
+                : null}
+              </div>
+            </div>
+
+            {!compact ?
+              <div
+                className="flex shrink-0 flex-wrap items-center gap-2 sm:pt-0.5"
+                onClick={(e) => e.preventDefault()}
+              >
                 <button
                   type="button"
-                  onClick={cancelEdit}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    beginEdit();
+                  }}
                   disabled={busy}
                   className={btnSecondary}
                 >
-                  Cancel
+                  Rename
                 </button>
                 <button
                   type="button"
-                  onClick={saveTitle}
-                  disabled={!dirty || busy}
-                  className={btnPrimary}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                  disabled={busy}
+                  className={btnDanger}
                 >
-                  {titlePending ? "Saving…" : "Save"}
+                  {deletePending ? "Deleting…" : "Delete"}
                 </button>
               </div>
-            </div>
-          : <div className="flex min-w-0 flex-col gap-1">
-              <Link
-                href={`/song/${songId}`}
-                prefetch
-                className="truncate text-sm font-medium text-zinc-100 underline-offset-2 hover:text-white hover:underline"
-              >
-                {initialTitle}
-              </Link>
-              <p className="text-xs text-zinc-500">Updated {formatUpdatedAt(updatedAt)}</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {overallRatingBand ?
-                  <span
-                    className={`rounded-md border px-2 py-0.5 text-[11px] ${overallBandClassName(overallRatingBand)}`}
-                  >
-                    {overallRatingBand}
-                  </span>
-                : null}
-                {latestVersionNumber ?
-                  <span className="rounded-md border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-300">
-                    v{latestVersionNumber}
-                  </span>
-                : null}
-                {momentumLabel ?
-                  <span
-                    className={`rounded-md border px-2 py-0.5 text-[11px] ${
-                      momentumTone === "up"
-                        ? "border-emerald-900/70 bg-emerald-950/30 text-emerald-200"
-                        : momentumTone === "down"
-                          ? "border-stone-700/80 bg-stone-950/40 text-stone-300"
-                          : "border-zinc-700 text-zinc-300"
-                    }`}
-                  >
-                    {momentumLabel}
-                  </span>
-                : null}
-              </div>
-              {genres.length > 0 ?
-                <p className="mt-1 truncate text-[11px] text-zinc-500">
-                  Genres: {genres.join(" · ")}
-                </p>
-              : null}
-            </div>
-          }
-        </div>
-
-        {!editing && !compact ?
-          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:pt-0.5">
-            <button
-              type="button"
-              onClick={beginEdit}
-              disabled={busy}
-              className={btnSecondary}
-            >
-              Rename
-            </button>
-            <button
-              type="button"
-              onClick={onDelete}
-              disabled={busy}
-              className={btnDanger}
-            >
-              {deletePending ? "Deleting…" : "Delete"}
-            </button>
+            : null}
           </div>
-        : null}
-      </div>
-      {error ?
-        <p className="mt-2 text-xs text-red-400" role="alert">
-          {error}
-        </p>
-      : null}
+          {error ?
+            <p className="mt-2 text-xs text-red-400" role="alert">
+              {error}
+            </p>
+          : null}
+        </Link>
+      }
     </li>
   );
 }

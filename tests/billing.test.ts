@@ -16,7 +16,7 @@ describe("billing config", () => {
 
   it("defaults quota when invalid", () => {
     vi.stubEnv("FREE_CRITIQUE_QUOTA", "nope");
-    expect(getFreeCritiqueQuota()).toBe(5);
+    expect(getFreeCritiqueQuota()).toBe(25);
   });
 
   it("detects bypass emails case-insensitively", () => {

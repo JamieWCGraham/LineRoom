@@ -1,16 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { APP_TAGLINE, AppBrandLogo } from "@/components/app-brand";
+import { DashboardBackLink } from "@/components/navigation/dashboard-back-link";
+import { prefetchDashboard } from "@/lib/navigation/warmDashboard";
 
 export function Header(props: { showDashboardLink?: boolean }) {
   const router = useRouter();
 
   useEffect(() => {
     if (!props.showDashboardLink) return;
-    router.prefetch("/");
+    prefetchDashboard(router);
     router.prefetch("/account");
     router.prefetch("/lineroom");
   }, [props.showDashboardLink, router]);
@@ -28,13 +29,11 @@ export function Header(props: { showDashboardLink?: boolean }) {
           <p className="mt-0.5 text-xs text-zinc-500">{APP_TAGLINE}</p>
         </div>
         {props.showDashboardLink ?
-          <Link
-            href="/"
-            prefetch
+          <DashboardBackLink
             className="shrink-0 rounded-md border border-zinc-700 bg-zinc-800/80 px-3 py-1.5 text-sm font-medium text-zinc-100 shadow-sm transition hover:border-zinc-500 hover:bg-zinc-700/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
           >
             Back to Dashboard
-          </Link>
+          </DashboardBackLink>
         : null}
       </div>
     </header>
