@@ -61,7 +61,7 @@ export function NewPieceButton({ variant = "default" }: { variant?: Variant }) {
         disabled={pending}
         className="rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {pending ? "Creating..." : "New piece"}
+        {pending ? "Creating..." : "+ New piece"}
       </button>
       {error ? <p className="text-xs text-red-300">{error}</p> : null}
     </div>

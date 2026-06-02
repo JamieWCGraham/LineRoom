@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PiecesBrowser } from "@/components/dashboard/pieces-browser";
-import { NewPieceButton } from "@/components/dashboard/new-piece-button";
+import { DashboardSectionHeading } from "@/components/dashboard/dashboard-section-heading";
+import { PieceListLogoMark } from "@/components/dashboard/piece-list-logo-mark";
 import { PrefetchDashboardSongs } from "@/components/navigation/route-prefetch";
 import type { DashboardSong } from "@/lib/songs/dashboardSongs";
 
@@ -26,6 +27,26 @@ function overallBandClassName(band: string): string {
   return "border-zinc-700 text-zinc-300";
 }
 
+function PencilIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden
+    >
+      <path
+        d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 type Props = {
   songs: DashboardSong[];
   email: string;
@@ -40,73 +61,69 @@ export function DashboardPieces({ songs, email, showEvalsNav }: Props) {
       <PrefetchDashboardSongs songIds={songs.map((s) => s.id)} />
       {continueSongs.length > 0 ?
         <section className="mt-8 hidden md:block">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
-            Continue working on
-          </h2>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {continueSongs.map((song) => (
-              <Link
-                key={song.id}
-                href={`/song/${song.id}`}
-                prefetch
-                className="group rounded-xl border border-zinc-700/70 bg-zinc-900/80 px-5 py-4 shadow-[0_0_0_1px_rgba(255,255,255,0.02)] transition duration-200 hover:-translate-y-0.5 hover:border-zinc-500 hover:shadow-[0_0_0_1px_rgba(120,119,198,0.22),0_0_24px_rgba(99,102,241,0.12)]"
+          <DashboardSectionHeading
+            title="Continue Working"
+            action={
+              <a
+                href="#your-pieces"
+                className="text-sm font-medium text-emerald-400 transition hover:text-emerald-300"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <p className="truncate text-base font-semibold text-zinc-100">
+                View all pieces →
+              </a>
+            }
+          />
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+            {continueSongs.map((song) => (
+              <article
+                key={song.id}
+                className="flex min-w-0 flex-col gap-4 rounded-xl border border-zinc-800/80 bg-zinc-900/50 p-4 md:flex-row md:items-center"
+              >
+                <PieceListLogoMark variant="featured" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-lg font-semibold text-zinc-100">
                     {song.title}
                   </p>
-                  <span className="rounded-md border border-zinc-600 px-2 py-0.5 text-[11px] font-medium text-zinc-300 group-hover:border-zinc-500 group-hover:text-zinc-100">
-                    Resume
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-zinc-500">
-                  Updated {formatUpdatedAt(song.updated_at)}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {song.overallRatingBand ?
-                    <span
-                      className={`rounded-md border px-2 py-0.5 text-[11px] ${overallBandClassName(song.overallRatingBand)}`}
-                    >
-                      {song.overallRatingBand}
-                    </span>
-                  : null}
-                  {song.latestVersionNumber ?
-                    <span className="rounded-md border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-300">
-                      v{song.latestVersionNumber}
-                    </span>
-                  : null}
-                  {song.momentumLabel ?
-                    <span
-                      className={`rounded-md border px-2 py-0.5 text-[11px] ${
-                        song.momentumTone === "up"
-                          ? "border-emerald-900/70 bg-emerald-950/30 text-emerald-200"
-                          : song.momentumTone === "down"
-                            ? "border-stone-700/80 bg-stone-950/40 text-stone-300"
-                            : "border-zinc-700 text-zinc-300"
-                      }`}
-                    >
-                      {song.momentumLabel}
-                    </span>
-                  : null}
-                </div>
-                {song.genres.length > 0 ?
-                  <p className="mt-2 truncate text-[11px] text-zinc-500">
-                    Genres: {song.genres.join(" · ")}
+                  <p className="mt-0.5 text-xs text-zinc-500">
+                    Updated {formatUpdatedAt(song.updated_at)}
                   </p>
-                : null}
-              </Link>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {song.overallRatingBand ?
+                      <span
+                        className={`rounded-md border px-2 py-0.5 text-[11px] font-medium ${overallBandClassName(song.overallRatingBand)}`}
+                      >
+                        {song.overallRatingBand}
+                      </span>
+                    : null}
+                    {song.latestVersionNumber ?
+                      <span className="rounded-md border border-zinc-700 px-2 py-0.5 text-[11px] font-medium text-zinc-300">
+                        v{song.latestVersionNumber}
+                      </span>
+                    : null}
+                  </div>
+                  {song.genres.length > 0 ?
+                    <p className="mt-2 truncate text-xs text-zinc-500">
+                      Genres: {song.genres.join(" · ")}
+                    </p>
+                  : null}
+                </div>
+                <Link
+                  href={`/song/${song.id}`}
+                  prefetch
+                  className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-600 md:self-center"
+                >
+                  <PencilIcon />
+                  Open draft
+                </Link>
+              </article>
             ))}
           </div>
         </section>
       : null}
 
-      <section className="mt-0 px-4 pb-8 md:mt-10 md:px-0 md:pb-0">
-        <div className="mb-3 hidden flex-wrap items-center gap-2 sm:gap-3 md:flex">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
-            Your pieces
-          </h2>
-          <NewPieceButton />
-        </div>
+      <section
+        id="your-pieces"
+        className="mt-0 scroll-mt-8 px-4 pb-8 md:mt-10 md:px-0 md:pb-0"
+      >
         <PiecesBrowser songs={songs} mobileNav={{ email, showEvalsNav }} />
       </section>
     </>

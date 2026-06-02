@@ -59,6 +59,36 @@ export function relativeTimeFromNow(value: string): string {
   return `${weeks}w ago`;
 }
 
+export type DashboardStats = {
+  totalPieces: number;
+  standoutPieces: number;
+  lastActivity: string;
+};
+
+/** Derives hero stat cards from the already-loaded dashboard song list. */
+export function computeDashboardStats(songs: DashboardSong[]): DashboardStats {
+  let lastUpdatedMs = 0;
+  let standoutPieces = 0;
+  for (const song of songs) {
+    const t = new Date(song.updated_at).getTime();
+    if (!Number.isNaN(t) && t > lastUpdatedMs) lastUpdatedMs = t;
+    if (song.overallRatingBand === "Standout") standoutPieces += 1;
+  }
+  const lastActivityRaw =
+    lastUpdatedMs > 0
+      ? relativeTimeFromNow(new Date(lastUpdatedMs).toISOString())
+      : "";
+  const lastActivity =
+    lastActivityRaw === "just now"
+      ? "Just now"
+      : lastActivityRaw || "—";
+  return {
+    totalPieces: songs.length,
+    standoutPieces,
+    lastActivity,
+  };
+}
+
 export function getMomentum(
   latestBand: string | null,
   priorBand: string | null,

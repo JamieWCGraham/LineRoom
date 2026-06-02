@@ -1,16 +1,23 @@
 import Link from "next/link";
 import { AppBrandLogo } from "@/components/app-brand";
-import { DashboardChrome } from "@/components/dashboard/dashboard-chrome";
+import {
+  DashboardChrome,
+  DashboardFooter,
+} from "@/components/dashboard/dashboard-chrome";
 import { DashboardPieces } from "@/components/dashboard/dashboard-pieces-async";
 import {
   PrefetchDashboardRoutes,
   PrefetchPublicLandingAuth,
 } from "@/components/navigation/route-prefetch";
 import { LandingLyricPreview } from "@/components/LandingLyricPreview";
-import { normalizeAuthUserToProfile } from "@/lib/auth/profile";
+import { resolveDisplayName } from "@/lib/auth/display-name";
+import { ensureProfile, normalizeAuthUserToProfile } from "@/lib/auth/profile";
 import { getAuthUser } from "@/lib/auth/guards";
 import { isBillingBypassed } from "@/lib/billing/config";
-import { loadDashboardSongs } from "@/lib/songs/dashboardSongs";
+import {
+  computeDashboardStats,
+  loadDashboardSongs,
+} from "@/lib/songs/dashboardSongs";
 import { createClient } from "@/lib/supabase/server";
 
 type Props = {
@@ -130,17 +137,41 @@ export default async function HomePage({ searchParams }: Props) {
   const { email } = normalizeAuthUserToProfile(user);
   const showEvalsNav = isBillingBypassed(email);
   const q = await searchParams;
-  const songs = await loadDashboardSongs(supabase, user.id);
+
+  const [songs, profileResult] = await Promise.all([
+    loadDashboardSongs(supabase, user.id),
+    supabase
+      .from("profiles")
+      .select("display_name, username")
+      .eq("id", user.id)
+      .maybeSingle(),
+  ]);
+
+  let profile = profileResult.data;
+  if (!profile) {
+    await ensureProfile(supabase, user);
+    const again = await supabase
+      .from("profiles")
+      .select("display_name, username")
+      .eq("id", user.id)
+      .maybeSingle();
+    profile = again.data;
+  }
+
+  const displayName = resolveDisplayName(profile, user);
+  const stats = computeDashboardStats(songs);
 
   return (
-    <div className="mx-auto min-h-dvh w-full max-w-5xl bg-zinc-950 md:min-h-0 md:bg-transparent md:px-4 md:py-12">
+    <div className="mx-auto min-h-dvh w-full max-w-5xl bg-zinc-950 md:min-h-0 md:max-w-7xl md:bg-transparent md:px-6 md:py-12 lg:max-w-[88rem] lg:px-8">
       <PrefetchDashboardRoutes includeEvals={showEvalsNav} />
       <DashboardChrome
-        email={email}
+        displayName={displayName}
+        stats={stats}
         showEvalsNav={showEvalsNav}
         createError={q.createError === "1"}
       />
       <DashboardPieces songs={songs} email={email} showEvalsNav={showEvalsNav} />
+      <DashboardFooter />
     </div>
   );
 }

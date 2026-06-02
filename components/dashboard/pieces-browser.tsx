@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { DashboardSectionHeading } from "@/components/dashboard/dashboard-section-heading";
+import { DASHBOARD_TABLE_GRID } from "@/components/dashboard/dashboard-table";
 import { NewPieceButton } from "@/components/dashboard/new-piece-button";
 import { PieceRow, type PieceRowLayout } from "@/components/dashboard/piece-row";
 import { useIsMdUp } from "@/lib/hooks/use-media-query";
@@ -182,7 +184,14 @@ export function PiecesBrowser({ songs, mobileNav }: Props) {
     mobileNav?.email?.trim()?.charAt(0)?.toUpperCase() ?? "";
 
   return (
-    <div className="md:mt-4 md:space-y-4">
+    <div className="md:space-y-4">
+      <div className="mb-1 hidden md:block">
+        <DashboardSectionHeading
+          title="Your Pieces"
+          action={<NewPieceButton />}
+        />
+      </div>
+
       {/* Mobile: sticky chrome */}
       <div className="sticky top-0 z-20 -mx-4 space-y-2 border-b border-zinc-800/80 bg-zinc-950 px-4 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))] md:hidden">
         <div className="flex items-center gap-2 rounded-2xl bg-zinc-800/90 px-2 py-2 shadow-inner shadow-black/20">
@@ -332,22 +341,27 @@ export function PiecesBrowser({ songs, mobileNav }: Props) {
         </div>
       : null}
 
-      {/* Desktop filters */}
+      {/* Desktop toolbar */}
       {songs.length > 0 ?
-        <div className="hidden gap-3 rounded-lg border border-zinc-800 bg-zinc-900/30 p-3 md:grid md:grid-cols-3">
-          <label className="flex flex-col gap-1 text-xs text-zinc-400">
-            Search
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Find a lyric, phrase, or title..."
-              className={`${controlClassName} py-0 placeholder:text-zinc-500`}
-              aria-label="Search pieces by title"
-            />
+        <div className="hidden gap-3 md:grid md:grid-cols-[1fr_auto_auto] md:items-end">
+          <label className="flex min-w-0 flex-col gap-1 text-xs text-zinc-500">
+            <span className="sr-only">Search</span>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
+                <SearchIcon />
+              </span>
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search lyrics, phrases, or titles..."
+                className={`${controlClassName} w-full py-0 pl-9 placeholder:text-zinc-500`}
+                aria-label="Search pieces"
+              />
+            </div>
           </label>
 
-          <label className="flex flex-col gap-1 text-xs text-zinc-400">
+          <label className="flex w-36 flex-col gap-1 text-xs text-zinc-500">
             Filter
             <select
               value={filterMode}
@@ -356,13 +370,13 @@ export function PiecesBrowser({ songs, mobileNav }: Props) {
               aria-label="Filter pieces by updated time"
             >
               <option value="all">All time</option>
-              <option value="updated_7d">Updated in last 7 days</option>
-              <option value="updated_30d">Updated in last 30 days</option>
+              <option value="updated_7d">Last 7 days</option>
+              <option value="updated_30d">Last 30 days</option>
               <option value="older">Older than 30 days</option>
             </select>
           </label>
 
-          <label className="flex flex-col gap-1 text-xs text-zinc-400">
+          <label className="flex w-44 flex-col gap-1 text-xs text-zinc-500">
             Sort
             <select
               value={sortMode}
@@ -384,10 +398,51 @@ export function PiecesBrowser({ songs, mobileNav }: Props) {
           {emptyMessage}
         </p>
       : <>
+          <div
+            className={
+              isMdUp ? "hidden rounded-lg border border-zinc-800 md:block" : "hidden"
+            }
+          >
+            <div
+              className={`${DASHBOARD_TABLE_GRID} border-b border-zinc-800 px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-zinc-500`}
+              role="row"
+            >
+              <span role="columnheader">Title</span>
+              <span role="columnheader" className="flex items-center gap-1">
+                Updated
+                {sortMode === "updated_desc" ?
+                  <span className="text-zinc-400" aria-hidden>
+                    ↓
+                  </span>
+                : null}
+              </span>
+              <span role="columnheader">Tags</span>
+              <span role="columnheader">Genre</span>
+              <span role="columnheader" className="text-right">
+                Actions
+              </span>
+            </div>
+            <ul className="divide-y divide-zinc-800">
+              {songsForPage.map((s) => (
+                <PieceRow
+                  key={s.id}
+                  songId={s.id}
+                  initialTitle={s.title}
+                  updatedAt={s.updated_at}
+                  latestVersionNumber={s.latestVersionNumber}
+                  overallRatingBand={s.overallRatingBand}
+                  momentumLabel={s.momentumLabel}
+                  momentumTone={s.momentumTone}
+                  genres={s.genres}
+                  rowLayout={rowLayout}
+                />
+              ))}
+            </ul>
+          </div>
           <ul
             className={
               isMdUp ?
-                "divide-y divide-zinc-800 rounded-lg border border-zinc-800"
+                "hidden"
               : mobileGrid ?
                 "grid list-none grid-cols-2 gap-3 px-0 pb-28 pt-1"
               : "list-none pb-28 pt-0"

@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { DASHBOARD_TABLE_GRID } from "@/components/dashboard/dashboard-table";
+import { PieceListLogoMark } from "@/components/dashboard/piece-list-logo-mark";
 import { deleteSong, updateSongTitle } from "@/lib/songs/actions";
-import logoAsset from "@/lib/logos/logo.png";
 
 export type PieceRowLayout = "expanded" | "compact" | "grid";
 
@@ -63,23 +63,6 @@ function overallBandClassName(band: string): string {
   return "border-zinc-700 text-zinc-300";
 }
 
-function PieceListLogoMark({ className }: { className?: string }) {
-  return (
-    <span
-      className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zinc-700/70 bg-gradient-to-br from-zinc-800 to-emerald-950/45 ${className ?? ""}`}
-      aria-hidden
-    >
-      <Image
-        src={logoAsset}
-        alt=""
-        width={28}
-        height={28}
-        className="h-7 w-7 object-contain"
-      />
-    </span>
-  );
-}
-
 function OverflowMenuIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -110,7 +93,6 @@ export function PieceRow({
   const [titlePending, startTitleTransition] = useTransition();
   const [deletePending, startDeleteTransition] = useTransition();
   const busy = titlePending || deletePending;
-  const compact = rowLayout === "compact" || rowLayout === "grid";
 
   useEffect(() => {
     setTitle(initialTitle);
@@ -385,52 +367,51 @@ export function PieceRow({
     );
   }
 
+  const genreLabel =
+    genres.length > 0 ? genres.join(" · ") : "—";
+
   return (
-    <li className="transition hover:bg-zinc-900/60 hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
+    <li className="transition hover:bg-zinc-900/60">
       {editing ?
         <div className="px-4 py-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0 flex-1">
-              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && dirty && !titlePending) {
-                      e.preventDefault();
-                      saveTitle();
-                    }
-                    if (e.key === "Escape") {
-                      e.preventDefault();
-                      cancelEdit();
-                    }
-                  }}
-                  maxLength={200}
-                  className="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-900/80 px-2 py-1.5 text-sm font-medium text-zinc-100 outline-none ring-zinc-500 placeholder:text-zinc-600 focus:ring-2"
-                  placeholder="Piece title"
-                  autoFocus
-                  aria-label="Piece title"
-                />
-                <div className="flex shrink-0 flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={cancelEdit}
-                    disabled={busy}
-                    className={btnSecondary}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={saveTitle}
-                    disabled={!dirty || busy}
-                    className={btnPrimary}
-                  >
-                    {titlePending ? "Saving…" : "Save"}
-                  </button>
-                </div>
-              </div>
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && dirty && !titlePending) {
+                  e.preventDefault();
+                  saveTitle();
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  cancelEdit();
+                }
+              }}
+              maxLength={200}
+              className="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-900/80 px-2 py-1.5 text-sm font-medium text-zinc-100 outline-none ring-zinc-500 placeholder:text-zinc-600 focus:ring-2"
+              placeholder="Piece title"
+              autoFocus
+              aria-label="Piece title"
+            />
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={cancelEdit}
+                disabled={busy}
+                className={btnSecondary}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={saveTitle}
+                disabled={!dirty || busy}
+                className={btnPrimary}
+              >
+                {titlePending ? "Saving…" : "Save"}
+              </button>
             </div>
           </div>
           {error ?
@@ -439,93 +420,71 @@ export function PieceRow({
             </p>
           : null}
         </div>
-      : <Link
-          href={songHref}
-          prefetch
-          onPointerEnter={warmSongRoute}
-          className="block px-4 py-4"
-          aria-label={`Open ${initialTitle}`}
-        >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0 flex-1">
-              <div className="flex min-w-0 flex-col gap-1">
-                <p className="truncate text-sm font-medium text-zinc-100 underline-offset-2 group-hover:text-white">
-                  {initialTitle}
-                </p>
-                <p className="text-xs text-zinc-500">Updated {formatUpdatedAt(updatedAt)}</p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {overallRatingBand ?
-                    <span
-                      className={`rounded-md border px-2 py-0.5 text-[11px] ${overallBandClassName(overallRatingBand)}`}
-                    >
-                      {overallRatingBand}
-                    </span>
-                  : null}
-                  {latestVersionNumber ?
-                    <span className="rounded-md border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-300">
-                      v{latestVersionNumber}
-                    </span>
-                  : null}
-                  {momentumLabel ?
-                    <span
-                      className={`rounded-md border px-2 py-0.5 text-[11px] ${
-                        momentumTone === "up"
-                          ? "border-emerald-900/70 bg-emerald-950/30 text-emerald-200"
-                          : momentumTone === "down"
-                            ? "border-stone-700/80 bg-stone-950/40 text-stone-300"
-                            : "border-zinc-700 text-zinc-300"
-                      }`}
-                    >
-                      {momentumLabel}
-                    </span>
-                  : null}
-                </div>
-                {genres.length > 0 ?
-                  <p className="mt-1 truncate text-[11px] text-zinc-500">
-                    Genres: {genres.join(" · ")}
-                  </p>
-                : null}
-              </div>
-            </div>
-
-            {!compact ?
-              <div
-                className="flex shrink-0 flex-wrap items-center gap-2 sm:pt-0.5"
-                onClick={(e) => e.preventDefault()}
+      : <div className={`${DASHBOARD_TABLE_GRID} px-4 py-3.5`}>
+          <div className="min-w-0">
+            <Link
+              href={songHref}
+              prefetch
+              onPointerEnter={warmSongRoute}
+              className="flex min-w-0 items-center gap-2 text-sm font-medium text-zinc-100 hover:text-white"
+            >
+              <PieceListLogoMark size="sm" />
+              <span className="truncate">{initialTitle}</span>
+            </Link>
+          </div>
+          <p className="text-xs text-zinc-500">{formatUpdatedAt(updatedAt)}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {overallRatingBand ?
+              <span
+                className={`rounded-md border px-2 py-0.5 text-[11px] ${overallBandClassName(overallRatingBand)}`}
               >
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    beginEdit();
-                  }}
-                  disabled={busy}
-                  className={btnSecondary}
-                >
-                  Rename
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onDelete();
-                  }}
-                  disabled={busy}
-                  className={btnDanger}
-                >
-                  {deletePending ? "Deleting…" : "Delete"}
-                </button>
-              </div>
+                {overallRatingBand}
+              </span>
+            : null}
+            {latestVersionNumber ?
+              <span className="rounded-md border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-300">
+                v{latestVersionNumber}
+              </span>
+            : null}
+            {momentumLabel ?
+              <span
+                className={`rounded-md border px-2 py-0.5 text-[11px] ${
+                  momentumTone === "up"
+                    ? "border-emerald-900/70 bg-emerald-950/30 text-emerald-200"
+                    : momentumTone === "down"
+                      ? "border-stone-700/80 bg-stone-950/40 text-stone-300"
+                      : "border-zinc-700 text-zinc-300"
+                }`}
+              >
+                {momentumLabel}
+              </span>
             : null}
           </div>
+          <p className="truncate text-xs text-zinc-500">{genreLabel}</p>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={beginEdit}
+              disabled={busy}
+              className={btnSecondary}
+            >
+              Rename
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={busy}
+              className={btnDanger}
+            >
+              {deletePending ? "Deleting…" : "Delete"}
+            </button>
+          </div>
           {error ?
-            <p className="mt-2 text-xs text-red-400" role="alert">
+            <p className="col-span-full text-xs text-red-400" role="alert">
               {error}
             </p>
           : null}
-        </Link>
+        </div>
       }
     </li>
   );
