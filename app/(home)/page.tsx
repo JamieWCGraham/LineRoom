@@ -13,7 +13,7 @@ import { LandingLyricPreview } from "@/components/LandingLyricPreview";
 import { resolveDisplayName } from "@/lib/auth/display-name";
 import { ensureProfile, normalizeAuthUserToProfile } from "@/lib/auth/profile";
 import { getAuthUser } from "@/lib/auth/guards";
-import { isBillingBypassed } from "@/lib/billing/config";
+import { hasEvalsAccess } from "@/lib/evals/access";
 import {
   computeDashboardStats,
   loadDashboardSongs,
@@ -135,7 +135,7 @@ export default async function HomePage({ searchParams }: Props) {
     );
   }
   const { email } = normalizeAuthUserToProfile(user);
-  const showEvalsNav = isBillingBypassed(email);
+  const showEvalsNav = hasEvalsAccess(email);
   const q = await searchParams;
 
   const [songs, profileResult] = await Promise.all([

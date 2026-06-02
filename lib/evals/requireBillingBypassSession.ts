@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { normalizeAuthUserToProfile } from "@/lib/auth/profile";
-import { isBillingBypassed } from "@/lib/billing/config";
+import { hasEvalsAccess } from "@/lib/evals/access";
 import { createClient } from "@/lib/supabase/server";
 
 export async function requireBillingBypassSession(): Promise<
@@ -18,7 +18,7 @@ export async function requireBillingBypassSession(): Promise<
     };
   }
   const { email } = normalizeAuthUserToProfile(user);
-  if (!isBillingBypassed(email)) {
+  if (!hasEvalsAccess(email)) {
     return {
       ok: false,
       response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),

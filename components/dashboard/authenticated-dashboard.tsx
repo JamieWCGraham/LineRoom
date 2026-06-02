@@ -3,7 +3,7 @@ import { AppBrandDash } from "@/components/app-brand";
 import { NewPieceButton } from "@/components/dashboard/new-piece-button";
 import { PiecesBrowser } from "@/components/dashboard/pieces-browser";
 import { SignOutButton } from "@/components/auth/sign-out-button";
-import { isBillingBypassed } from "@/lib/billing/config";
+import { hasEvalsAccess } from "@/lib/evals/access";
 import { loadDashboardSongs, type DashboardSong } from "@/lib/songs/dashboardSongs";
 import { createClient } from "@/lib/supabase/server";
 
@@ -45,7 +45,7 @@ export async function AuthenticatedDashboard({
   const supabase = await createClient();
   const songs = await loadDashboardSongs(supabase, userId);
   const continueSongs = songs.slice(0, 2);
-  const showEvalsNav = isBillingBypassed(email);
+  const showEvalsNav = hasEvalsAccess(email);
 
   return (
     <div className="mx-auto min-h-dvh w-full max-w-5xl bg-zinc-950 md:min-h-0 md:bg-transparent md:px-4 md:py-12">

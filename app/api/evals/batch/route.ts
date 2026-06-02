@@ -9,7 +9,7 @@ export const maxDuration = 300;
  * Starts an async full-table critique eval run. Writes to Supabase Storage
  * bucket (default `line-room-evals`): `{runTimestamp}/{evalSetId}/output.json`.
  *
- * Allowed only for sessions whose email is in `BILLING_BYPASS_EMAILS`.
+ * Allowed only for sessions whose email has evals access (`EVALS_ACCESS_EMAILS`).
  */
 export async function POST() {
   const gate = await requireBillingBypassSession();

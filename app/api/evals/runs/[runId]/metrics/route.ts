@@ -8,7 +8,7 @@ type Params = { params: Promise<{ runId: string }> };
  * Exact-match accuracy: LLM `critique.overallRatingBand` vs table `overall_score`
  * for each row in `generate_critique_eval_set` that has a stored `output.json` for this run.
  *
- * Requires session email in `BILLING_BYPASS_EMAILS`.
+ * Requires session email in `EVALS_ACCESS_EMAILS` (or default allowlist).
  */
 export async function GET(_req: Request, { params }: Params) {
   const gate = await requireBillingBypassSession();

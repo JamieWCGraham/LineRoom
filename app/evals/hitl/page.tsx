@@ -4,7 +4,7 @@ import { AppBrandDash } from "@/components/app-brand";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { EvalsHitlClient } from "@/components/evals/evals-hitl-client";
 import { normalizeAuthUserToProfile } from "@/lib/auth/profile";
-import { isBillingBypassed } from "@/lib/billing/config";
+import { hasEvalsAccess } from "@/lib/evals/access";
 import { getAuthUser } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 
@@ -14,7 +14,7 @@ export default async function EvalsHitlPage() {
   if (!user) redirect("/login");
 
   const { email } = normalizeAuthUserToProfile(user);
-  if (!isBillingBypassed(email)) redirect("/");
+  if (!hasEvalsAccess(email)) redirect("/");
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-12">
