@@ -3,6 +3,8 @@ import { getCritiqueAccessForUser } from "@/lib/billing/access";
 import { getFreeCritiqueQuota } from "@/lib/billing/config";
 import type { CritiqueAccessState } from "@/lib/billing/types";
 import { getAuthUser } from "@/lib/auth/guards";
+import { normalizeAuthUserToProfile } from "@/lib/auth/profile";
+import type { LangfuseTraceUser } from "@/lib/langfuse-server";
 import {
   isDraftCritiqueGateEnabled,
 } from "@/lib/critique/draftCritiqueGateConfig";
@@ -15,6 +17,21 @@ import { runCritiqueModel } from "@/lib/critique/runCritiqueModel";
 import type { CritiqueResult } from "@/lib/types";
 import { critiqueRequestSchema } from "@/lib/validators";
 import { createClient } from "@/lib/supabase/server";
+
+function buildCritiqueTraceUser(
+  user: NonNullable<Awaited<ReturnType<typeof getAuthUser>>>,
+  profile: { display_name: string | null; email: string | null } | null,
+): LangfuseTraceUser {
+  const normalized = normalizeAuthUserToProfile(user);
+  return {
+    userId: user.id,
+    email: profile?.email?.trim() || normalized.email || user.email || undefined,
+    displayName:
+      profile?.display_name?.trim() ||
+      normalized.display_name ||
+      undefined,
+  };
+}
 
 function paywallResponse(access: CritiqueAccessState) {
   return NextResponse.json(
@@ -90,9 +107,16 @@ export async function POST(req: Request) {
         supabase.rpc("reserve_free_critique_slot", { p_quota: freeQuota })
       : Promise.resolve({ data: true, error: null });
 
-    const [gateLookup, reserveResult] = await Promise.all([
+    const profilePromise = supabase
+      .from("profiles")
+      .select("display_name, email")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const [gateLookup, reserveResult, profileResult] = await Promise.all([
       gateLookupPromise,
       reservePromise,
+      profilePromise,
     ]);
 
     if (needsSlot) {
@@ -112,10 +136,14 @@ export async function POST(req: Request) {
     }
 
     const gateContext = toGateContext(gateLookup, gateEnabled);
+    const traceUser = buildCritiqueTraceUser(user, profileResult.data);
 
     let critique: CritiqueResult;
     try {
-      ({ critique } = await runCritiqueModel(payload, { gate: gateContext }));
+      ({ critique } = await runCritiqueModel(payload, {
+        gate: gateContext,
+        traceUser,
+      }));
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unknown error";
       if (message === "AI_GATEWAY_API_KEY is not set") {

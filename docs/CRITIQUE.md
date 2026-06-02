@@ -89,7 +89,7 @@ Version-related fields **`analyzedSongVersion`**, **`priorSongVersionCompared`**
 
 ## Observability
 
-When Langfuse env vars are set, the route runs inside `runWithLangfuseTrace` with trace name **LineRoom**, observation **lineroom-critique**, generation name **lyric-critique**, and tags `lineroom`, `critique`. Trace input/output are set to the **validated** request payload and final critique object. `scheduleLangfuseFlush` uses Next.js `after()` so spans flush on serverless deployments.
+When Langfuse env vars are set, the route runs inside `runWithLangfuseTrace` with trace name **LineRoom**, observation **lineroom-critique**, generation name **lyric-critique**, and tags `lineroom`, `critique`. The authenticated user’s Supabase id is set as Langfuse `userId`; `displayName` and `email` metadata come from `profiles` (with auth-metadata fallback for display name). Trace input/output are set to the **validated** request payload and final critique object. `scheduleLangfuseFlush` uses Next.js `after()` so spans flush on serverless deployments.
 
 ## Design choices (summary)
 

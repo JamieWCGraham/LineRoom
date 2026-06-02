@@ -67,10 +67,22 @@ const paywalledAccess: CritiqueAccessState = {
   subscriptionBillingProvider: null,
 };
 
-function mockSupabase() {
+function mockSupabase(profile: { display_name: string | null; email: string | null } | null = null) {
+  const profileMaybeSingle = vi
+    .fn()
+    .mockResolvedValue({ data: profile, error: null });
+  const profileEq = vi.fn().mockReturnValue({ maybeSingle: profileMaybeSingle });
+  const profileSelect = vi.fn().mockReturnValue({ eq: profileEq });
+  const from = vi.fn().mockImplementation((table: string) => {
+    if (table === "profiles") {
+      return { select: profileSelect };
+    }
+    throw new Error(`Unexpected table: ${table}`);
+  });
   const supabase = {
     auth: { getUser: vi.fn() },
     rpc: vi.fn(),
+    from,
   };
   mockCreateClient.mockResolvedValue(supabase);
   return supabase;
@@ -199,7 +211,14 @@ describe("POST /api/critique", () => {
     expect(mockLookupDraftCritiqueRegistry).toHaveBeenCalled();
     expect(mockRunCritiqueModel).toHaveBeenCalledWith(
       expect.any(Object),
-      expect.objectContaining({ gate: { kind: "miss" } }),
+      expect.objectContaining({
+        gate: { kind: "miss" },
+        traceUser: {
+          userId: "user-1",
+          email: "test@example.com",
+          displayName: "test",
+        },
+      }),
     );
     expect(mockRegisterDraftCritiqueRegistry).toHaveBeenCalled();
   });

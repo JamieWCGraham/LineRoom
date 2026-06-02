@@ -1,6 +1,7 @@
 import {
   runWithLangfuseTrace,
   scheduleLangfuseFlush,
+  type LangfuseTraceUser,
 } from "@/lib/langfuse-server";
 import {
   createCritiqueGatewayOpenAI,
@@ -74,6 +75,8 @@ function attachSongVersionContext(
 }
 
 export type RunCritiqueModelOptions = {
+  /** Langfuse user id + metadata (display name, email) for production traces. */
+  traceUser?: LangfuseTraceUser;
   /** Langfuse / trace labels (default: production critique). */
   traceTags?: string[];
   rootObservationName?: string;
@@ -189,6 +192,7 @@ export async function runCritiqueModel(
       traceName: "LineRoom",
       rootObservationName,
       tags,
+      traceUser: options?.traceUser,
       langfuseConfig: {
         traceName: "LineRoom",
         generationName,

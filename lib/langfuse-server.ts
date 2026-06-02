@@ -61,6 +61,34 @@ export function createTracedOpenAI(
 
 type TraceIO = { input: unknown; output: unknown };
 
+/** Trace-level user context (values truncated to Langfuse’s 200-char limit). */
+export type LangfuseTraceUser = {
+  userId: string;
+  email?: string;
+  displayName?: string;
+};
+
+function langfuseString(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  return trimmed.length > 200 ? trimmed.slice(0, 200) : trimmed;
+}
+
+function traceUserPropagation(
+  traceUser?: LangfuseTraceUser,
+): { userId?: string; metadata?: Record<string, string> } {
+  if (!traceUser?.userId) return {};
+  const metadata: Record<string, string> = {};
+  const email = langfuseString(traceUser.email);
+  const displayName = langfuseString(traceUser.displayName);
+  if (email) metadata.email = email;
+  if (displayName) metadata.displayName = displayName;
+  return {
+    userId: traceUser.userId,
+    ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
+  };
+}
+
 /**
  * Runs work inside a root Langfuse span with propagated trace name/tags, and nests
  * OpenAI generations under it via parentSpanContext. Call setTraceIO before returning
@@ -72,6 +100,7 @@ export async function runWithLangfuseTrace<T>(
     traceName: string;
     rootObservationName: string;
     tags?: string[];
+    traceUser?: LangfuseTraceUser;
     langfuseConfig: Omit<LangfuseConfig, "parentSpanContext">;
   },
   fn: (ctx: {
@@ -87,7 +116,11 @@ export async function runWithLangfuseTrace<T>(
   }
 
   return propagateAttributes(
-    { traceName: params.traceName, tags: params.tags },
+    {
+      traceName: params.traceName,
+      tags: params.tags,
+      ...traceUserPropagation(params.traceUser),
+    },
     () =>
       startActiveObservation(params.rootObservationName, async (root) => {
         const parentSpanContext = root.otelSpan.spanContext();
