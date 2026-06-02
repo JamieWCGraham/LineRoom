@@ -1,4 +1,5 @@
 import { SongTitleEditor } from "@/components/songs/song-title-editor";
+import { ShareLyricsButton } from "@/components/songs/share-lyrics-button";
 
 export function SongVersionBar(props: {
   songId: string;
@@ -6,6 +7,11 @@ export function SongVersionBar(props: {
   onPieceTitleSaved: (title: string) => void;
   versions: Array<{ id: string; versionNumber: number; createdAt: string }>;
   activeVersionId: string;
+  activeVersionNumber: number;
+  draftText: string;
+  shareToken: string | null;
+  publishedFromVersionId: string | null;
+  publishedDraftText: string | null;
   onSelectVersion: (versionId: string) => void;
   onSaveVersion: () => void;
   savePending: boolean;
@@ -99,6 +105,28 @@ export function SongVersionBar(props: {
           >
             {props.deleteVersionPending ? "Deleting…" : "Delete Version"}
           </button>
+          <ShareLyricsButton
+            songId={props.songId}
+            activeVersionId={props.activeVersionId}
+            activeVersionNumber={props.activeVersionNumber}
+            draftText={props.draftText}
+            shareToken={props.shareToken}
+            publishedFromVersionId={props.publishedFromVersionId}
+            publishedFromVersionNumber={
+              props.publishedFromVersionId ?
+                (props.versions.find((v) => v.id === props.publishedFromVersionId)
+                  ?.versionNumber ?? null)
+              : null
+            }
+            publishedDraftText={props.publishedDraftText}
+            disabled={
+              props.deleteVersionPending ||
+              props.persistInFlight ||
+              props.savePending ||
+              props.newVersionPending ||
+              props.editorBusy
+            }
+          />
         </div>
       </div>
       {props.saveError ?

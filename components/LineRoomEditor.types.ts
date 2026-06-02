@@ -21,6 +21,10 @@ export type LineRoomEditorSongProps = {
   initialCritique: CritiqueResult | null;
   initialMeta: CritiqueMeta;
   initialSaveSubRevision: number;
+  initialShareToken: string | null;
+  initialPublishedAt: string | null;
+  initialPublishedFromVersionId: string | null;
+  initialPublishedDraftText: string | null;
 };
 
 export type LineRoomEditorProps = LineRoomEditorLocalProps | LineRoomEditorSongProps;

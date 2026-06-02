@@ -25,6 +25,11 @@ export type SongRow = {
   title: string;
   created_at: string;
   updated_at: string;
+  share_token?: string | null;
+  published_at?: string | null;
+  published_title?: string | null;
+  published_draft_text?: string | null;
+  published_from_version_id?: string | null;
 };
 
 export type SongVersionRow = {

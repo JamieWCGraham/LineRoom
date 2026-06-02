@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
@@ -7,6 +8,7 @@ import {
   removeExplicitRecordingPaths,
 } from "@/lib/draft-recordings/removeSongRecordings";
 import { requireAuthUser } from "@/lib/auth/guards";
+import { publishedLyricsUrl } from "@/lib/songs/publishedLyrics";
 import { createClient } from "@/lib/supabase/server";
 import {
   draftRecordingMetaSchema,
@@ -14,6 +16,139 @@ import {
 } from "@/lib/validators";
 
 const SONG_TITLE_MAX = 200;
+
+function generateShareToken(): string {
+  return randomBytes(16).toString("base64url");
+}
+
+export type PublishSongLyricsResult =
+  | { ok: true; url: string; shareToken: string }
+  | { ok: false; message: string };
+
+export async function publishSongLyrics(
+  songId: string,
+  versionId: string,
+): Promise<PublishSongLyricsResult> {
+  if (!songId.trim() || !versionId.trim()) {
+    return { ok: false, message: "Missing piece or version id." };
+  }
+
+  const supabase = await createClient();
+  const user = await requireAuthUser(supabase);
+
+  const { data: song, error: songError } = await supabase
+    .from("songs")
+    .select(
+      "id, title, share_token, published_title, published_draft_text, published_from_version_id, published_at",
+    )
+    .eq("id", songId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (songError || !song) {
+    return { ok: false, message: "Piece not found." };
+  }
+
+  const { data: version, error: versionError } = await supabase
+    .from("song_versions")
+    .select("id, draft_text")
+    .eq("id", versionId)
+    .eq("song_id", songId)
+    .maybeSingle();
+
+  if (versionError || !version) {
+    return { ok: false, message: "Version not found." };
+  }
+
+  const shareToken =
+    typeof song.share_token === "string" && song.share_token.trim() ?
+      song.share_token.trim()
+    : generateShareToken();
+
+  const publishedAt = new Date().toISOString();
+  const publishedTitle = song.title.trim() || "Untitled piece";
+
+  const { error: updateError } = await supabase
+    .from("songs")
+    .update({
+      share_token: shareToken,
+      published_at: publishedAt,
+      published_title: publishedTitle,
+      published_draft_text: version.draft_text ?? "",
+      published_from_version_id: versionId,
+      updated_at: publishedAt,
+    })
+    .eq("id", songId)
+    .eq("user_id", user.id);
+
+  if (updateError) {
+    return { ok: false, message: updateError.message };
+  }
+
+  revalidatePath("/");
+  revalidatePath(`/song/${songId}`);
+  revalidatePath(`/p/${shareToken}`);
+
+  return {
+    ok: true,
+    url: publishedLyricsUrl(shareToken),
+    shareToken,
+  };
+}
+
+export type UnpublishSongLyricsResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+export async function unpublishSongLyrics(
+  songId: string,
+): Promise<UnpublishSongLyricsResult> {
+  if (!songId.trim()) {
+    return { ok: false, message: "Missing piece id." };
+  }
+
+  const supabase = await createClient();
+  const user = await requireAuthUser(supabase);
+
+  const { data: song, error: songError } = await supabase
+    .from("songs")
+    .select("id, share_token")
+    .eq("id", songId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (songError || !song) {
+    return { ok: false, message: "Piece not found." };
+  }
+
+  const previousToken =
+    typeof song.share_token === "string" ? song.share_token.trim() : "";
+
+  const { error: updateError } = await supabase
+    .from("songs")
+    .update({
+      share_token: null,
+      published_at: null,
+      published_title: null,
+      published_draft_text: null,
+      published_from_version_id: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", songId)
+    .eq("user_id", user.id);
+
+  if (updateError) {
+    return { ok: false, message: updateError.message };
+  }
+
+  revalidatePath("/");
+  revalidatePath(`/song/${songId}`);
+  if (previousToken) {
+    revalidatePath(`/p/${previousToken}`);
+  }
+
+  return { ok: true };
+}
 
 export type UpdateSongTitleResult =
   | { ok: true }

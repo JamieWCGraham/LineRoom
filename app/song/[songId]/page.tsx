@@ -21,7 +21,7 @@ export default async function SongPage({ params, searchParams }: Props) {
     await Promise.all([
       supabase
         .from("songs")
-        .select("id, user_id, title, created_at, updated_at")
+        .select("*")
         .eq("id", songId)
         .eq("user_id", user.id)
         .maybeSingle(),
@@ -39,6 +39,12 @@ export default async function SongPage({ params, searchParams }: Props) {
   if (versionsError || !versionRows?.length) notFound();
 
   const typedSong = song as SongRow;
+  const songRow = typedSong as SongRow & {
+    share_token?: string | null;
+    published_at?: string | null;
+    published_from_version_id?: string | null;
+    published_draft_text?: string | null;
+  };
   const versions = versionRows as SongVersionRow[];
 
   let activeRow = versions[versions.length - 1]!;
@@ -85,6 +91,10 @@ export default async function SongPage({ params, searchParams }: Props) {
       initialCritique={vs.critique}
       initialMeta={vs.meta}
       initialSaveSubRevision={initialSaveSubRevision}
+      initialShareToken={songRow.share_token ?? null}
+      initialPublishedAt={songRow.published_at ?? null}
+      initialPublishedFromVersionId={songRow.published_from_version_id ?? null}
+      initialPublishedDraftText={songRow.published_draft_text ?? null}
     />
   );
 }

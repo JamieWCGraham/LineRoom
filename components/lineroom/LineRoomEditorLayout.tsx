@@ -13,6 +13,7 @@ import { Header } from "@/components/Header";
 import { LyricChatPanel } from "@/components/LyricChatPanel";
 import { SongTitleEditor } from "@/components/songs/song-title-editor";
 import { SongVersionBar } from "@/components/lineroom/SongVersionBar";
+import { ShareLyricsButton } from "@/components/songs/share-lyrics-button";
 import {
   MOBILE_DOC_HEADER_BACK_BTN,
   MOBILE_DOC_HEADER_ICON_BTN,
@@ -94,6 +95,11 @@ export function LineRoomEditorLayout({
           onPieceTitleSaved={setPieceTitle}
           versions={songProps.versions}
           activeVersionId={songProps.activeVersionId}
+          activeVersionNumber={songProps.activeVersionNumber}
+          draftText={fullText}
+          shareToken={songProps.initialShareToken}
+          publishedFromVersionId={songProps.initialPublishedFromVersionId}
+          publishedDraftText={songProps.initialPublishedDraftText}
           onSelectVersion={(versionId) => {
             startRouteTransition(() => {
               router.push(`/song/${songProps.songId}?v=${versionId}`);
@@ -277,6 +283,31 @@ export function LineRoomEditorLayout({
                   >
                     {deleteVersionPending ? "Deleting..." : "Delete Version"}
                   </button>
+                  <ShareLyricsButton
+                    songId={songProps.songId}
+                    activeVersionId={songProps.activeVersionId}
+                    activeVersionNumber={songProps.activeVersionNumber}
+                    draftText={fullText}
+                    shareToken={songProps.initialShareToken}
+                    publishedFromVersionId={songProps.initialPublishedFromVersionId}
+                    publishedFromVersionNumber={
+                      songProps.initialPublishedFromVersionId ?
+                        (songProps.versions.find(
+                          (v) => v.id === songProps.initialPublishedFromVersionId,
+                        )?.versionNumber ?? null)
+                      : null
+                    }
+                    publishedDraftText={songProps.initialPublishedDraftText}
+                    disabled={
+                      deleteVersionPending ||
+                      savePending ||
+                      persistInFlight ||
+                      newVersionPending ||
+                      critiqueLoading
+                    }
+                    fullWidth
+                    buttonClassName="w-full rounded-lg border border-zinc-700/80 bg-zinc-900/70 px-4 py-3 text-base font-medium text-zinc-100 transition hover:border-zinc-600 hover:bg-zinc-800/80 disabled:cursor-not-allowed disabled:opacity-50"
+                  />
                 </div>
               </div>
             ) : null}
