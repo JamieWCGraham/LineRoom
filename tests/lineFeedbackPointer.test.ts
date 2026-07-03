@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   clampTooltipToViewport,
+  lineIndexFromCaretOffset,
   lineIndexFromContentY,
+  resolveTappedFeedbackLineIndex,
 } from "@/lib/draft/lineFeedbackPointer";
 
 describe("clampTooltipToViewport", () => {
@@ -56,5 +58,52 @@ describe("lineIndexFromContentY", () => {
   it("returns null for invalid inputs", () => {
     expect(lineIndexFromContentY(0, 0, 3)).toBeNull();
     expect(lineIndexFromContentY(0, 20, 0)).toBeNull();
+  });
+});
+
+describe("lineIndexFromCaretOffset", () => {
+  it("maps caret offsets to line indices", () => {
+    const text = "line one\nline two\nline three";
+    expect(lineIndexFromCaretOffset(text, 0)).toBe(0);
+    expect(lineIndexFromCaretOffset(text, 8)).toBe(0);
+    expect(lineIndexFromCaretOffset(text, 9)).toBe(1);
+    expect(lineIndexFromCaretOffset(text, text.length)).toBe(2);
+  });
+});
+
+describe("resolveTappedFeedbackLineIndex", () => {
+  const hasFeedbackAt = (lines: number[]) => (idx: number) => lines.includes(idx);
+
+  it("prefers geometry line when it has feedback", () => {
+    expect(
+      resolveTappedFeedbackLineIndex({
+        geometryLineIdx: 2,
+        caretLineIdx: 0,
+        lineCount: 5,
+        hasFeedbackAt: hasFeedbackAt([2]),
+      }),
+    ).toBe(2);
+  });
+
+  it("falls back to a neighbor when geometry drifts by one line", () => {
+    expect(
+      resolveTappedFeedbackLineIndex({
+        geometryLineIdx: 3,
+        caretLineIdx: 4,
+        lineCount: 8,
+        hasFeedbackAt: hasFeedbackAt([4]),
+      }),
+    ).toBe(4);
+  });
+
+  it("returns null when no candidate line has feedback", () => {
+    expect(
+      resolveTappedFeedbackLineIndex({
+        geometryLineIdx: 1,
+        caretLineIdx: 1,
+        lineCount: 4,
+        hasFeedbackAt: hasFeedbackAt([3]),
+      }),
+    ).toBeNull();
   });
 });

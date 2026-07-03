@@ -76,6 +76,49 @@ export function lineIndexFromContentY(
   return Math.max(0, Math.min(lineCount - 1, idx));
 }
 
+/** Zero-based line index for a caret offset inside draft text. */
+export function lineIndexFromCaretOffset(text: string, offset: number): number {
+  if (!text.length) return 0;
+  const clamped = Math.max(0, Math.min(offset, text.length));
+  return text.slice(0, clamped).split("\n").length - 1;
+}
+
+/**
+ * Pick the best feedback line for a mobile tap. Geometry can drift after iOS
+ * focuses the textarea (keyboard + scroll-to-caret), so we consider the
+ * touch-start geometry line, caret line after focus, and immediate neighbors.
+ */
+export function resolveTappedFeedbackLineIndex(args: {
+  geometryLineIdx: number | null;
+  caretLineIdx: number;
+  lineCount: number;
+  hasFeedbackAt: (lineIdx: number) => boolean;
+}): number | null {
+  const { geometryLineIdx, caretLineIdx, lineCount, hasFeedbackAt } = args;
+  if (lineCount <= 0) return null;
+
+  const candidates: number[] = [];
+  const push = (idx: number) => {
+    if (idx >= 0 && idx < lineCount && !candidates.includes(idx)) {
+      candidates.push(idx);
+    }
+  };
+
+  if (geometryLineIdx !== null) {
+    push(geometryLineIdx);
+    push(geometryLineIdx - 1);
+    push(geometryLineIdx + 1);
+  }
+  push(caretLineIdx);
+  if (caretLineIdx > 0) push(caretLineIdx - 1);
+  push(caretLineIdx + 1);
+
+  for (const idx of candidates) {
+    if (hasFeedbackAt(idx)) return idx;
+  }
+  return null;
+}
+
 function clampInt(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
 }

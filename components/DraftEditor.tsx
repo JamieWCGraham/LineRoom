@@ -14,7 +14,9 @@ import {
 import type { LineAnnotation } from "@/lib/lineAnnotations";
 import {
   clampTooltipToViewport,
+  lineIndexFromCaretOffset,
   lineIndexFromContentY,
+  resolveTappedFeedbackLineIndex,
 } from "@/lib/draft/lineFeedbackPointer";
 import { getSelectionTopRightAnchor } from "@/lib/draft/selectionPopupAnchor";
 import type { ChatSelectionPayload, DraftEditorContext } from "@/types/chat";
@@ -119,7 +121,11 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
   const backdropInnerRef = useRef<HTMLDivElement>(null);
   const mobileToolbarRef = useRef<HTMLDivElement>(null);
   const tooltipPopoverRef = useRef<HTMLDivElement>(null);
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const touchStartRef = useRef<{
+    x: number;
+    y: number;
+    geometryLineIdx: number | null;
+  } | null>(null);
   /** After a tap to show line feedback, ignore scroll-driven tooltip clears briefly (iOS scrolls to caret). */
   const touchTooltipScrollGuardUntilRef = useRef(0);
   const lastTextareaScrollRef = useRef<{ left: number; top: number }>({
@@ -506,6 +512,22 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
     [lines.length],
   );
 
+  const resolveTappedFeedbackLine = useCallback(
+    (geometryLineIdx: number | null): number | null => {
+      const el = taRef.current;
+      const caretLineIdx = el
+        ? lineIndexFromCaretOffset(value, el.selectionStart ?? 0)
+        : geometryLineIdx ?? 0;
+      return resolveTappedFeedbackLineIndex({
+        geometryLineIdx,
+        caretLineIdx,
+        lineCount: lines.length,
+        hasFeedbackAt: (idx) => Boolean(lineFeedbackByIndex.get(idx)?.length),
+      });
+    },
+    [lineFeedbackByIndex, lines.length, value],
+  );
+
   const showTooltipForLine = useCallback(
     (idx: number, anchorX: number, anchorY: number) => {
       if (!showHighlights || lineFeedbackByIndex.size === 0) {
@@ -834,7 +856,19 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
           onTouchStart={(e) => {
             if (e.touches.length !== 1) return;
             const t = e.touches[0];
-            touchStartRef.current = { x: t.clientX, y: t.clientY };
+            const cx = t.clientX;
+            const cy = t.clientY;
+            /**
+             * Capture line geometry on touchstart before iOS focuses the textarea
+             * (keyboard + scroll-to-caret shift rect/scrollTop). Arm the scroll guard
+             * now so scroll between touchstart and touchend cannot clear the tooltip.
+             */
+            touchTooltipScrollGuardUntilRef.current = performance.now() + 1000;
+            touchStartRef.current = {
+              x: cx,
+              y: cy,
+              geometryLineIdx: resolveLineFromClientY(cy),
+            };
             setTooltip(null);
           }}
           onTouchCancel={() => {
@@ -853,16 +887,14 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
             const cx = t.clientX;
             const cy = t.clientY;
             touchTooltipScrollGuardUntilRef.current = performance.now() + 1000;
-            /**
-             * Resolve the tapped line BEFORE iOS focuses the textarea: focus pops the
-             * soft keyboard (changing rect.top) and may auto-scroll-to-caret (changing
-             * scrollTop). Recomputing from clientY against post-reflow geometry would
-             * resolve to the wrong line and clear the tooltip on retry. Lock the line
-             * index now and retry only the React state set, which is idempotent.
-             */
-            const idx = resolveLineFromClientY(cy);
-            if (idx === null) return;
-            const run = () => showTooltipForLine(idx, cx, cy);
+            const run = () => {
+              const idx = resolveTappedFeedbackLine(start.geometryLineIdx);
+              if (idx === null) {
+                setTooltip(null);
+                return;
+              }
+              showTooltipForLine(idx, cx, cy);
+            };
             run();
             requestAnimationFrame(run);
             requestAnimationFrame(() => {
