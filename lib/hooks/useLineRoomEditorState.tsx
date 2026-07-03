@@ -159,6 +159,7 @@ export function useLineRoomEditorState(props: LineRoomEditorProps) {
     markLastPersisted: persist.markLastPersisted,
     setSaveError,
     setCritique,
+    waitForPersistChain: persist.waitForPersistChain,
   });
 
   useLayoutEffect(() => {
@@ -170,6 +171,16 @@ export function useLineRoomEditorState(props: LineRoomEditorProps) {
     setMeta(props.initialMeta);
     setPieceTitle(props.songTitle);
     setServerSubRevision(props.initialSaveSubRevision);
+    persist.markLastPersisted(
+      buildAutosavePayloadString({
+        draftText: props.initialDraftText,
+        brainstormText: props.initialBrainstormText,
+        chatMessages: props.initialChatMessages,
+        critique: props.initialCritique,
+        meta: props.initialMeta,
+      }),
+    );
+    persist.setPersistPaused(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync full server snapshot when song/version changes
   }, [songVersionSyncKey]);
 

@@ -42,7 +42,16 @@ export type UseCritiqueFlowArgs = {
   markLastPersisted: (payloadStr: string) => void;
   setSaveError: (msg: string | null) => void;
   setCritique: (c: CritiqueResult | null) => void;
+  waitForPersistChain: () => Promise<void>;
 };
+
+/** Regeneration keeps version history; first critique updates the current row in place. */
+export function shouldBumpVersionAfterCritique(
+  regenerate: boolean,
+  existingCritique: CritiqueResult | null,
+): boolean {
+  return regenerate && existingCritique != null;
+}
 
 export function useCritiqueFlow(args: UseCritiqueFlowArgs) {
   const router = useRouter();
@@ -119,6 +128,9 @@ export function useCritiqueFlow(args: UseCritiqueFlowArgs) {
       args.setSaveError(null);
       setCritiqueLoading(true);
       try {
+        if (args.isSong) {
+          await args.waitForPersistChain();
+        }
         const res = await fetch("/api/critique", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -157,45 +169,61 @@ export function useCritiqueFlow(args: UseCritiqueFlowArgs) {
           return null;
         }
 
+        const existingCritique = args.critique;
         const nextCritique = data.critique;
         args.setCritique(nextCritique);
 
         if (args.isSong && args.songId && args.activeVersionId) {
-          args.setVersionRowPersistLock(true);
-          const payload = {
-            draft_text: args.fullText,
-            brainstorm_text: args.brainstormText,
-            chat_messages: args.chatMessages,
-            critique: nextCritique,
-            meta: args.meta,
-          };
-          const saveCurrentResult = await updateSongVersionState(
-            args.songId,
-            args.activeVersionId,
-            payload,
-            { expectedSubRevision: args.serverSubRevision },
+          const bumpVersion = shouldBumpVersionAfterCritique(
+            regenerate,
+            existingCritique,
           );
-          if (!saveCurrentResult.ok) {
-            args.setVersionRowPersistLock(false);
-            args.setSaveError(saveCurrentResult.message);
-            return null;
+
+          if (!bumpVersion) {
+            const persistResult = await args.persistSongState(nextCritique);
+            if (!persistResult.ok && persistResult.message !== "locked") {
+              args.setSaveError(persistResult.message ?? null);
+            }
+            return nextCritique;
           }
-          args.onServerSubRevision(saveCurrentResult.newSubRevision);
-          args.markLastPersisted(buildAutosavePayloadString({
-            draftText: payload.draft_text,
-            brainstormText: payload.brainstorm_text,
-            chatMessages: payload.chat_messages,
-            critique: payload.critique,
-            meta: payload.meta,
-          }));
-          const bumpResult = await saveNewSongVersion(args.songId, payload);
-          if (!bumpResult.ok) {
+
+          args.setVersionRowPersistLock(true);
+          try {
+            const payload = {
+              draft_text: args.fullText,
+              brainstorm_text: args.brainstormText,
+              chat_messages: args.chatMessages,
+              critique: nextCritique,
+              meta: args.meta,
+            };
+            const saveCurrentResult = await updateSongVersionState(
+              args.songId,
+              args.activeVersionId,
+              payload,
+              { expectedSubRevision: args.serverSubRevision },
+            );
+            if (!saveCurrentResult.ok) {
+              args.setSaveError(saveCurrentResult.message);
+              return null;
+            }
+            args.onServerSubRevision(saveCurrentResult.newSubRevision);
+            args.markLastPersisted(buildAutosavePayloadString({
+              draftText: payload.draft_text,
+              brainstormText: payload.brainstorm_text,
+              chatMessages: payload.chat_messages,
+              critique: payload.critique,
+              meta: payload.meta,
+            }));
+            const bumpResult = await saveNewSongVersion(args.songId, payload);
+            if (!bumpResult.ok) {
+              args.setSaveError(bumpResult.message);
+              return null;
+            }
+            router.replace(`/song/${args.songId}?v=${bumpResult.versionId}`);
+            await router.refresh();
+          } finally {
             args.setVersionRowPersistLock(false);
-            args.setSaveError(bumpResult.message);
-            return null;
           }
-          router.replace(`/song/${args.songId}?v=${bumpResult.versionId}`);
-          await router.refresh();
         } else if (args.isSong) {
           const persistResult = await args.persistSongState(nextCritique);
           if (!persistResult.ok && persistResult.message !== "locked") {
@@ -209,6 +237,9 @@ export function useCritiqueFlow(args: UseCritiqueFlowArgs) {
       } finally {
         setCritiqueLoading(false);
         critiqueInFlightRef.current = false;
+        if (args.isSong) {
+          args.setVersionRowPersistLock(false);
+        }
       }
     },
     [args, router],
