@@ -10,7 +10,7 @@ const productId = process.env.NEXT_PUBLIC_IOS_IAP_PRODUCT_ID?.trim();
 /**
  * Opens Apple’s system subscription UI (cancel, change plan, etc.) for
  * StoreKit / App Store–billed Pro. Requires the purchase plugin to be
- * initialized like a normal IAP flow.
+ * initialized like a normal IAP flow. This is used to manage the subscription in the app.
  */
 export function IosAppStoreManageSubscription() {
   const nativeIos = useIosCapacitorAppLayout();
