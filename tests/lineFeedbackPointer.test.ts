@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
   clampTooltipToViewport,
+  lineIndexAtHighlightPoint,
   lineIndexFromCaretOffset,
   lineIndexFromContentY,
-  resolveTappedFeedbackLineIndex,
+  pointInHighlightBounds,
 } from "@/lib/draft/lineFeedbackPointer";
 
 describe("clampTooltipToViewport", () => {
@@ -71,39 +72,42 @@ describe("lineIndexFromCaretOffset", () => {
   });
 });
 
-describe("resolveTappedFeedbackLineIndex", () => {
-  const hasFeedbackAt = (lines: number[]) => (idx: number) => lines.includes(idx);
+describe("pointInHighlightBounds", () => {
+  const bounds = { left: 10, top: 20, right: 110, bottom: 40 };
 
-  it("prefers geometry line when it has feedback", () => {
-    expect(
-      resolveTappedFeedbackLineIndex({
-        geometryLineIdx: 2,
-        caretLineIdx: 0,
-        lineCount: 5,
-        hasFeedbackAt: hasFeedbackAt([2]),
-      }),
-    ).toBe(2);
+  it("returns true for points inside the rect", () => {
+    expect(pointInHighlightBounds(50, 30, bounds)).toBe(true);
   });
 
-  it("falls back to a neighbor when geometry drifts by one line", () => {
-    expect(
-      resolveTappedFeedbackLineIndex({
-        geometryLineIdx: 3,
-        caretLineIdx: 4,
-        lineCount: 8,
-        hasFeedbackAt: hasFeedbackAt([4]),
-      }),
-    ).toBe(4);
+  it("returns false for points outside the rect", () => {
+    expect(pointInHighlightBounds(5, 30, bounds)).toBe(false);
+    expect(pointInHighlightBounds(50, 45, bounds)).toBe(false);
+  });
+});
+
+describe("lineIndexAtHighlightPoint", () => {
+  const marks = [
+    { lineIdx: 0, left: 0, top: 0, right: 100, bottom: 20 },
+    { lineIdx: 1, left: 0, top: 24, right: 100, bottom: 44 },
+    { lineIdx: 2, left: 0, top: 48, right: 60, bottom: 68 },
+  ];
+
+  it("returns the line index when the point is inside a mark", () => {
+    expect(lineIndexAtHighlightPoint(marks, 50, 10)).toBe(0);
+    expect(lineIndexAtHighlightPoint(marks, 50, 30)).toBe(1);
+    expect(lineIndexAtHighlightPoint(marks, 40, 55)).toBe(2);
   });
 
-  it("returns null when no candidate line has feedback", () => {
-    expect(
-      resolveTappedFeedbackLineIndex({
-        geometryLineIdx: 1,
-        caretLineIdx: 1,
-        lineCount: 4,
-        hasFeedbackAt: hasFeedbackAt([3]),
-      }),
-    ).toBeNull();
+  it("returns null when the point is outside all marks", () => {
+    expect(lineIndexAtHighlightPoint(marks, 80, 55)).toBeNull();
+    expect(lineIndexAtHighlightPoint(marks, 50, 22)).toBeNull();
+  });
+
+  it("prefers the smallest mark when rects overlap", () => {
+    const overlapping = [
+      { lineIdx: 0, left: 0, top: 0, right: 100, bottom: 40 },
+      { lineIdx: 1, left: 0, top: 10, right: 50, bottom: 30 },
+    ];
+    expect(lineIndexAtHighlightPoint(overlapping, 25, 20)).toBe(1);
   });
 });

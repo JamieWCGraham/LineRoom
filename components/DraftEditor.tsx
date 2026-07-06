@@ -14,9 +14,8 @@ import {
 import type { LineAnnotation } from "@/lib/lineAnnotations";
 import {
   clampTooltipToViewport,
-  lineIndexFromCaretOffset,
-  lineIndexFromContentY,
-  resolveTappedFeedbackLineIndex,
+  LINE_FEEDBACK_MARK_ATTR,
+  lineIndexAtHighlightPoint,
 } from "@/lib/draft/lineFeedbackPointer";
 import { getSelectionTopRightAnchor } from "@/lib/draft/selectionPopupAnchor";
 import type { ChatSelectionPayload, DraftEditorContext } from "@/types/chat";
@@ -124,7 +123,7 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
   const touchStartRef = useRef<{
     x: number;
     y: number;
-    geometryLineIdx: number | null;
+    highlightLineIdx: number | null;
   } | null>(null);
   /** After a tap to show line feedback, ignore scroll-driven tooltip clears briefly (iOS scrolls to caret). */
   const touchTooltipScrollGuardUntilRef = useRef(0);
@@ -487,45 +486,30 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
     setAddToChatAnchor(null);
   }, [onAddSelectionToChat, totalChars, value]);
 
-  /**
-   * Resolve a viewport Y into a textarea line index using current rect / scrollTop.
-   * Do not use caretPositionFromPoint / caretRangeFromPoint on `<textarea>`: Chromium
-   * and WebKit often report offset 0 for almost every hit, which pins the tooltip to
-   * the first line (or hides it when line 0 has no feedback). Geometry matches the
-   * highlight layer for typical short lines.
-   */
-  const resolveLineFromClientY = useCallback(
-    (clientY: number): number | null => {
-      const el = taRef.current;
-      if (!el) return null;
-      const rect = el.getBoundingClientRect();
-      const style = getComputedStyle(el);
-      const padTop = parseFloat(style.paddingTop) || 0;
-      let lh = parseFloat(style.lineHeight);
-      if (Number.isNaN(lh) || lh <= 0) {
-        const fs = parseFloat(style.fontSize) || 15;
-        lh = fs * 1.625;
-      }
-      const yIn = clientY - rect.top + el.scrollTop - padTop;
-      return lineIndexFromContentY(yIn, lh, lines.length);
+  /** Hit-test against rendered feedback `<mark>` bounds (matches visible highlight). */
+  const resolveHighlightLineFromPoint = useCallback(
+    (clientX: number, clientY: number): number | null => {
+      if (!showHighlights) return null;
+      const root = backdropInnerRef.current;
+      if (!root) return null;
+      const marks = root.querySelectorAll<HTMLElement>(
+        `[${LINE_FEEDBACK_MARK_ATTR}]`,
+      );
+      const bounds = Array.from(marks, (mark) => {
+        const raw = mark.getAttribute(LINE_FEEDBACK_MARK_ATTR);
+        const lineIdx = raw !== null ? Number.parseInt(raw, 10) : Number.NaN;
+        const rect = mark.getBoundingClientRect();
+        return {
+          lineIdx,
+          left: rect.left,
+          top: rect.top,
+          right: rect.right,
+          bottom: rect.bottom,
+        };
+      }).filter((mark) => !Number.isNaN(mark.lineIdx));
+      return lineIndexAtHighlightPoint(bounds, clientX, clientY);
     },
-    [lines.length],
-  );
-
-  const resolveTappedFeedbackLine = useCallback(
-    (geometryLineIdx: number | null): number | null => {
-      const el = taRef.current;
-      const caretLineIdx = el
-        ? lineIndexFromCaretOffset(value, el.selectionStart ?? 0)
-        : geometryLineIdx ?? 0;
-      return resolveTappedFeedbackLineIndex({
-        geometryLineIdx,
-        caretLineIdx,
-        lineCount: lines.length,
-        hasFeedbackAt: (idx) => Boolean(lineFeedbackByIndex.get(idx)?.length),
-      });
-    },
-    [lineFeedbackByIndex, lines.length, value],
+    [showHighlights],
   );
 
   const showTooltipForLine = useCallback(
@@ -557,14 +541,14 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
 
   const updateTooltip = useCallback(
     (clientX: number, clientY: number) => {
-      const idx = resolveLineFromClientY(clientY);
+      const idx = resolveHighlightLineFromPoint(clientX, clientY);
       if (idx === null) {
         setTooltip(null);
         return;
       }
       showTooltipForLine(idx, clientX, clientY);
     },
-    [resolveLineFromClientY, showTooltipForLine],
+    [resolveHighlightLineFromPoint, showTooltipForLine],
   );
 
   const highlightLayer = useMemo(() => {
@@ -627,7 +611,12 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
       return (
         <span key={i}>
           {showHighlights && has ?
-            <mark className={lineHighlightClass}>{renderedLine}</mark>
+            <mark
+              {...{ [LINE_FEEDBACK_MARK_ATTR]: i }}
+              className={lineHighlightClass}
+            >
+              {renderedLine}
+            </mark>
           : renderedLine}
           {i < backdropLines.length - 1 ? "\n" : null}
         </span>
@@ -859,15 +848,15 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
             const cx = t.clientX;
             const cy = t.clientY;
             /**
-             * Capture line geometry on touchstart before iOS focuses the textarea
-             * (keyboard + scroll-to-caret shift rect/scrollTop). Arm the scroll guard
-             * now so scroll between touchstart and touchend cannot clear the tooltip.
+             * Capture highlight hit on touchstart before iOS focuses the textarea
+             * (keyboard + scroll-to-caret). Arm the scroll guard now so scroll
+             * between touchstart and touchend cannot clear the tooltip.
              */
             touchTooltipScrollGuardUntilRef.current = performance.now() + 1000;
             touchStartRef.current = {
               x: cx,
               y: cy,
-              geometryLineIdx: resolveLineFromClientY(cy),
+              highlightLineIdx: resolveHighlightLineFromPoint(cx, cy),
             };
             setTooltip(null);
           }}
@@ -888,7 +877,9 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
             const cy = t.clientY;
             touchTooltipScrollGuardUntilRef.current = performance.now() + 1000;
             const run = () => {
-              const idx = resolveTappedFeedbackLine(start.geometryLineIdx);
+              const idx =
+                resolveHighlightLineFromPoint(cx, cy) ??
+                resolveHighlightLineFromPoint(start.x, start.y);
               if (idx === null) {
                 setTooltip(null);
                 return;

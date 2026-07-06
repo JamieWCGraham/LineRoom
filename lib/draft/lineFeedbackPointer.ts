@@ -83,40 +83,48 @@ export function lineIndexFromCaretOffset(text: string, offset: number): number {
   return text.slice(0, clamped).split("\n").length - 1;
 }
 
+export const LINE_FEEDBACK_MARK_ATTR = "data-line-feedback-index";
+
+export type HighlightMarkBounds = {
+  lineIdx: number;
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+};
+
+export function pointInHighlightBounds(
+  clientX: number,
+  clientY: number,
+  bounds: Pick<HighlightMarkBounds, "left" | "top" | "right" | "bottom">,
+): boolean {
+  return (
+    clientX >= bounds.left &&
+    clientX <= bounds.right &&
+    clientY >= bounds.top &&
+    clientY <= bounds.bottom
+  );
+}
+
 /**
- * Pick the best feedback line for a mobile tap. Geometry can drift after iOS
- * focuses the textarea (keyboard + scroll-to-caret), so we consider the
- * touch-start geometry line, caret line after focus, and immediate neighbors.
+ * Return the line index whose feedback `<mark>` contains the viewport point,
+ * or null when the point is outside every highlight. When rects overlap, the
+ * smallest area wins (most specific target).
  */
-export function resolveTappedFeedbackLineIndex(args: {
-  geometryLineIdx: number | null;
-  caretLineIdx: number;
-  lineCount: number;
-  hasFeedbackAt: (lineIdx: number) => boolean;
-}): number | null {
-  const { geometryLineIdx, caretLineIdx, lineCount, hasFeedbackAt } = args;
-  if (lineCount <= 0) return null;
-
-  const candidates: number[] = [];
-  const push = (idx: number) => {
-    if (idx >= 0 && idx < lineCount && !candidates.includes(idx)) {
-      candidates.push(idx);
+export function lineIndexAtHighlightPoint(
+  marks: HighlightMarkBounds[],
+  clientX: number,
+  clientY: number,
+): number | null {
+  let best: { lineIdx: number; area: number } | null = null;
+  for (const mark of marks) {
+    if (!pointInHighlightBounds(clientX, clientY, mark)) continue;
+    const area = (mark.right - mark.left) * (mark.bottom - mark.top);
+    if (!best || area < best.area) {
+      best = { lineIdx: mark.lineIdx, area };
     }
-  };
-
-  if (geometryLineIdx !== null) {
-    push(geometryLineIdx);
-    push(geometryLineIdx - 1);
-    push(geometryLineIdx + 1);
   }
-  push(caretLineIdx);
-  if (caretLineIdx > 0) push(caretLineIdx - 1);
-  push(caretLineIdx + 1);
-
-  for (const idx of candidates) {
-    if (hasFeedbackAt(idx)) return idx;
-  }
-  return null;
+  return best?.lineIdx ?? null;
 }
 
 function clampInt(n: number, min: number, max: number): number {
