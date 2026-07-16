@@ -14,8 +14,22 @@ export function oauthCallbackUrl(): string {
 /** Short-lived cookie set when starting OAuth; read after callback (keeps Supabase redirect allowlist to one URL). */
 export const OAUTH_NEXT_COOKIE = "lr_oauth_next";
 
-/** Google / Apple buttons on login & signup. Set `true` when providers are configured in Supabase. */
-export const oauthSignInUiEnabled = false;
+/**
+ * Google button on login & signup.
+ * Set NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED=true after Google is configured in Supabase.
+ */
+export const oauthGoogleEnabled =
+  process.env.NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED === "true";
+
+/**
+ * Apple button on login & signup (kept off until Apple is configured in Supabase).
+ * Set NEXT_PUBLIC_OAUTH_APPLE_ENABLED=true when ready.
+ */
+export const oauthAppleEnabled =
+  process.env.NEXT_PUBLIC_OAUTH_APPLE_ENABLED === "true";
+
+/** True when any OAuth provider button should render on login/signup. */
+export const oauthSignInUiEnabled = oauthGoogleEnabled || oauthAppleEnabled;
 
 /**
  * Only same-origin relative paths; default "/". Blocks open redirects.

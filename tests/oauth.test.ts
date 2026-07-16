@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   OAUTH_NEXT_COOKIE,
   buildOAuthSignInOptions,
@@ -66,5 +66,43 @@ describe("OAuth helpers", () => {
     expect(oauthStartHref("apple", "/account")).toBe(
       "/auth/oauth?provider=apple&next=%2Faccount",
     );
+  });
+});
+
+describe("OAuth UI feature flags", () => {
+  const originalGoogle = process.env.NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED;
+  const originalApple = process.env.NEXT_PUBLIC_OAUTH_APPLE_ENABLED;
+
+  afterEach(() => {
+    if (originalGoogle === undefined) {
+      delete process.env.NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED;
+    } else {
+      process.env.NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED = originalGoogle;
+    }
+    if (originalApple === undefined) {
+      delete process.env.NEXT_PUBLIC_OAUTH_APPLE_ENABLED;
+    } else {
+      process.env.NEXT_PUBLIC_OAUTH_APPLE_ENABLED = originalApple;
+    }
+    vi.resetModules();
+  });
+
+  it("enables Google UI when NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED=true", async () => {
+    process.env.NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED = "true";
+    delete process.env.NEXT_PUBLIC_OAUTH_APPLE_ENABLED;
+    vi.resetModules();
+    const mod = await import("@/lib/auth/oauth");
+    expect(mod.oauthGoogleEnabled).toBe(true);
+    expect(mod.oauthAppleEnabled).toBe(false);
+    expect(mod.oauthSignInUiEnabled).toBe(true);
+  });
+
+  it("keeps OAuth UI off when Google flag is unset", async () => {
+    delete process.env.NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED;
+    delete process.env.NEXT_PUBLIC_OAUTH_APPLE_ENABLED;
+    vi.resetModules();
+    const mod = await import("@/lib/auth/oauth");
+    expect(mod.oauthGoogleEnabled).toBe(false);
+    expect(mod.oauthSignInUiEnabled).toBe(false);
   });
 });

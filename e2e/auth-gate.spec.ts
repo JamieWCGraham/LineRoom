@@ -10,6 +10,40 @@ test.describe("unauthenticated", () => {
     await expect(page.getByLabel("Password")).toBeVisible();
   });
 
+  test("login page shows Google OAuth when enabled", async ({ page }) => {
+    test.skip(
+      process.env.NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED !== "true",
+      "NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED is not true",
+    );
+    await page.goto("/login");
+    const google = page.getByRole("link", { name: /Continue with Google/i });
+    await expect(google).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /Continue with Apple/i }),
+    ).toHaveCount(0);
+    await expect(google).toHaveAttribute(
+      "href",
+      "/auth/oauth?provider=google",
+    );
+  });
+
+  test("oauth start redirects toward Google via Supabase", async ({
+    page,
+    request,
+  }) => {
+    test.skip(
+      process.env.NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED !== "true",
+      "NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED is not true",
+    );
+    const res = await request.get("/auth/oauth?provider=google", {
+      maxRedirects: 0,
+    });
+    expect([302, 303, 307, 308]).toContain(res.status());
+    const location = res.headers().location ?? "";
+    expect(location).toMatch(/supabase\.co\/auth\/v1\/authorize/);
+    expect(location).toMatch(/provider=google/);
+  });
+
   test("lineroom is reachable without a prior account (guest try)", async ({
     page,
   }) => {

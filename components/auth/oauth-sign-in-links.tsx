@@ -1,4 +1,9 @@
-import { oauthStartHref, sanitizeAuthNext } from "@/lib/auth/oauth";
+import {
+  oauthAppleEnabled,
+  oauthGoogleEnabled,
+  oauthStartHref,
+  sanitizeAuthNext,
+} from "@/lib/auth/oauth";
 
 const btnBase =
   "flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 disabled:pointer-events-none disabled:opacity-50";
@@ -18,24 +23,33 @@ export function OAuthSignInLinks({ nextPath }: Props) {
   const next = pickNext(nextPath);
   const googleHref = oauthStartHref("google", next);
   const appleHref = oauthStartHref("apple", next);
+  const showBoth = oauthGoogleEnabled && oauthAppleEnabled;
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-2 sm:grid-cols-2 sm:gap-3">
-        <a
-          href={googleHref}
-          className={`${btnBase} border-zinc-600 bg-zinc-800 text-zinc-100 hover:bg-zinc-700`}
-        >
-          <GoogleGlyph className="h-[18px] w-[18px] shrink-0" aria-hidden />
-          Continue with Google
-        </a>
-        <a
-          href={appleHref}
-          className={`${btnBase} border-zinc-800 bg-zinc-950 text-zinc-100 hover:bg-zinc-900`}
-        >
-          <AppleGlyph className="h-[18px] w-[18px] shrink-0" aria-hidden />
-          Continue with Apple
-        </a>
+      <div
+        className={
+          showBoth ? "grid gap-2 sm:grid-cols-2 sm:gap-3" : "grid gap-2"
+        }
+      >
+        {oauthGoogleEnabled ? (
+          <a
+            href={googleHref}
+            className={`${btnBase} border-zinc-600 bg-zinc-800 text-zinc-100 hover:bg-zinc-700`}
+          >
+            <GoogleGlyph className="h-[18px] w-[18px] shrink-0" aria-hidden />
+            Continue with Google
+          </a>
+        ) : null}
+        {oauthAppleEnabled ? (
+          <a
+            href={appleHref}
+            className={`${btnBase} border-zinc-800 bg-zinc-950 text-zinc-100 hover:bg-zinc-900`}
+          >
+            <AppleGlyph className="h-[18px] w-[18px] shrink-0" aria-hidden />
+            Continue with Apple
+          </a>
+        ) : null}
       </div>
       <p className="text-center text-[11px] leading-snug text-zinc-600">
         You will sign in with your provider, then return here to finish.
