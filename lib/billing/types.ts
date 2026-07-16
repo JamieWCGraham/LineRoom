@@ -13,6 +13,8 @@ export type CritiqueAccessState = {
   remainingFreeCritiques: number;
   canGenerateCritique: boolean;
   reason: CritiqueAccessReason;
+  /** True when the session is a Supabase anonymous (guest try) user. */
+  isAnonymous: boolean;
   /** Present when the user has an active subscription (for account UI). */
   currentPeriodEnd: string | null;
   /** Set when subscribed so account UI can route cancel/manage flows. */

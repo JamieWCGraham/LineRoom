@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { getCritiqueAccessForUser } from "@/lib/billing/access";
-import { getFreeCritiqueQuota } from "@/lib/billing/config";
+import {
+  getCritiqueAccessForUser,
+  getCritiqueQuotaForUser,
+} from "@/lib/billing/access";
 import type { CritiqueAccessState } from "@/lib/billing/types";
 import { getAuthUser } from "@/lib/auth/guards";
 import { normalizeAuthUserToProfile } from "@/lib/auth/profile";
@@ -34,12 +36,16 @@ function buildCritiqueTraceUser(
 }
 
 function paywallResponse(access: CritiqueAccessState) {
+  const message =
+    access.isAnonymous ?
+      "Sign up to keep generating critiques and save your work."
+    : "Subscribe to LineRoom Pro to keep generating critiques.";
   return NextResponse.json(
     {
       code: "PAYWALL_REQUIRED" as const,
       remainingFreeCritiques: access.remainingFreeCritiques,
-      checkoutRequired: true,
-      message: "Subscribe to LineRoom Pro to keep generating critiques.",
+      checkoutRequired: !access.isAnonymous,
+      message,
       access,
     },
     { status: 402 },
@@ -87,7 +93,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const freeQuota = getFreeCritiqueQuota();
+  const freeQuota = getCritiqueQuotaForUser(user);
   const needsSlot =
     !accessBefore.isBypassed && !accessBefore.hasActiveSubscription;
 

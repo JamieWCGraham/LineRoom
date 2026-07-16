@@ -60,7 +60,7 @@ I want you to do the following:
 
 3. Implement the Line-Level Feedback Quality calibration module as per evals/EVAL_ARCHITECTURE.md and integrate it into the “Run full eval set” functionality. Ensure whatever LLM as a judge implementation you create has LangFuse observability wired up. 
 
-4. In Show Metrics in Evals, display summary statistics / breakdowns for the evals for Line-Level Feedback Quality.
+4. At the bottom of Show Metrics in Evals, display summary statistics / breakdowns for the evals for Line-Level Feedback Quality so that a user can inspect errors at a song-level and also macroscopically across the evaluation set.
 
 Ensure your implementation works with some minimal tests.
 

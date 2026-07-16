@@ -94,6 +94,19 @@ describe("normalizeAuthUserToProfile", () => {
     );
     expect(row.display_name).toBe("localpart");
   });
+
+  it("maps anonymous users to guest profile fields", () => {
+    const user = baseUser({
+      email: undefined,
+      is_anonymous: true,
+      app_metadata: { provider: "anonymous" },
+      identities: [],
+    });
+    const row = normalizeAuthUserToProfile(user);
+    expect(row.display_name).toBe("Guest");
+    expect(row.auth_provider).toBe("anonymous");
+    expect(row.email).toBe(`anon-${user.id}@guest.lineroom.local`);
+  });
 });
 
 describe("ensureProfile", () => {

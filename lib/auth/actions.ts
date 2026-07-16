@@ -62,7 +62,31 @@ export async function signup(
   if (Object.keys(fieldErrors).length) return { fieldErrors };
 
   const supabase = await createClient();
+  const existing = await getAuthUser(supabase);
   const confirmUrl = `${getSiteUrl()}/auth/confirm`;
+
+  if (existing?.is_anonymous) {
+    const { data, error } = await supabase.auth.updateUser(
+      {
+        email,
+        password,
+      },
+      { emailRedirectTo: confirmUrl },
+    );
+    if (error) return { message: error.message };
+    if (data.user) {
+      await ensureProfile(supabase, data.user);
+      // Immediate session when email confirmation is disabled.
+      if (!data.user.is_anonymous) {
+        redirect("/");
+      }
+    }
+    return {
+      message:
+        "Check your email to confirm your account, then you can keep writing with the same draft.",
+    };
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -85,6 +109,20 @@ export async function logout() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/login");
+}
+
+/** Ensure the current session user has a profiles row (used after anonymous sign-in). */
+export async function ensureCurrentUserProfile(): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient();
+  const user = await getAuthUser(supabase);
+  if (!user) return { ok: false, error: "No session" };
+  try {
+    await ensureProfile(supabase, user);
+    return { ok: true };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Profile upsert failed";
+    return { ok: false, error: message };
+  }
 }
 
 export type ProfileFormState = { message?: string; fieldErrors?: { username?: string } };

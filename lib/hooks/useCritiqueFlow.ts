@@ -67,6 +67,9 @@ export function useCritiqueFlow(args: UseCritiqueFlowArgs) {
     if (!critiqueAccess) return null;
     if (critiqueAccess.hasActiveSubscription) return "Pro";
     if (critiqueAccess.isBypassed) return null;
+    if (critiqueAccess.isAnonymous) {
+      return `Try: ${critiqueAccess.remainingFreeCritiques} left`;
+    }
     return `Free: ${critiqueAccess.remainingFreeCritiques} left`;
   }, [critiqueAccess]);
 

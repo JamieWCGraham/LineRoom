@@ -20,6 +20,7 @@ vi.mock("@/lib/auth/guards", () => ({
 
 vi.mock("@/lib/billing/access", () => ({
   getCritiqueAccessForUser: mockGetCritiqueAccessForUser,
+  getCritiqueQuotaForUser: vi.fn(() => 5),
 }));
 
 vi.mock("@/lib/critique/draftCritiqueGateConfig", () => ({
@@ -51,6 +52,7 @@ const allowedAccess: CritiqueAccessState = {
   remainingFreeCritiques: 5,
   canGenerateCritique: true,
   reason: "subscribed",
+  isAnonymous: false,
   currentPeriodEnd: null,
   subscriptionBillingProvider: "stripe",
 };
@@ -63,6 +65,7 @@ const paywalledAccess: CritiqueAccessState = {
   remainingFreeCritiques: 0,
   canGenerateCritique: false,
   reason: "quota_exhausted",
+  isAnonymous: false,
   currentPeriodEnd: null,
   subscriptionBillingProvider: null,
 };

@@ -21,7 +21,7 @@ describe("getAuthUser", () => {
       auth: {
         getUser: async () => ({ data: { user }, error: null }),
       },
-    } as Pick<SupabaseClient, "auth">;
+    } as unknown as Pick<SupabaseClient, "auth">;
 
     await expect(getAuthUser(supabase)).resolves.toBe(user);
   });
@@ -31,7 +31,7 @@ describe("getAuthUser", () => {
       auth: {
         getUser: async () => ({ data: { user: null }, error: null }),
       },
-    } as Pick<SupabaseClient, "auth">;
+    } as unknown as Pick<SupabaseClient, "auth">;
 
     await expect(getAuthUser(supabase)).resolves.toBeNull();
   });
@@ -43,12 +43,12 @@ describe("requireAuthUser", () => {
   });
 
   it("returns user when present", async () => {
-    const user = { id: "u1" } as User;
+    const user = { id: "u1", is_anonymous: false } as User;
     const supabase = {
       auth: {
         getUser: async () => ({ data: { user }, error: null }),
       },
-    } as Pick<SupabaseClient, "auth">;
+    } as unknown as Pick<SupabaseClient, "auth">;
 
     await expect(requireAuthUser(supabase)).resolves.toBe(user);
     expect(redirectMock).not.toHaveBeenCalled();
@@ -59,11 +59,25 @@ describe("requireAuthUser", () => {
       auth: {
         getUser: async () => ({ data: { user: null }, error: null }),
       },
-    } as Pick<SupabaseClient, "auth">;
+    } as unknown as Pick<SupabaseClient, "auth">;
 
     await expect(requireAuthUser(supabase)).rejects.toThrow(
       "REDIRECT:/login",
     );
     expect(redirectMock).toHaveBeenCalledWith("/login");
+  });
+
+  it("redirects anonymous guests to /signup", async () => {
+    const user = { id: "u1", is_anonymous: true } as User;
+    const supabase = {
+      auth: {
+        getUser: async () => ({ data: { user }, error: null }),
+      },
+    } as unknown as Pick<SupabaseClient, "auth">;
+
+    await expect(requireAuthUser(supabase)).rejects.toThrow(
+      "REDIRECT:/signup",
+    );
+    expect(redirectMock).toHaveBeenCalledWith("/signup");
   });
 });

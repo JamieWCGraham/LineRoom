@@ -10,8 +10,14 @@ test.describe("unauthenticated", () => {
     await expect(page.getByLabel("Password")).toBeVisible();
   });
 
-  test("lineroom redirects to login when not signed in", async ({ page }) => {
+  test("lineroom is reachable without a prior account (guest try)", async ({
+    page,
+  }) => {
     await page.goto("/lineroom");
-    await expect(page).toHaveURL(/\/login/);
+    await expect(page).not.toHaveURL(/\/login/);
+    // Guest session bootstrap or editor chrome
+    await expect(
+      page.getByText(/Starting try session|Trial Mode of LineRoom|Draft|Critique/i).first(),
+    ).toBeVisible({ timeout: 30_000 });
   });
 });

@@ -14,6 +14,14 @@ export function getFreeCritiqueQuota(): number {
   return n;
 }
 
+/** Anonymous guest try quota (default 3). */
+export function getGuestCritiqueQuota(): number {
+  const raw = process.env.GUEST_CRITIQUE_QUOTA;
+  const n = raw ? Number.parseInt(raw, 10) : Number.NaN;
+  if (!Number.isFinite(n) || n < 0) return 3;
+  return n;
+}
+
 export function getBillingBypassEmails(): Set<string> {
   const raw = process.env.BILLING_BYPASS_EMAILS ?? "";
   const set = new Set<string>();

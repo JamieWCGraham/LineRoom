@@ -1,7 +1,9 @@
 import type { User } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isAnonymousUser } from "@/lib/auth/guest";
 import {
   getFreeCritiqueQuota,
+  getGuestCritiqueQuota,
   isBillingBypassed,
 } from "@/lib/billing/config";
 import { fetchSubscriptionForUser, subscriptionIsPaid } from "@/lib/billing/subscription-row";
@@ -27,11 +29,18 @@ export async function fetchCritiqueUsageForUser(
   return data as CritiqueUsageRow | null;
 }
 
+/** Effective free-slot quota for reserve RPC / access checks. */
+export function getCritiqueQuotaForUser(user: User | null): number {
+  if (user && isAnonymousUser(user)) return getGuestCritiqueQuota();
+  return getFreeCritiqueQuota();
+}
+
 export async function getCritiqueAccessForUser(
   supabase: SupabaseClient,
   user: User | null,
 ): Promise<CritiqueAccessState> {
-  const freeQuota = getFreeCritiqueQuota();
+  const freeQuota = getCritiqueQuotaForUser(user);
+  const isAnonymous = isAnonymousUser(user);
 
   if (!user) {
     return {
@@ -42,6 +51,26 @@ export async function getCritiqueAccessForUser(
       remainingFreeCritiques: 0,
       canGenerateCritique: false,
       reason: "unauthenticated",
+      isAnonymous: false,
+      currentPeriodEnd: null,
+      subscriptionBillingProvider: null,
+    };
+  }
+
+  if (isAnonymous) {
+    const usage = await fetchCritiqueUsageForUser(supabase, user.id);
+    const used = usage?.successful_critiques_used ?? 0;
+    const remaining = Math.max(0, freeQuota - used);
+    const canGenerate = used < freeQuota;
+    return {
+      isBypassed: false,
+      hasActiveSubscription: false,
+      freeQuota,
+      usedFreeCritiques: used,
+      remainingFreeCritiques: remaining,
+      canGenerateCritique: canGenerate,
+      reason: canGenerate ? "free_remaining" : "quota_exhausted",
+      isAnonymous: true,
       currentPeriodEnd: null,
       subscriptionBillingProvider: null,
     };
@@ -59,6 +88,7 @@ export async function getCritiqueAccessForUser(
       remainingFreeCritiques: Math.max(0, freeQuota - used),
       canGenerateCritique: true,
       reason: "bypassed",
+      isAnonymous: false,
       currentPeriodEnd: null,
       subscriptionBillingProvider: null,
     };
@@ -88,6 +118,7 @@ export async function getCritiqueAccessForUser(
       remainingFreeCritiques: Math.max(0, freeQuota - used),
       canGenerateCritique: true,
       reason: "subscribed",
+      isAnonymous: false,
       currentPeriodEnd: sub?.current_period_end ?? null,
       subscriptionBillingProvider: sub?.billing_provider ?? "stripe",
     };
@@ -106,6 +137,7 @@ export async function getCritiqueAccessForUser(
     remainingFreeCritiques: remaining,
     canGenerateCritique: canGenerate,
     reason: canGenerate ? "free_remaining" : "quota_exhausted",
+    isAnonymous: false,
     currentPeriodEnd: null,
     subscriptionBillingProvider: null,
   };

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { DashboardBackLink } from "@/components/navigation/dashboard-back-link";
+import { SignupPromptModal } from "@/components/billing/SignupPromptModal";
 import { UpgradeModal } from "@/components/billing/UpgradeModal";
 import { CritiqueDisplayPanel } from "@/components/CritiqueDisplayPanel";
 import { CritiqueSetupPanel } from "@/components/CritiqueSetupPanel";
@@ -11,6 +12,7 @@ import {
 import { DraftEditor } from "@/components/DraftEditor";
 import { Header } from "@/components/Header";
 import { LyricChatPanel } from "@/components/LyricChatPanel";
+import { GuestTryBanner } from "@/components/lineroom/GuestTryBanner";
 import { SongTitleEditor } from "@/components/songs/song-title-editor";
 import { SongVersionBar } from "@/components/lineroom/SongVersionBar";
 import { ShareLyricsButton } from "@/components/songs/share-lyrics-button";
@@ -71,6 +73,7 @@ export function LineRoomEditorLayout({
   const {
     critiqueLoading,
     critiqueError,
+    critiqueAccess,
     paywallOpen,
     setPaywallOpen,
     quotaBadge,
@@ -81,12 +84,14 @@ export function LineRoomEditorLayout({
   const autosaveError = persist.autosaveError;
   const flushPersist = persist.flushPersist;
   const songProps = props.mode === "song" ? props : null;
+  const isGuest = Boolean(critiqueAccess?.isAnonymous);
 
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden overscroll-y-contain bg-zinc-950">
       <div className="hidden lg:block">
         <Header showDashboardLink={isSong} />
       </div>
+      {isGuest && !isSong ? <GuestTryBanner /> : null}
       {songProps ?
         <div className="hidden lg:block">
         <SongVersionBar
@@ -651,10 +656,17 @@ export function LineRoomEditorLayout({
           : null}
         </div>
       </div>
-      <UpgradeModal
-        open={paywallOpen}
-        onClose={() => setPaywallOpen(false)}
-      />
+      {isGuest ?
+        <SignupPromptModal
+          open={paywallOpen}
+          onClose={() => setPaywallOpen(false)}
+        />
+      : (
+        <UpgradeModal
+          open={paywallOpen}
+          onClose={() => setPaywallOpen(false)}
+        />
+      )}
     </div>
   );
 }

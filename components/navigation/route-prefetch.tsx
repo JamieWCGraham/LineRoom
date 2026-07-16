@@ -36,12 +36,13 @@ export function PrefetchAccountNav() {
   return null;
 }
 
-/** Landing (logged out): auth entry points. */
+/** Landing (logged out / guest): auth + try entry points. */
 export function PrefetchPublicLandingAuth() {
   const router = useRouter();
   useEffect(() => {
     router.prefetch("/login");
     router.prefetch("/signup");
+    router.prefetch("/lineroom");
   }, [router]);
   return null;
 }

@@ -27,7 +27,8 @@ type Props = {
 export default async function HomePage({ searchParams }: Props) {
   const supabase = await createClient();
   const user = await getAuthUser(supabase);
-  if (!user) {
+  const showLanding = !user || Boolean(user.is_anonymous);
+  if (showLanding) {
     return (
       <main className="relative isolate min-h-screen overflow-hidden">
         <PrefetchPublicLandingAuth />
@@ -78,11 +79,18 @@ export default async function HomePage({ searchParams }: Props) {
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
-                  href="/signup"
+                  href="/lineroom"
                   prefetch
                   className="rounded-xl bg-zinc-100 px-6 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-white"
                 >
-                  Start writing for free
+                  Try without signing up
+                </Link>
+                <Link
+                  href="/signup"
+                  prefetch
+                  className="rounded-xl border border-zinc-700 px-6 py-3 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-900"
+                >
+                  Sign up
                 </Link>
                 <Link
                   href="/login"
@@ -116,18 +124,18 @@ export default async function HomePage({ searchParams }: Props) {
 
           <div className="flex gap-3 sm:hidden">
             <Link
+              href="/lineroom"
+              prefetch
+              className="flex-1 rounded-lg bg-zinc-100 px-4 py-2 text-center text-sm font-semibold text-zinc-950 transition hover:bg-white"
+            >
+              Try free
+            </Link>
+            <Link
               href="/login"
               prefetch
               className="flex-1 rounded-lg border border-zinc-700 px-4 py-2 text-center text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-900/80"
             >
               Login
-            </Link>
-            <Link
-              href="/signup"
-              prefetch
-              className="flex-1 rounded-lg bg-zinc-100 px-4 py-2 text-center text-sm font-semibold text-zinc-950 transition hover:bg-white"
-            >
-              Sign up
             </Link>
           </div>
         </div>

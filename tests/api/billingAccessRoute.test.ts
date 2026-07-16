@@ -42,6 +42,7 @@ const subscribedAccess: CritiqueAccessState = {
   remainingFreeCritiques: 3,
   canGenerateCritique: true,
   reason: "subscribed",
+  isAnonymous: false,
   currentPeriodEnd: "2026-06-01T00:00:00.000Z",
   subscriptionBillingProvider: "stripe",
 };
@@ -54,6 +55,7 @@ const unauthenticatedAccess: CritiqueAccessState = {
   remainingFreeCritiques: 0,
   canGenerateCritique: false,
   reason: "unauthenticated",
+  isAnonymous: false,
   currentPeriodEnd: null,
   subscriptionBillingProvider: null,
 };

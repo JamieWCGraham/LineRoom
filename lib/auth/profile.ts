@@ -1,4 +1,5 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { guestProfileEmail, isAnonymousUser } from "@/lib/auth/guest";
 import type { ProfileUpsert } from "@/types/database";
 
 function emailPrefix(email: string): string {
@@ -7,6 +8,8 @@ function emailPrefix(email: string): string {
 }
 
 function inferProvider(user: User): string {
+  if (isAnonymousUser(user)) return "anonymous";
+
   const meta = user.app_metadata as Record<string, unknown> | undefined;
   const fromMeta =
     typeof meta?.provider === "string" ? meta.provider : undefined;
@@ -51,6 +54,17 @@ function pickDisplayName(user: User, email: string): string {
 }
 
 export function normalizeAuthUserToProfile(user: User): ProfileUpsert {
+  if (isAnonymousUser(user)) {
+    return {
+      id: user.id,
+      email: guestProfileEmail(user.id),
+      display_name: "Guest",
+      avatar_url: null,
+      auth_provider: "anonymous",
+      updated_at: new Date().toISOString(),
+    };
+  }
+
   const email = user.email ?? "";
   const meta = user.user_metadata as Record<string, unknown> | undefined;
   const avatar =

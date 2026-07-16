@@ -8,7 +8,7 @@ Built with **Next.js 15**, **Supabase** (auth + Postgres + storage), **Stripe** 
 
 - **Dashboard** — create and open pieces; multiple saved versions per piece.
 - **Editor** — draft + brainstorm panes, workshop chat, AI critique, draft recordings (local or cloud).
-- **Billing** — LineRoom Pro (Stripe web, StoreKit iOS); free-tier critique quota.
+- **Billing** — LineRoom Pro (Stripe web, StoreKit iOS); free-tier critique quota; guest try with limited anonymous critiques.
 - **Evals** (internal) — batch critique evaluation, metrics, HITL ground truth — see `app/evals/EVAL_ARCHITECTURE.md`.
 
 ## Setup
@@ -23,6 +23,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+**Guest try:** enable **Anonymous sign-ins** in Supabase Dashboard → Authentication → Providers. Landing CTA “Try without signing up” opens `/lineroom` with a guest session and `GUEST_CRITIQUE_QUOTA` critiques (default 3). Workshop is available in trial mode; cloud save requires signup.
 ## Scripts
 
 | Script | Description |
@@ -42,7 +43,7 @@ See [.env.example](.env.example) for the full list. Minimum for local dev:
 - `SUPABASE_SERVICE_ROLE_KEY` (server routes, webhooks)
 - `OPENAI_API_KEY` (Workshop `/api/chat`)
 - `AI_GATEWAY_API_KEY` (Critique `/api/critique`)
-
+- Anonymous Auth enabled in Supabase (for `/lineroom` guest try); optional `GUEST_CRITIQUE_QUOTA`
 ## Architecture
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) and [CONTRIBUTING.md](CONTRIBUTING.md).

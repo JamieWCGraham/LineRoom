@@ -25,9 +25,15 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithOAuth(
-    buildOAuthSignInOptions(provider),
-  );
+  const {
+    data: { user: existingUser },
+  } = await supabase.auth.getUser();
+
+  const oauthOpts = buildOAuthSignInOptions(provider);
+  const { data, error } =
+    existingUser?.is_anonymous ?
+      await supabase.auth.linkIdentity(oauthOpts)
+    : await supabase.auth.signInWithOAuth(oauthOpts);
 
   if (error || !data.url) {
     return NextResponse.redirect(
