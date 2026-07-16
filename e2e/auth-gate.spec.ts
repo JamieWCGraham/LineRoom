@@ -17,7 +17,7 @@ test.describe("unauthenticated", () => {
     await expect(page).not.toHaveURL(/\/login/);
     // Guest session bootstrap or editor chrome
     await expect(
-      page.getByText(/Starting try session|Trial Mode of LineRoom|Draft|Critique/i).first(),
+      page.getByText(/Loading New LineRoom Session|Trial Mode of LineRoom|Draft|Critique/i).first(),
     ).toBeVisible({ timeout: 30_000 });
   });
 });

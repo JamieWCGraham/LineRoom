@@ -76,7 +76,7 @@ export function GuestSessionGate({ children }: Props) {
   if (!ready) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-zinc-950 text-sm text-zinc-400">
-        Starting try session…
+        Loading New LineRoom Session…
       </div>
     );
   }

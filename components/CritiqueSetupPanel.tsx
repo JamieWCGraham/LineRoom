@@ -36,7 +36,7 @@ export function CritiqueSetupPanel({
         ref={mobileHeaderRef}
         className="shrink-0 border-b border-zinc-800/80 px-3 py-2 max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-[50] max-lg:bg-zinc-950/95 max-lg:px-5 max-lg:pt-[max(0.75rem,calc(env(safe-area-inset-top)+0.5rem))] max-lg:backdrop-blur-md lg:relative lg:z-auto lg:bg-transparent lg:px-3 lg:pb-2 lg:pt-3"
       >
-        <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+        <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-300">
           Before the critique
         </h2>
         <p className="mt-0.5 text-[11px] leading-snug text-zinc-600">
@@ -53,7 +53,7 @@ export function CritiqueSetupPanel({
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-none p-3 max-lg:px-5 [touch-action:pan-y]">
         <label className="block">
-          <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+          <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-100">
            Who are the closest artists/influences for this piece?
           </span>
           <textarea
@@ -67,7 +67,7 @@ export function CritiqueSetupPanel({
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+          <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-100">
             What is the genre of the piece?
           </span>
           <input

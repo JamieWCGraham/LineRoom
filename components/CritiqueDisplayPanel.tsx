@@ -165,7 +165,7 @@ export function CritiqueDisplayPanel({
         {critique ? (
           <div className="space-y-5 text-sm">
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-100">
                 Overall rating
               </p>
               <p className="mt-1 text-2xl font-semibold text-emerald-200/95">
@@ -202,7 +202,7 @@ export function CritiqueDisplayPanel({
             </div>
 
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-100">
                 Subscores
               </p>
               {groundTruthSubscores ? (
@@ -236,7 +236,7 @@ export function CritiqueDisplayPanel({
 
             {genrePrinciplesText ? (
               <div>
-                <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-100">
                   Reflections
                 </p>
               <p className="mt-1 whitespace-pre-wrap leading-relaxed text-zinc-300">
@@ -255,7 +255,7 @@ export function CritiqueDisplayPanel({
             ) : null}
 
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-100">
                 Overall strengths
               </p>
               <ul className="mt-1 list-disc space-y-1 pl-4 text-zinc-300">
@@ -287,7 +287,7 @@ export function CritiqueDisplayPanel({
             </div>
 
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-100">
                 Overall weaknesses
               </p>
               <ul className="mt-1 list-disc space-y-1 pl-4 text-zinc-300">
@@ -319,7 +319,7 @@ export function CritiqueDisplayPanel({
             </div>
 
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-100">
                 Line-level feedback
               </p>
               <ul className="mt-2 space-y-3 border-t border-zinc-800/80 pt-3">

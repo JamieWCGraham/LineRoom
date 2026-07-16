@@ -357,7 +357,7 @@ export function LineRoomEditorLayout({
               lineFeedbackByIndex={lineFeedbackByIndex}
               lineFeedbackAutoShowKey={lineFeedbackAutoShowKey}
               onPersistFlush={isSong ? flushPersist : undefined}
-              externalMobileToolsTrigger={isSong}
+              externalMobileToolsTrigger
               mobileTopRow={
                 <div className="flex w-full min-w-0 items-center gap-1.5">
                   {isSong ?
@@ -388,28 +388,26 @@ export function LineRoomEditorLayout({
                         {pieceTitle}
                       </p>}
                   </div>
-                  {songProps ?
-                    <button
-                      type="button"
-                      onClick={() => lyricDraftEditorRef.current?.toggleMobileTools()}
-                      className={MOBILE_DOC_HEADER_ICON_BTN}
-                      aria-label="Open or close draft tools"
+                  <button
+                    type="button"
+                    onClick={() => lyricDraftEditorRef.current?.toggleMobileTools()}
+                    className={MOBILE_DOC_HEADER_ICON_BTN}
+                    aria-label="Open or close draft tools"
+                  >
+                    <svg
+                      className="size-[18px] shrink-0"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden
                     >
-                      <svg
-                        className="size-[18px] shrink-0"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden
-                      >
-                        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
-                    </button>
-                  : null}
+                      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setMobileMenuOpen(true)}
@@ -439,7 +437,7 @@ export function LineRoomEditorLayout({
                     }))
                   }
                   useMobileVoiceFab
-                  suppressMobileFloatingFab={isSong}
+                  suppressMobileFloatingFab
                   mobileFabVisible={mobilePane === "draft"}
                   disabled={
                     savePending ||
@@ -462,7 +460,7 @@ export function LineRoomEditorLayout({
               placeholder="Write brainstorm material for your lyrics here..."
               textInputAriaLabel="Brainstorm notes"
               onPersistFlush={isSong ? flushPersist : undefined}
-              externalMobileToolsTrigger={isSong}
+              externalMobileToolsTrigger
               mobileTopRow={
                 <div className="flex w-full min-w-0 items-center gap-1.5">
                   {isSong ?
@@ -493,28 +491,26 @@ export function LineRoomEditorLayout({
                         {pieceTitle}
                       </p>}
                   </div>
-                  {songProps ?
-                    <button
-                      type="button"
-                      onClick={() => lyricDraftEditorRef.current?.toggleMobileTools()}
-                      className={MOBILE_DOC_HEADER_ICON_BTN}
-                      aria-label="Open or close draft tools"
+                  <button
+                    type="button"
+                    onClick={() => lyricDraftEditorRef.current?.toggleMobileTools()}
+                    className={MOBILE_DOC_HEADER_ICON_BTN}
+                    aria-label="Open or close draft tools"
+                  >
+                    <svg
+                      className="size-[18px] shrink-0"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden
                     >
-                      <svg
-                        className="size-[18px] shrink-0"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden
-                      >
-                        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
-                    </button>
-                  : null}
+                      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setMobileMenuOpen(true)}
@@ -548,7 +544,7 @@ export function LineRoomEditorLayout({
                     }))
                   }
                   useMobileVoiceFab
-                  suppressMobileFloatingFab={isSong}
+                  suppressMobileFloatingFab
                   mobileFabVisible={mobilePane === "draft"}
                   disabled={
                     savePending ||
@@ -610,8 +606,7 @@ export function LineRoomEditorLayout({
           >
             Workshop
           </button>
-          {songProps &&
-          mobilePane === "draft" &&
+          {mobilePane === "draft" &&
           (lyricDocPane === "draft" || lyricDocPane === "brainstorm") ?
             <button
               type="button"
