@@ -30,12 +30,18 @@ export function LoginForm() {
           ) : null}
         </div>
         <div>
-          <label
-            htmlFor="password"
-            className="mb-1 block text-sm text-zinc-400"
-          >
-            Password
-          </label>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label htmlFor="password" className="block text-sm text-zinc-400">
+              Password
+            </label>
+            <Link
+              href="/forgot-password"
+              prefetch
+              className="text-xs text-zinc-400 underline hover:text-zinc-300"
+            >
+              Forgot password?
+            </Link>
+          </div>
           <input
             id="password"
             name="password"

@@ -42,6 +42,30 @@ export function sanitizeAuthNext(raw: string | null | undefined): string {
   return t;
 }
 
+/**
+ * Post-email-confirm destination. Recovery OTP or an explicit safe
+ * `next=/reset-password` (from resetPasswordForEmail redirectTo) → reset form.
+ */
+export function resolveEmailConfirmRedirect(opts: {
+  type: string | null | undefined;
+  next: string | null | undefined;
+}): string {
+  const safeNext = sanitizeAuthNext(opts.next);
+  if (opts.type === "recovery" || safeNext === "/reset-password") {
+    return "/reset-password";
+  }
+  return "/";
+}
+
+/** Email confirmation + password-recovery callback used by Auth emails. */
+export function authConfirmUrl(next?: string): string {
+  const base = `${getSiteUrl()}/auth/confirm`;
+  if (!next) return base;
+  const safe = sanitizeAuthNext(next);
+  if (safe === "/") return base;
+  return `${base}?next=${encodeURIComponent(safe)}`;
+}
+
 export function parseOAuthProvider(
   raw: string | null | undefined,
 ): OAuthProviderId | null {

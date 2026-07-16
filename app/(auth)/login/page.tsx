@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AppBrandHero } from "@/components/app-brand";
 import { LoginForm } from "@/components/auth/login-form";
 import { OAuthSignInLinks } from "@/components/auth/oauth-sign-in-links";
@@ -8,6 +9,7 @@ type Props = {
     error?: string;
     message?: string;
     next?: string;
+    reset?: string;
   }>;
 };
 
@@ -33,6 +35,15 @@ export default async function LoginPage({ searchParams }: Props) {
           Email link invalid or expired. Request a new one or sign in.
         </p>
       ) : null}
+      {q.error === "recovery" ? (
+        <p className="mb-4 rounded-lg border border-red-900/50 bg-red-950/40 px-3 py-2 text-center text-sm text-red-300">
+          Password reset link invalid or expired.{" "}
+          <Link href="/forgot-password" prefetch className="underline">
+            Request a new one
+          </Link>
+          .
+        </p>
+      ) : null}
       {q.message === "signed_out" ? (
         <p className="mb-4 rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 py-2 text-center text-sm text-zinc-400">
           You have been signed out.
@@ -41,6 +52,11 @@ export default async function LoginPage({ searchParams }: Props) {
       {q.message === "confirmed" ? (
         <p className="mb-4 rounded-lg border border-emerald-900/50 bg-emerald-950/30 px-3 py-2 text-center text-sm text-emerald-200">
           Check your email or sign in to continue.
+        </p>
+      ) : null}
+      {q.reset === "1" ? (
+        <p className="mb-4 rounded-lg border border-emerald-900/50 bg-emerald-950/30 px-3 py-2 text-center text-sm text-emerald-200">
+          Password updated. Sign in with your new password.
         </p>
       ) : null}
 

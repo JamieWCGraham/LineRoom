@@ -2,12 +2,16 @@ import { type EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { ensureProfile } from "@/lib/auth/profile";
-import { getSiteUrl } from "@/lib/auth/oauth";
+import {
+  getSiteUrl,
+  resolveEmailConfirmRedirect,
+} from "@/lib/auth/oauth";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const site = getSiteUrl();
   const supabase = await createClient();
+  const next = requestUrl.searchParams.get("next");
 
   const token_hash = requestUrl.searchParams.get("token_hash");
   const type = requestUrl.searchParams.get("type") as EmailOtpType | null;
@@ -28,7 +32,8 @@ export async function GET(request: Request) {
           /* continue to dashboard */
         }
       }
-      return NextResponse.redirect(new URL("/", site));
+      const dest = resolveEmailConfirmRedirect({ type, next });
+      return NextResponse.redirect(new URL(dest, site));
     }
   }
 
@@ -46,9 +51,14 @@ export async function GET(request: Request) {
           /* continue */
         }
       }
-      return NextResponse.redirect(new URL("/", site));
+      const dest = resolveEmailConfirmRedirect({ type, next });
+      return NextResponse.redirect(new URL(dest, site));
     }
   }
 
-  return NextResponse.redirect(new URL("/login?error=confirm", site));
+  const failPath =
+    resolveEmailConfirmRedirect({ type, next }) === "/reset-password"
+      ? "/login?error=recovery"
+      : "/login?error=confirm";
+  return NextResponse.redirect(new URL(failPath, site));
 }

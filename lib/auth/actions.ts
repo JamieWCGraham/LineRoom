@@ -4,11 +4,17 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ensureProfile } from "@/lib/auth/profile";
 import { getAuthUser } from "@/lib/auth/guards";
-import { getSiteUrl } from "@/lib/auth/oauth";
+import { authConfirmUrl } from "@/lib/auth/oauth";
 
 export type AuthFormState = {
-  fieldErrors?: { email?: string; password?: string };
+  fieldErrors?: {
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+  };
   message?: string;
+  /** Non-error feedback (e.g. password-reset email sent). */
+  success?: string;
 };
 
 function validateEmail(email: string): string | undefined {
@@ -63,7 +69,7 @@ export async function signup(
 
   const supabase = await createClient();
   const existing = await getAuthUser(supabase);
-  const confirmUrl = `${getSiteUrl()}/auth/confirm`;
+  const confirmUrl = authConfirmUrl();
 
   if (existing?.is_anonymous) {
     const { data, error } = await supabase.auth.updateUser(
@@ -109,6 +115,60 @@ export async function logout() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/login");
+}
+
+const RESET_EMAIL_SENT =
+  "If an account exists for that email, we sent a password reset link. Check your inbox.";
+
+export async function requestPasswordReset(
+  _prev: AuthFormState | undefined,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const email = String(formData.get("email") ?? "").trim();
+  const eErr = validateEmail(email);
+  if (eErr) return { fieldErrors: { email: eErr } };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: authConfirmUrl("/reset-password"),
+  });
+  // Same response whether or not the account exists (avoid enumeration).
+  if (error) {
+    console.error("[requestPasswordReset]", error.message);
+  }
+  return { success: RESET_EMAIL_SENT };
+}
+
+export async function updatePassword(
+  _prev: AuthFormState | undefined,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const password = String(formData.get("password") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+  const fieldErrors: AuthFormState["fieldErrors"] = {};
+  const pErr = validatePassword(password);
+  if (pErr) fieldErrors.password = pErr;
+  if (!confirmPassword) {
+    fieldErrors.confirmPassword = "Required";
+  } else if (password !== confirmPassword) {
+    fieldErrors.confirmPassword = "Passwords do not match";
+  }
+  if (Object.keys(fieldErrors).length) return { fieldErrors };
+
+  const supabase = await createClient();
+  const user = await getAuthUser(supabase);
+  if (!user || user.is_anonymous) {
+    return {
+      message:
+        "This reset link is invalid or has expired. Request a new one.",
+    };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { message: error.message };
+
+  await supabase.auth.signOut();
+  redirect("/login?reset=1");
 }
 
 /** Ensure the current session user has a profiles row (used after anonymous sign-in). */

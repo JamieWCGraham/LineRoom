@@ -8,6 +8,35 @@ test.describe("unauthenticated", () => {
     await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
     await expect(page.getByLabel("Email")).toBeVisible();
     await expect(page.getByLabel("Password")).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Forgot password?" }),
+    ).toHaveAttribute("href", "/forgot-password");
+  });
+
+  test("forgot password page shows email form", async ({ page }) => {
+    await page.goto("/forgot-password");
+    await expect(
+      page.getByRole("heading", { name: "Forgot password" }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Email")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Send reset link" }),
+    ).toBeVisible();
+  });
+
+  test("reset password without recovery session shows expired message", async ({
+    page,
+  }) => {
+    await page.goto("/reset-password");
+    await expect(
+      page.getByRole("heading", { name: "Reset password" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/invalid or has expired/i),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Forgot password" }),
+    ).toHaveAttribute("href", "/forgot-password");
   });
 
   test("login page shows Google OAuth when enabled", async ({ page }) => {

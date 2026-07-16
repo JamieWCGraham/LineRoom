@@ -24,6 +24,8 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000).
 
 **Guest try:** enable **Anonymous sign-ins** in Supabase Dashboard → Authentication → Providers. Landing CTA “Try without signing up” opens `/lineroom` with a guest session and `GUEST_CRITIQUE_QUOTA` critiques (default 3). Workshop is available in trial mode; cloud save requires signup.
+
+**Forgot password:** `/forgot-password` → Supabase recovery email → `/auth/confirm` → `/reset-password`. In Supabase Dashboard → Authentication → URL Configuration, allow `{NEXT_PUBLIC_SITE_URL}/auth/confirm` (and OAuth `/auth/callback`). Auth email delivery uses Supabase SMTP / templates.
 ## Scripts
 
 | Script | Description |

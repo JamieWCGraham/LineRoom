@@ -10,11 +10,25 @@ import type { CapacitorConfig } from "@capacitor/cli";
  * Optional: CAPACITOR_ALLOW_NAVIGATION=comma,separated,host.patterns for OAuth/Stripe
  * flows that must stay in the WebView (see Capacitor server.allowNavigation).
  */
-function allowNavigationFromEnv(): string[] | undefined {
+/**
+ * Hosts that must stay inside the WebView (OAuth + Stripe). Without these,
+ * WKWebView hands the navigation to Safari and the user leaves the app.
+ * CAPACITOR_ALLOW_NAVIGATION (comma-separated) overrides this default.
+ */
+const DEFAULT_ALLOW_NAVIGATION = [
+  "line-room.com",
+  "*.line-room.com",
+  "*.supabase.co",
+  "accounts.google.com",
+  "appleid.apple.com",
+  "*.stripe.com",
+];
+
+function allowNavigationFromEnv(): string[] {
   const raw = process.env.CAPACITOR_ALLOW_NAVIGATION?.trim();
-  if (!raw) return undefined;
+  if (!raw) return DEFAULT_ALLOW_NAVIGATION;
   const list = raw.split(",").map((s) => s.trim()).filter(Boolean);
-  return list.length ? list : undefined;
+  return list.length ? list : DEFAULT_ALLOW_NAVIGATION;
 }
 
 const serverUrlRaw =

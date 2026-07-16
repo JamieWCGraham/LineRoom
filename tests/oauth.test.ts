@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   OAUTH_NEXT_COOKIE,
+  authConfirmUrl,
   buildOAuthSignInOptions,
   oauthCallbackUrl,
   oauthStartHref,
   parseOAuthProvider,
+  resolveEmailConfirmRedirect,
   sanitizeAuthNext,
 } from "@/lib/auth/oauth";
 
@@ -66,6 +68,37 @@ describe("OAuth helpers", () => {
     expect(oauthStartHref("apple", "/account")).toBe(
       "/auth/oauth?provider=apple&next=%2Faccount",
     );
+  });
+
+  it("builds auth confirm URLs with optional safe next", () => {
+    expect(authConfirmUrl()).toBe("https://app.example.com/auth/confirm");
+    expect(authConfirmUrl("/reset-password")).toBe(
+      "https://app.example.com/auth/confirm?next=%2Freset-password",
+    );
+    expect(authConfirmUrl("https://evil.com")).toBe(
+      "https://app.example.com/auth/confirm",
+    );
+  });
+
+  it("resolves email confirm redirects for recovery", () => {
+    expect(
+      resolveEmailConfirmRedirect({ type: "signup", next: null }),
+    ).toBe("/");
+    expect(
+      resolveEmailConfirmRedirect({ type: "recovery", next: null }),
+    ).toBe("/reset-password");
+    expect(
+      resolveEmailConfirmRedirect({
+        type: null,
+        next: "/reset-password",
+      }),
+    ).toBe("/reset-password");
+    expect(
+      resolveEmailConfirmRedirect({
+        type: "signup",
+        next: "//evil.com",
+      }),
+    ).toBe("/");
   });
 });
 
