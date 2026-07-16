@@ -23,15 +23,10 @@ export function OAuthSignInLinks({ nextPath }: Props) {
   const next = pickNext(nextPath);
   const googleHref = oauthStartHref("google", next);
   const appleHref = oauthStartHref("apple", next);
-  const showBoth = oauthGoogleEnabled && oauthAppleEnabled;
 
   return (
     <div className="space-y-3">
-      <div
-        className={
-          showBoth ? "grid gap-2 sm:grid-cols-2 sm:gap-3" : "grid gap-2"
-        }
-      >
+      <div className="grid gap-2">
         {oauthGoogleEnabled ? (
           <a
             href={googleHref}
