@@ -105,4 +105,24 @@ describe("OAuth UI feature flags", () => {
     expect(mod.oauthGoogleEnabled).toBe(false);
     expect(mod.oauthSignInUiEnabled).toBe(false);
   });
+
+  it("enables Apple UI when NEXT_PUBLIC_OAUTH_APPLE_ENABLED=true", async () => {
+    delete process.env.NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED;
+    process.env.NEXT_PUBLIC_OAUTH_APPLE_ENABLED = "true";
+    vi.resetModules();
+    const mod = await import("@/lib/auth/oauth");
+    expect(mod.oauthAppleEnabled).toBe(true);
+    expect(mod.oauthGoogleEnabled).toBe(false);
+    expect(mod.oauthSignInUiEnabled).toBe(true);
+  });
+
+  it("enables both providers when both flags are true", async () => {
+    process.env.NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED = "true";
+    process.env.NEXT_PUBLIC_OAUTH_APPLE_ENABLED = "true";
+    vi.resetModules();
+    const mod = await import("@/lib/auth/oauth");
+    expect(mod.oauthGoogleEnabled).toBe(true);
+    expect(mod.oauthAppleEnabled).toBe(true);
+    expect(mod.oauthSignInUiEnabled).toBe(true);
+  });
 });
