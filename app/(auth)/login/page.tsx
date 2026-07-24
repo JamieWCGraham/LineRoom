@@ -68,7 +68,7 @@ export default async function LoginPage({ searchParams }: Props) {
           Access your saved pieces and the LineRoom editor.
         </p>
         {oauthSignInUiEnabled ? (
-          <>
+          <div className="hidden md:block">
             <OAuthSignInLinks nextPath={q.next} />
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center" aria-hidden>
@@ -80,7 +80,7 @@ export default async function LoginPage({ searchParams }: Props) {
                 </span>
               </div>
             </div>
-          </>
+          </div>
         ) : null}
         <LoginForm />
       </div>

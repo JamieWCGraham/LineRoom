@@ -77,6 +77,24 @@ test.describe("unauthenticated", () => {
     }
   });
 
+  test("login page hides OAuth on mobile viewport", async ({ page }) => {
+    test.skip(
+      process.env.NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED !== "true" &&
+        process.env.NEXT_PUBLIC_OAUTH_APPLE_ENABLED !== "true",
+      "OAuth UI is not enabled",
+    );
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/login");
+    await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+    await expect(page.getByLabel("Email")).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /Continue with Google/i }),
+    ).toBeHidden();
+    await expect(
+      page.getByRole("link", { name: /Continue with Apple/i }),
+    ).toBeHidden();
+  });
+
   test("oauth start redirects toward Google via Supabase", async ({
     request,
   }) => {
