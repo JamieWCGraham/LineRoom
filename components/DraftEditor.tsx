@@ -706,7 +706,7 @@ export const DraftEditor = forwardRef<DraftEditorHandle, DraftEditorProps>(
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden max-lg:min-h-0 max-lg:flex-1 max-lg:gap-0">
       <div
         ref={mobileToolbarRef}
-        className="flex shrink-0 flex-col gap-2 border-b border-transparent max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-[50] max-lg:border-zinc-800/60 max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pb-2 max-lg:pt-[max(0.5rem,env(safe-area-inset-top))] max-lg:backdrop-blur-md lg:relative lg:border-b-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0"
+        className="flex shrink-0 flex-col gap-2 border-b border-transparent max-lg:fixed max-lg:inset-x-0 max-lg:top-[var(--lineroom-mobile-top,0px)] max-lg:z-[50] max-lg:border-zinc-800/60 max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pb-2 max-lg:pt-[max(0.5rem,var(--lineroom-safe-top,env(safe-area-inset-top)))] max-lg:backdrop-blur-md lg:relative lg:border-b-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0"
       >
         {mobileTopRow ? (
           <div className="flex shrink-0 flex-col gap-2 border-b border-zinc-800/40 pb-2 lg:hidden">

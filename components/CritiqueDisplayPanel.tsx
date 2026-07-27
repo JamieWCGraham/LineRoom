@@ -97,7 +97,7 @@ export function CritiqueDisplayPanel({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/30 max-lg:rounded-none max-lg:border-x-0">
       <div
         ref={mobileHeaderRef}
-        className="shrink-0 border-b border-zinc-800/80 px-3 py-2 max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-[50] max-lg:bg-zinc-950/95 max-lg:px-5 max-lg:pt-[max(0.75rem,calc(env(safe-area-inset-top)+0.5rem))] max-lg:backdrop-blur-md lg:relative lg:z-auto lg:bg-transparent lg:px-3 lg:pb-2 lg:pt-3"
+        className="shrink-0 border-b border-zinc-800/80 px-3 py-2 max-lg:fixed max-lg:inset-x-0 max-lg:top-[var(--lineroom-mobile-top,0px)] max-lg:z-[50] max-lg:bg-zinc-950/95 max-lg:px-5 max-lg:pt-[max(0.75rem,calc(var(--lineroom-safe-top,env(safe-area-inset-top))+0.5rem))] max-lg:backdrop-blur-md lg:relative lg:z-auto lg:bg-transparent lg:px-3 lg:pb-2 lg:pt-3"
       >
         <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-300">
           Critique
@@ -491,6 +491,7 @@ export function CritiqueDisplayPanel({
           : null}
           <button
             type="button"
+            data-tour-target="generate-critique"
             onClick={onRegenerate}
             disabled={loading || !critique || lyricsEmpty}
             style={{ touchAction: "manipulation" }}

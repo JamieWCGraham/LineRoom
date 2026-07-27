@@ -13,14 +13,18 @@ import { DraftEditor } from "@/components/DraftEditor";
 import { Header } from "@/components/Header";
 import { LyricChatPanel } from "@/components/LyricChatPanel";
 import { GuestTryBanner } from "@/components/lineroom/GuestTryBanner";
+import { GuestWorkflowTour } from "@/components/lineroom/GuestWorkflowTour";
 import { SongTitleEditor } from "@/components/songs/song-title-editor";
 import { SongVersionBar } from "@/components/lineroom/SongVersionBar";
 import { ShareLyricsButton } from "@/components/songs/share-lyrics-button";
+import { useGuestBannerMobileOffset } from "@/lib/hooks/useGuestBannerMobileOffset";
+import { useGuestWorkflowTour } from "@/lib/hooks/useGuestWorkflowTour";
 import {
   MOBILE_DOC_HEADER_BACK_BTN,
   MOBILE_DOC_HEADER_ICON_BTN,
   type LineRoomEditorViewModel,
 } from "@/lib/hooks/useLineRoomEditorState";
+import { useRef, type CSSProperties } from "react";
 
 export function LineRoomEditorLayout({
   props,
@@ -85,13 +89,34 @@ export function LineRoomEditorLayout({
   const flushPersist = persist.flushPersist;
   const songProps = props.mode === "song" ? props : null;
   const isGuest = Boolean(critiqueAccess?.isAnonymous);
+  const showGuestBanner = isGuest && !isSong;
+  const guestBannerRef = useRef<HTMLDivElement>(null);
+  const guestBannerMobileOffsetPx = useGuestBannerMobileOffset(
+    guestBannerRef,
+    showGuestBanner,
+  );
+  const guestTour = useGuestWorkflowTour({
+    enabled: isGuest && !isSong,
+    paused: paywallOpen,
+    setMobilePane,
+  });
 
   return (
-    <div className="flex h-dvh min-h-0 flex-col overflow-hidden overscroll-y-contain bg-zinc-950">
+    <div
+      className="flex h-dvh min-h-0 flex-col overflow-hidden overscroll-y-contain bg-zinc-950"
+      style={
+        {
+          "--lineroom-mobile-top": `${guestBannerMobileOffsetPx}px`,
+          ...(guestBannerMobileOffsetPx > 0 ?
+            { "--lineroom-safe-top": "0px" }
+          : {}),
+        } as CSSProperties
+      }
+    >
       <div className="hidden lg:block">
         <Header showDashboardLink={isSong} />
       </div>
-      {isGuest && !isSong ? <GuestTryBanner /> : null}
+      {showGuestBanner ? <GuestTryBanner ref={guestBannerRef} /> : null}
       {songProps ?
         <div className="hidden lg:block">
         <SongVersionBar
@@ -348,7 +373,10 @@ export function LineRoomEditorLayout({
           }
         </section>
 
-        <section className={`${mobilePane === "draft" ? "flex" : "hidden"} relative z-[1] min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden overscroll-y-contain max-lg:min-h-0 max-lg:flex-1 max-lg:px-0 lg:min-h-0 lg:flex`}>
+        <section
+          data-tour-target="draft"
+          className={`${mobilePane === "draft" ? "flex" : "hidden"} relative z-[1] min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden overscroll-y-contain max-lg:min-h-0 max-lg:flex-1 max-lg:px-0 lg:min-h-0 lg:flex`}
+        >
           {lyricDocPane === "draft" ?
             <DraftEditor
               ref={lyricDraftEditorRef}
@@ -568,6 +596,7 @@ export function LineRoomEditorLayout({
             onClearMessages={() => setChatMessages([])}
             critique={critique}
             critiqueMeta={meta}
+            lockedForGuests={isGuest}
           />
         </section>
       </main>
@@ -662,6 +691,13 @@ export function LineRoomEditorLayout({
           onClose={() => setPaywallOpen(false)}
         />
       )}
+      <GuestWorkflowTour
+        open={guestTour.open}
+        step={guestTour.step}
+        onNext={guestTour.next}
+        onBack={guestTour.back}
+        onDismiss={guestTour.dismiss}
+      />
     </div>
   );
 }

@@ -49,4 +49,29 @@ describe("POST /api/chat", () => {
     );
     expect(res.status).toBe(401);
   });
+
+  it("returns 403 when anonymous guest tries workshop", async () => {
+    mockGetAuthUser.mockResolvedValue({
+      id: "guest-1",
+      is_anonymous: true,
+    } as User);
+    const res = await POST(
+      new Request("http://localhost/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullText: "hello",
+          pieceTitle: "t",
+          messages: [{ role: "user", content: "hi" }],
+        }),
+      }),
+    );
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as {
+      error: string;
+      signupRequired?: boolean;
+    };
+    expect(body.signupRequired).toBe(true);
+    expect(body.error).toMatch(/signed-up users/i);
+  });
 });

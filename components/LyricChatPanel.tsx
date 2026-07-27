@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { StructuredAssistantMessage } from "@/components/chat/StructuredAssistantMessage";
@@ -52,6 +53,8 @@ type Props = {
   /** When null (before the first critique), workshop still works; structured critique context is omitted. */
   critique: CritiqueResult | null;
   critiqueMeta: CritiqueMeta;
+  /** Guest try: Workshop is account-only — show signup CTA instead of chat. */
+  lockedForGuests?: boolean;
 };
 
 export function LyricChatPanel({
@@ -62,6 +65,7 @@ export function LyricChatPanel({
   onClearMessages,
   critique,
   critiqueMeta,
+  lockedForGuests = false,
 }: Props) {
   const formatAssistantContent = (content: string): string => {
     const normalized = content
@@ -253,11 +257,56 @@ export function LyricChatPanel({
     }
   }
 
+  if (lockedForGuests) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/30 max-lg:rounded-none max-lg:border-x-0">
+        <div
+          ref={mobileHeaderRef}
+          className="shrink-0 border-b border-zinc-800/80 px-3 py-3 max-lg:fixed max-lg:inset-x-0 max-lg:top-[var(--lineroom-mobile-top,0px)] max-lg:z-[50] max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pt-[max(0.625rem,var(--lineroom-safe-top,env(safe-area-inset-top)))] max-lg:backdrop-blur-md lg:relative lg:z-auto lg:bg-transparent lg:px-3 lg:pt-2"
+        >
+          <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-300">
+            Workshop your lyrics
+          </h2>
+        </div>
+        <div
+          className="shrink-0 lg:hidden"
+          style={{ height: mobileHeaderInsetPx }}
+          aria-hidden
+        />
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-6 py-10 text-center">
+          <div className="max-w-sm space-y-2">
+            <p className="text-base font-medium text-zinc-100">
+              Workshop is for signed-up users
+            </p>
+            <p className="text-sm leading-relaxed text-zinc-400">
+              Create an account to chat through rhymes, thesaurus actions, and line-level
+              notes on your draft.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/signup"
+              className="rounded-lg bg-zinc-100 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-white"
+            >
+              Sign up
+            </Link>
+            <Link
+              href="/login"
+              className="rounded-lg border border-zinc-700 px-4 py-2.5 text-sm font-medium text-zinc-300 transition hover:bg-zinc-900"
+            >
+              Log in
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/30 max-lg:rounded-none max-lg:border-x-0">
       <div
         ref={mobileHeaderRef}
-        className="shrink-0 border-b border-zinc-800/80 px-3 py-3 max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-[50] max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pt-[max(0.625rem,env(safe-area-inset-top))] max-lg:backdrop-blur-md lg:relative lg:z-auto lg:bg-transparent lg:px-3 lg:pt-2"
+        className="shrink-0 border-b border-zinc-800/80 px-3 py-3 max-lg:fixed max-lg:inset-x-0 max-lg:top-[var(--lineroom-mobile-top,0px)] max-lg:z-[50] max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:pt-[max(0.625rem,var(--lineroom-safe-top,env(safe-area-inset-top)))] max-lg:backdrop-blur-md lg:relative lg:z-auto lg:bg-transparent lg:px-3 lg:pt-2"
       >
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-300">

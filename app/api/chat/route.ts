@@ -10,6 +10,7 @@ import {
 } from "@/lib/prompts";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/auth/guards";
+import { isAnonymousUser } from "@/lib/auth/guest";
 import type { CritiqueMeta, CritiqueResult } from "@/lib/types";
 import type { ChatActionPayload, ChatActionResponse } from "@/types/chat";
 import {
@@ -98,6 +99,15 @@ export async function POST(req: Request) {
   const user = await getAuthUser(supabase);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (isAnonymousUser(user)) {
+    return NextResponse.json(
+      {
+        error: "Workshop is available for signed-up users. Sign up to continue.",
+        signupRequired: true,
+      },
+      { status: 403 },
+    );
   }
 
   let body: unknown;
