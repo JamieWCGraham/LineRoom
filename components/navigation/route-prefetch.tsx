@@ -9,7 +9,10 @@ export function PrefetchDashboardRoutes({ includeEvals }: { includeEvals: boolea
   useEffect(() => {
     router.prefetch("/account");
     router.prefetch("/lineroom");
-    if (includeEvals) router.prefetch("/evals");
+    if (includeEvals) {
+      router.prefetch("/evals");
+      router.prefetch("/admin");
+    }
   }, [router, includeEvals]);
   return null;
 }

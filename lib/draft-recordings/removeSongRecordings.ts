@@ -97,6 +97,34 @@ export async function removeDraftRecordingsForSong(
   await removePaths(service, bucket, paths);
 }
 
+/**
+ * Deletes all voice memo objects under `{userId}/**` across every song folder.
+ */
+export async function removeAllDraftRecordingsForUser(userId: string): Promise<void> {
+  const uid = userId.trim();
+  if (!uid) return;
+
+  let service: SupabaseClient;
+  try {
+    service = createServiceRoleClient();
+  } catch {
+    return;
+  }
+
+  const bucket = getDraftRecordingsBucket();
+  const paths: string[] = [];
+
+  const result = await collectAllObjectPaths(service, bucket, uid, paths);
+  if (!result.ok) {
+    console.error(
+      "[draft-recordings] list failed during account delete cleanup:",
+      result.message,
+    );
+  }
+
+  await removePaths(service, bucket, paths);
+}
+
 /** Removes specific object keys (e.g. paths read from `song_versions.meta` before delete). */
 export async function removeExplicitRecordingPaths(
   paths: Iterable<string>,

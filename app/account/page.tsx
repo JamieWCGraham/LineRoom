@@ -107,14 +107,17 @@ export default async function AccountPage({ searchParams }: Props) {
           <div className="mt-4">
             <SignOutButton />
           </div>
+          {!user.email ?
+            <p className="mt-4 text-sm text-zinc-500">
+              Link an email to your account before you can delete it.
+            </p>
+          : null}
         </div>
       </section>
 
       <div className="mt-5 space-y-5">
         <BillingSection initialAccess={billingAccess} />
-        {user.email ?
-          <DeleteAccountSection userEmail={user.email} />
-        : null}
+        {user.email ? <DeleteAccountSection userEmail={user.email} /> : null}
       </div>
     </div>
   );

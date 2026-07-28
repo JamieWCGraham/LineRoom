@@ -20,7 +20,8 @@
     "eval:validate-sql": "node evaluations/scripts/validate_eval_sql.mjs",
     "cap:sync": "cap sync ios",
     "cap:open": "cap open ios",
-    "cap:sync:ios:production": "bash scripts/cap-sync-ios-production.sh"
+    "cap:sync:ios:production": "bash scripts/cap-sync-ios-production.sh",
+    "delete-user": "npx tsx scripts/delete-user.ts"
   },
   "dependencies": {
     "@capacitor/core": "^8.3.1",

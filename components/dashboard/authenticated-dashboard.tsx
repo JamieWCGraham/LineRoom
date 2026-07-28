@@ -62,12 +62,20 @@ export async function AuthenticatedDashboard({
           </div>
           <div className="flex flex-wrap gap-3">
             {showEvalsNav ?
-              <Link
-                href="/evals"
-                className="rounded-lg border border-emerald-800/50 bg-emerald-950/25 px-4 py-2 text-sm text-emerald-100 hover:border-emerald-600/60 hover:bg-emerald-950/40"
-              >
-                Evals
-              </Link>
+              <>
+                <Link
+                  href="/evals"
+                  className="rounded-lg border border-emerald-800/50 bg-emerald-950/25 px-4 py-2 text-sm text-emerald-100 hover:border-emerald-600/60 hover:bg-emerald-950/40"
+                >
+                  Evals
+                </Link>
+                <Link
+                  href="/admin"
+                  className="rounded-lg border border-amber-800/50 bg-amber-950/25 px-4 py-2 text-sm text-amber-100 hover:border-amber-600/60 hover:bg-amber-950/40"
+                >
+                  Admin
+                </Link>
+              </>
             : null}
             <Link
               href="/account"

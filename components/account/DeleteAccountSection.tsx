@@ -66,7 +66,7 @@ export function DeleteAccountSection({ userEmail }: Props) {
     confirmEmail.trim().toLowerCase() === userEmail.trim().toLowerCase();
 
   return (
-    <section>
+    <section id="delete-account" className="scroll-mt-6">
       <p className="px-1 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
         Delete account
       </p>

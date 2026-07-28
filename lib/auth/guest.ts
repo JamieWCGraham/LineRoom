@@ -5,6 +5,10 @@ export function guestProfileEmail(userId: string): string {
   return `anon-${userId}@guest.lineroom.local`;
 }
 
+export function isGuestProfileEmail(email: string): boolean {
+  return email.endsWith("@guest.lineroom.local");
+}
+
 export function isAnonymousUser(user: User | null | undefined): boolean {
   return Boolean(user?.is_anonymous);
 }

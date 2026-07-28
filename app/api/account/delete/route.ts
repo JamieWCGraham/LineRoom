@@ -1,11 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  fetchSubscriptionForUser,
-  subscriptionIsPaid,
-} from "@/lib/billing/subscription-row";
-import { upsertSubscriptionFromStripe } from "@/lib/billing/stripe-sync";
-import { billingLog } from "@/lib/billing/logger";
-import { getStripe } from "@/lib/stripe";
+import { deleteUserAndData } from "@/lib/account/deleteUserData";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
@@ -20,9 +14,8 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
  * message instructing the user to cancel via iOS Settings first. The client
  * must re-submit with `acknowledgeAppStoreSub: true` to proceed.
  *
- * Cancels an active Stripe subscription when present, marks App Store
- * subscriptions as canceled in our DB, then deletes the auth user (cascades
- * per your Supabase schema).
+ * Cancels Stripe billing, removes draft recordings from storage, deletes the
+ * Stripe customer when applicable, then deletes the auth user (DB cascades).
  */
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -57,59 +50,24 @@ export async function POST(req: Request) {
   }
 
   const admin = createServiceRoleClient();
-  const sub = await fetchSubscriptionForUser(supabase, user.id);
+  const result = await deleteUserAndData(admin, {
+    userId: user.id,
+    userEmail: user.email,
+    acknowledgeAppStoreSub,
+  });
 
-  if (sub?.billing_provider === "app_store" && subscriptionIsPaid(sub)) {
-    if (!acknowledgeAppStoreSub) {
+  if (!result.ok) {
+    if (result.code === "active_app_store_subscription") {
       return NextResponse.json(
         {
-          error: "active_app_store_subscription",
-          message:
-            "You have an active App Store subscription. " +
-            "Deleting your account will not cancel it — you must cancel " +
-            "in Settings > Subscriptions on your iPhone. " +
-            "Confirm you understand to proceed.",
+          error: result.error,
+          message: result.message,
         },
-        { status: 409 },
+        { status: result.status },
       );
     }
-    billingLog.info("Account delete proceeding with active App Store sub", {
-      userId: user.id,
-      originalTxId: sub.app_store_original_transaction_id,
-    });
-    await admin
-      .from("subscriptions")
-      .update({ status: "canceled" })
-      .eq("user_id", user.id);
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
-  if (sub?.stripe_subscription_id && sub.billing_provider !== "app_store") {
-    try {
-      const canceled = await getStripe().subscriptions.cancel(
-        sub.stripe_subscription_id,
-      );
-      await upsertSubscriptionFromStripe(admin, canceled, {
-        explicitUserId: user.id,
-        statusOverride: "canceled",
-      });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "unknown";
-      billingLog.error("Stripe cancel before account delete failed", {
-        userId: user.id,
-        error: msg,
-      });
-    }
-  }
-
-  const { error } = await admin.auth.admin.deleteUser(user.id);
-  if (error) {
-    billingLog.error("Account delete failed", {
-      userId: user.id,
-      error: error.message,
-    });
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  billingLog.info("Account deleted", { userId: user.id });
   return NextResponse.json({ ok: true });
 }

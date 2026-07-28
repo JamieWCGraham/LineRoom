@@ -215,17 +215,29 @@ export function PiecesBrowser({ songs, mobileNav }: Props) {
             aria-label="Search pieces"
           />
           {mobileNav?.showEvalsNav ?
-            <Link
-              href="/evals"
-              prefetch
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-emerald-200/90 hover:bg-zinc-700/80"
-              aria-label="Evals"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" strokeLinecap="round" />
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-              </svg>
-            </Link>
+            <>
+              <Link
+                href="/evals"
+                prefetch
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-emerald-200/90 hover:bg-zinc-700/80"
+                aria-label="Evals"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" strokeLinecap="round" />
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                </svg>
+              </Link>
+              <Link
+                href="/admin"
+                prefetch
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-amber-200/90 hover:bg-zinc-700/80"
+                aria-label="Admin"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+                  <path d="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2zm10-10V7a4 4 0 0 0-8 0v4h8z" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Link>
+            </>
           : null}
           <Link
             href="/account"
@@ -308,14 +320,24 @@ export function PiecesBrowser({ songs, mobileNav }: Props) {
                   Account
                 </Link>
                 {mobileNav?.showEvalsNav ?
-                  <Link
-                    href="/evals"
-                    prefetch
-                    onClick={() => setDrawerOpen(false)}
-                    className="rounded-lg px-3 py-2.5 text-sm text-emerald-100 hover:bg-emerald-950/30"
-                  >
-                    Evals
-                  </Link>
+                  <>
+                    <Link
+                      href="/evals"
+                      prefetch
+                      onClick={() => setDrawerOpen(false)}
+                      className="rounded-lg px-3 py-2.5 text-sm text-emerald-100 hover:bg-emerald-950/30"
+                    >
+                      Evals
+                    </Link>
+                    <Link
+                      href="/admin"
+                      prefetch
+                      onClick={() => setDrawerOpen(false)}
+                      className="rounded-lg px-3 py-2.5 text-sm text-amber-100 hover:bg-amber-950/30"
+                    >
+                      Admin
+                    </Link>
+                  </>
                 : null}
               </nav>
               <div className="border-t border-zinc-800 pt-4">
