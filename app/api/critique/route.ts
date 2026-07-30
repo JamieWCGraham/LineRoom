@@ -5,8 +5,6 @@ import {
 } from "@/lib/billing/access";
 import type { CritiqueAccessState } from "@/lib/billing/types";
 import { getAuthUser } from "@/lib/auth/guards";
-import { normalizeAuthUserToProfile } from "@/lib/auth/profile";
-import type { LangfuseTraceUser } from "@/lib/langfuse-server";
 import {
   isDraftCritiqueGateEnabled,
 } from "@/lib/critique/draftCritiqueGateConfig";
@@ -16,24 +14,10 @@ import {
   toGateContext,
 } from "@/lib/critique/draftCritiqueGate";
 import { runCritiqueModel } from "@/lib/critique/runCritiqueModel";
+import { buildLangfuseTraceUser } from "@/lib/langfuse/traceUser";
 import type { CritiqueResult } from "@/lib/types";
 import { critiqueRequestSchema } from "@/lib/validators";
 import { createClient } from "@/lib/supabase/server";
-
-function buildCritiqueTraceUser(
-  user: NonNullable<Awaited<ReturnType<typeof getAuthUser>>>,
-  profile: { display_name: string | null; email: string | null } | null,
-): LangfuseTraceUser {
-  const normalized = normalizeAuthUserToProfile(user);
-  return {
-    userId: user.id,
-    email: profile?.email?.trim() || normalized.email || user.email || undefined,
-    displayName:
-      profile?.display_name?.trim() ||
-      normalized.display_name ||
-      undefined,
-  };
-}
 
 function paywallResponse(access: CritiqueAccessState) {
   const message =
@@ -142,7 +126,7 @@ export async function POST(req: Request) {
     }
 
     const gateContext = toGateContext(gateLookup, gateEnabled);
-    const traceUser = buildCritiqueTraceUser(user, profileResult.data);
+    const traceUser = buildLangfuseTraceUser(user, profileResult.data);
 
     let critique: CritiqueResult;
     try {

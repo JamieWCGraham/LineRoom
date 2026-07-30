@@ -3,6 +3,7 @@ import {
   runWithLangfuseTrace,
   scheduleLangfuseFlush,
 } from "@/lib/langfuse-server";
+import { buildLangfuseTraceUser } from "@/lib/langfuse/traceUser";
 import { createBaseOpenAI, getFastChatModel } from "@/lib/openai";
 import {
   buildChatActionSystemPrompt,
@@ -144,6 +145,13 @@ export async function POST(req: Request) {
 
   scheduleLangfuseFlush();
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("display_name, email")
+    .eq("id", user.id)
+    .maybeSingle();
+  const traceUser = buildLangfuseTraceUser(user, profile);
+
   const effectiveCritique = critique ?? chatAction?.critique;
   const critiqueBlock = formatCritiqueForChat(
     effectiveCritique,
@@ -168,6 +176,7 @@ export async function POST(req: Request) {
           traceName: "LineRoom",
           rootObservationName: "lineroom-chat-action",
           tags: ["lineroom", "chat", "action"],
+          traceUser,
           langfuseConfig: {
             traceName: "LineRoom",
             generationName: "lyric-chat-action",
@@ -256,6 +265,7 @@ export async function POST(req: Request) {
         traceName: "LineRoom",
         rootObservationName: "lineroom-chat",
         tags: ["lineroom", "chat"],
+        traceUser,
         langfuseConfig: {
           traceName: "LineRoom",
           generationName: "lyric-chat",

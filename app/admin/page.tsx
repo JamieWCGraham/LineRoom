@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminDeleteUserPanel } from "@/components/admin/AdminDeleteUserPanel";
+import { AdminLlmSpendPanel } from "@/components/admin/AdminLlmSpendPanel";
 import { AdminStatsPanel } from "@/components/admin/AdminStatsPanel";
 import { AppBrandDash } from "@/components/app-brand";
 import { SignOutButton } from "@/components/auth/sign-out-button";
@@ -52,6 +53,7 @@ export default async function AdminPage() {
       </div>
 
       <AdminStatsPanel />
+      <AdminLlmSpendPanel />
       <AdminDeleteUserPanel />
     </div>
   );
