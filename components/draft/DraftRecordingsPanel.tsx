@@ -25,6 +25,8 @@ import {
   instantiateMediaRecorder,
   pickRecorderMime,
   sanitizeDownloadFilenameBase,
+  startVoiceMemoRecorder,
+  voiceMemoAudioConstraints,
 } from "@/lib/draft-recordings/recordingFormat";
 import { DRAFT_RECORDING_MAX_BYTES } from "@/lib/draft-recordings/uploadLimits";
 
@@ -336,6 +338,16 @@ export const DraftRecordingsPanel = forwardRef<
     }
   };
 
+  const pausePlaybackForCapture = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio && !audio.paused) {
+      audio.pause();
+    }
+    setLoadedMemoId(null);
+    setPlaybackTimeSec(0);
+    setPlaybackDurationSec(0);
+  }, []);
+
   const startRecording = async () => {
     setMicError(null);
     setSaveError(null);
@@ -352,16 +364,11 @@ export const DraftRecordingsPanel = forwardRef<
       return;
     }
 
+    pausePlaybackForCapture();
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          // Softer processing preserves melody and scratch vocals vs. phone-call narrowband.
-          noiseSuppression: false,
-          autoGainControl: false,
-          channelCount: { ideal: 1 },
-          sampleRate: { ideal: 48_000 },
-        },
+        audio: voiceMemoAudioConstraints(),
       });
       streamRef.current = stream;
       const mime = pickRecorderMime();
@@ -374,8 +381,8 @@ export const DraftRecordingsPanel = forwardRef<
       rec.onstop = () => {
         stream.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
-        recordedDurationSecRef.current =
-          (Date.now() - startedAtRef.current) / 1000;
+        const wallClockSec = (Date.now() - startedAtRef.current) / 1000;
+        recordedDurationSecRef.current = wallClockSec;
         const blob = new Blob(chunksRef.current, {
           type: rec.mimeType || mime || "audio/webm",
         });
@@ -384,11 +391,44 @@ export const DraftRecordingsPanel = forwardRef<
           setPendingBlob(blob);
           setPendingMime(rec.mimeType || mime || "audio/webm");
           const stamp = new Date();
-          setPendingName(
-            `Memo ${stamp.toLocaleDateString(undefined, { month: "short", day: "numeric" })} ${formatMmSs(
-              recordedDurationSecRef.current,
-            )}`,
-          );
+          const applyPendingName = (durationSec: number) => {
+            setPendingName(
+              `Memo ${stamp.toLocaleDateString(undefined, { month: "short", day: "numeric" })} ${formatMmSs(
+                durationSec,
+              )}`,
+            );
+          };
+          applyPendingName(wallClockSec);
+          // Prefer encoded duration when the browser exposes it (more accurate than wall clock).
+          void (async () => {
+            const probeUrl = URL.createObjectURL(blob);
+            try {
+              const probe = new Audio();
+              probe.preload = "metadata";
+              const duration = await new Promise<number | null>((resolve) => {
+                const done = (v: number | null) => {
+                  probe.removeAttribute("src");
+                  probe.load();
+                  resolve(v);
+                };
+                probe.onloadedmetadata = () => {
+                  done(
+                    Number.isFinite(probe.duration) && probe.duration > 0
+                      ? probe.duration
+                      : null,
+                  );
+                };
+                probe.onerror = () => done(null);
+                probe.src = probeUrl;
+              });
+              if (duration != null) {
+                recordedDurationSecRef.current = duration;
+                applyPendingName(duration);
+              }
+            } finally {
+              URL.revokeObjectURL(probeUrl);
+            }
+          })();
         }
         setRecording(false);
         stopTicks();
@@ -396,8 +436,8 @@ export const DraftRecordingsPanel = forwardRef<
       };
       mediaRecorderRef.current = rec;
       startedAtRef.current = Date.now();
-      /* ~500 ms slices: fewer chunks on long memos, still frequent enough for crash resilience. */
-      rec.start(500);
+      // No timeslice: one complete blob on stop (short MP4 slices corrupt on iOS).
+      startVoiceMemoRecorder(rec);
       setRecording(true);
       setElapsedSec(0);
       stopTicks();
@@ -411,14 +451,8 @@ export const DraftRecordingsPanel = forwardRef<
 
   const stopRecording = () => {
     const rec = mediaRecorderRef.current;
+    // Do not call requestData() — WebKit MP4 flushes incomplete segments and corrupts the file.
     if (rec && rec.state !== "inactive") {
-      if (rec.state === "recording" && typeof rec.requestData === "function") {
-        try {
-          rec.requestData();
-        } catch {
-          /* ignore */
-        }
-      }
       rec.stop();
     }
     mediaRecorderRef.current = null;

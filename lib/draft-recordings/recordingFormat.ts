@@ -24,14 +24,46 @@ export function sanitizeDownloadFilenameBase(name: string): string {
   return s.length ? s : "voice-memo";
 }
 
-export const VOICE_MEMO_BITS_PER_SECOND = [128_000, 96_000, 64_000] as const;
+/** Prefer high AAC/Opus bitrates; never fall to phone-call 64 kbps. */
+export const VOICE_MEMO_BITS_PER_SECOND = [256_000, 192_000, 128_000] as const;
 
-export function pickRecorderMime(): string {
-  const candidates = [
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/mp4",
-  ];
+export function isAppleAudioPlatform(
+  userAgent: string = typeof navigator !== "undefined" ? navigator.userAgent : "",
+): boolean {
+  if (/LineRoomNativeShell\/iOS/i.test(userAgent)) return true;
+  if (/iPhone|iPad|iPod/i.test(userAgent)) return true;
+  // Mac Safari / WKWebView — same MP4 MediaRecorder path as iOS.
+  if (/Macintosh|Mac OS X/i.test(userAgent) && /Safari/i.test(userAgent) && !/Chrome|Chromium|Edg\//i.test(userAgent)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Voice Memos–style capture: no echo cancellation / AGC / NS (those duck and
+ * color scratch vocals like a phone call).
+ */
+export function voiceMemoAudioConstraints(): MediaTrackConstraints {
+  const constraints: MediaTrackConstraints = {
+    echoCancellation: false,
+    noiseSuppression: false,
+    autoGainControl: false,
+    channelCount: { ideal: 1 },
+    sampleRate: { ideal: 48_000 },
+  };
+  // Newer Safari: voiceIsolation forces call-style processing when enabled.
+  (constraints as MediaTrackConstraints & { voiceIsolation?: ConstrainBoolean }).voiceIsolation =
+    false;
+  return constraints;
+}
+
+export function pickRecorderMime(
+  userAgent: string = typeof navigator !== "undefined" ? navigator.userAgent : "",
+): string {
+  const apple = isAppleAudioPlatform(userAgent);
+  const candidates = apple
+    ? ["audio/mp4", "audio/aac", "audio/webm;codecs=opus", "audio/webm"]
+    : ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
   for (const c of candidates) {
     if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(c)) {
       return c;
@@ -60,4 +92,12 @@ export function instantiateMediaRecorder(
   } catch {
     return new MediaRecorder(stream);
   }
+}
+
+/**
+ * Start without a timeslice so WebKit emits one complete MP4/AAC blob on stop.
+ * Short timeslices (< ~1s) corrupt concatenated MP4 segments on iOS Safari.
+ */
+export function startVoiceMemoRecorder(recorder: MediaRecorder): void {
+  recorder.start();
 }
