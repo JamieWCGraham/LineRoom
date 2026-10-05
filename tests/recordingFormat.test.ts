@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  createStereoVoiceMemoCapture,
+  createVoiceMemoAudioContext,
   fileExtFromMime,
   formatMmSs,
   isAppleAudioPlatform,
@@ -7,6 +9,7 @@ import {
   sanitizeDownloadFilenameBase,
   startVoiceMemoRecorder,
   VOICE_MEMO_BITS_PER_SECOND,
+  VOICE_MEMO_SAMPLE_RATE,
   voiceMemoAudioConstraints,
 } from "@/lib/draft-recordings/recordingFormat";
 
@@ -89,9 +92,97 @@ describe("recordingFormat", () => {
     expect(c.echoCancellation).toBe(false);
     expect(c.noiseSuppression).toBe(false);
     expect(c.autoGainControl).toBe(false);
+    expect(c.sampleRate).toEqual({ ideal: VOICE_MEMO_SAMPLE_RATE });
+    expect(c.channelCount).toEqual({ ideal: 1 });
     expect(
       (c as MediaTrackConstraints & { voiceIsolation?: boolean }).voiceIsolation,
     ).toBe(false);
+  });
+
+  it("opens the recording context at 48 kHz and falls back if that rate is refused", () => {
+    const constructed: Array<AudioContextOptions | undefined> = [];
+    class FakeAudioContext {
+      constructor(options?: AudioContextOptions) {
+        constructed.push(options);
+        if (options?.sampleRate === VOICE_MEMO_SAMPLE_RATE) {
+          throw new Error("rate unsupported");
+        }
+      }
+    }
+    vi.stubGlobal("AudioContext", FakeAudioContext);
+    createVoiceMemoAudioContext();
+    expect(constructed).toEqual([{ sampleRate: 48_000 }, undefined]);
+  });
+
+  it("copies the mic channel to both stereo outputs without a downmix", () => {
+    const connections: Array<{
+      from: string;
+      to: string;
+      output?: number;
+      input?: number;
+    }> = [];
+    const micTrack = { stop: vi.fn() };
+    const destTrack = { stop: vi.fn() };
+    const close = vi.fn().mockResolvedValue(undefined);
+
+    function node(name: string) {
+      return {
+        name,
+        channelCount: 0,
+        channelCountMode: "" as ChannelCountMode,
+        connect(
+          target: { name: string },
+          output?: number,
+          input?: number,
+        ) {
+          connections.push({ from: name, to: target.name, output, input });
+        },
+        disconnect: vi.fn(),
+      };
+    }
+
+    const destination = {
+      ...node("destination"),
+      stream: { getTracks: () => [destTrack] },
+    };
+    const audioContext = {
+      createMediaStreamSource: () => node("source"),
+      createChannelSplitter: (count: number) => {
+        expect(count).toBe(2);
+        return node("splitter");
+      },
+      createChannelMerger: (count: number) => {
+        expect(count).toBe(2);
+        return node("merger");
+      },
+      createMediaStreamDestination: () => destination,
+      close,
+    };
+
+    const micStream = {
+      getTracks: () => [micTrack],
+    } as unknown as MediaStream;
+
+    const capture = createStereoVoiceMemoCapture(
+      micStream,
+      audioContext as unknown as AudioContext,
+    );
+
+    expect(capture.stream).toBe(destination.stream);
+    expect(destination.channelCount).toBe(2);
+    expect(destination.channelCountMode).toBe("explicit");
+    expect(connections).toEqual([
+      { from: "source", to: "splitter", output: undefined, input: undefined },
+      { from: "splitter", to: "merger", output: 0, input: 0 },
+      { from: "splitter", to: "merger", output: 0, input: 1 },
+      { from: "merger", to: "destination", output: undefined, input: undefined },
+    ]);
+
+    capture.dispose();
+    capture.dispose();
+    expect(micTrack.stop).toHaveBeenCalledOnce();
+    expect(destTrack.stop).toHaveBeenCalledOnce();
+    expect(close).toHaveBeenCalledOnce();
   });
 
   it("starts MediaRecorder without a timeslice", () => {

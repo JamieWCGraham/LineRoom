@@ -20,6 +20,8 @@ import {
   idbPutRecording,
 } from "@/lib/draft-recordings/idb";
 import {
+  createStereoVoiceMemoCapture,
+  createVoiceMemoAudioContext,
   fileExtFromMime,
   formatMmSs,
   instantiateMediaRecorder,
@@ -27,6 +29,7 @@ import {
   sanitizeDownloadFilenameBase,
   startVoiceMemoRecorder,
   voiceMemoAudioConstraints,
+  type StereoVoiceMemoCapture,
 } from "@/lib/draft-recordings/recordingFormat";
 import { DRAFT_RECORDING_MAX_BYTES } from "@/lib/draft-recordings/uploadLimits";
 
@@ -119,6 +122,7 @@ export const DraftRecordingsPanel = forwardRef<
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const captureDisposeRef = useRef<(() => void) | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedAtRef = useRef(0);
   const recordedDurationSecRef = useRef(0);
@@ -327,6 +331,8 @@ export const DraftRecordingsPanel = forwardRef<
     return () => {
       revokeLastAudioUrl();
       if (tickRef.current) clearInterval(tickRef.current);
+      captureDisposeRef.current?.();
+      captureDisposeRef.current = null;
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, [revokeLastAudioUrl]);
@@ -366,20 +372,31 @@ export const DraftRecordingsPanel = forwardRef<
 
     pausePlaybackForCapture();
 
+    let audioContext: AudioContext | null = null;
+    let micStream: MediaStream | null = null;
+    let capture: StereoVoiceMemoCapture | null = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      // Construct on the click turn so Safari will resume the context.
+      audioContext = createVoiceMemoAudioContext();
+      const resumePromise = audioContext.resume();
+      micStream = await navigator.mediaDevices.getUserMedia({
         audio: voiceMemoAudioConstraints(),
       });
-      streamRef.current = stream;
+      await resumePromise;
+      capture = createStereoVoiceMemoCapture(micStream, audioContext);
+      micStream = null;
+      captureDisposeRef.current = capture.dispose;
+      streamRef.current = capture.stream;
       const mime = pickRecorderMime();
-      const rec = instantiateMediaRecorder(stream, mime);
+      const rec = instantiateMediaRecorder(capture.stream, mime);
       chunksRef.current = [];
       rec.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
       rec.onerror = () => setMicError("Recording failed.");
       rec.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
+        captureDisposeRef.current?.();
+        captureDisposeRef.current = null;
         streamRef.current = null;
         const wallClockSec = (Date.now() - startedAtRef.current) / 1000;
         recordedDurationSecRef.current = wallClockSec;
@@ -445,6 +462,15 @@ export const DraftRecordingsPanel = forwardRef<
         setElapsedSec((Date.now() - startedAtRef.current) / 1000);
       }, 250);
     } catch {
+      micStream?.getTracks().forEach((track) => track.stop());
+      if (captureDisposeRef.current) {
+        captureDisposeRef.current();
+        captureDisposeRef.current = null;
+      } else {
+        void audioContext?.close().catch(() => {});
+      }
+      streamRef.current = null;
+      mediaRecorderRef.current = null;
       setMicError("Microphone permission is required to record.");
     }
   };
