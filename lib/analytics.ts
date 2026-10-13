@@ -42,7 +42,7 @@ export function sanitizeAnalyticsProps(
 
 type PlausibleFn = {
   (event: string, options?: { props?: AnalyticsProps }): void;
-  q?: IArguments[];
+  q?: unknown[][];
 };
 
 declare global {
@@ -64,10 +64,10 @@ export function track(
   if (ANALYTICS_PROVIDER === "plausible") {
     const plausible: PlausibleFn =
       window.plausible ??
-      function plausibleQueue() {
+      function plausibleQueue(...args: unknown[]) {
         const fn = window.plausible as PlausibleFn;
         fn.q = fn.q || [];
-        fn.q.push(arguments);
+        fn.q.push(args);
       };
     window.plausible = window.plausible ?? plausible;
     window.plausible(event, safe ? { props: safe } : undefined);
