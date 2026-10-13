@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { track } from "@/lib/analytics";
+import { createClient } from "@/lib/supabase/client";
 import { billingClientPlatformHeaders } from "@/lib/platform/capacitor-client";
 
 /**
@@ -23,6 +24,14 @@ export function StartProButton({
     setError(null);
     setBusy(true);
     try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user || user.is_anonymous) {
+        window.location.href = "/signup?next=/account";
+        return;
+      }
       const res = await fetch("/api/billing/create-checkout-session", {
         method: "POST",
         headers: { ...billingClientPlatformHeaders() },
