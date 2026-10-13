@@ -55,7 +55,10 @@ export function SiteFooter() {
           </p>
           <ul className="mt-2 space-y-1">
             <li>
-              <a href={`mailto:${SUPPORT_EMAIL}`} className={linkClass}>
+              <a
+                href={`mailto:${SUPPORT_EMAIL}?subject=LineRoom%20support`}
+                className={linkClass}
+              >
                 {SUPPORT_EMAIL}
               </a>
             </li>
