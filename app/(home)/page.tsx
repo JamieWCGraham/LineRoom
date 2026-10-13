@@ -7,6 +7,7 @@ import {
   PrefetchPublicLandingAuth,
 } from "@/components/navigation/route-prefetch";
 import { LandingLyricPreview } from "@/components/LandingLyricPreview";
+import { Testimonials } from "@/components/marketing/Testimonials";
 import { resolveDisplayName } from "@/lib/auth/display-name";
 import { ensureProfile, normalizeAuthUserToProfile } from "@/lib/auth/profile";
 import { getAuthUser } from "@/lib/auth/guards";
@@ -105,6 +106,8 @@ export default async function HomePage({ searchParams }: Props) {
               </ul>
             </div>
           </section>
+
+          <Testimonials />
 
           <div className="flex flex-col gap-3 sm:hidden">
             <div className="flex gap-4 px-1">
