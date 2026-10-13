@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingHeader } from "@/components/marketing/MarketingHeader";
 import { DashboardChrome } from "@/components/dashboard/dashboard-chrome";
@@ -20,6 +21,10 @@ import { createClient } from "@/lib/supabase/server";
 
 type Props = {
   searchParams: Promise<{ createError?: string }>;
+};
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
 };
 
 export default async function HomePage({ searchParams }: Props) {

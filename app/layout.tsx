@@ -1,11 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { APP_TAGLINE } from "@/components/app-brand";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { ChunkLoadRecovery } from "@/components/navigation/ChunkLoadRecovery";
 import { InstantRouteShell } from "@/components/navigation/instant-route-shell";
 import { getAppBuildId } from "@/lib/navigation/appBuildId";
 import { lineroomRootViewport } from "@/lib/rootViewport";
+import { rootMetadata } from "@/lib/seo";
 import "./globals.css";
 
 const inter = Inter({
@@ -13,10 +13,7 @@ const inter = Inter({
   variable: "--font-sans",
 });
 
-export const metadata: Metadata = {
-  title: "LineRoom — Lyrics & poetry workspace",
-  description: APP_TAGLINE,
-};
+export const metadata: Metadata = rootMetadata;
 
 export const viewport: Viewport = lineroomRootViewport;
 

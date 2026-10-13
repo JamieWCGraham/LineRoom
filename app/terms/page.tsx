@@ -5,6 +5,7 @@ import { APPLE_STANDARD_EULA_URL } from "@/lib/legal/urls";
 export const metadata: Metadata = {
   title: "Terms of Service — LineRoom",
   description: "LineRoom Terms of Service for web and iOS.",
+  alternates: { canonical: "/terms" },
 };
 
 export default function TermsOfServicePage() {

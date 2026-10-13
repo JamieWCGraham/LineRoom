@@ -4,6 +4,7 @@ import { APPLE_STANDARD_EULA_URL } from "@/lib/legal/urls";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — LineRoom",
+  alternates: { canonical: "/privacy" },
 };
 
 export default function PrivacyPolicyPage() {

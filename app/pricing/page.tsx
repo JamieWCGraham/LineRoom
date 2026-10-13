@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { StartProButton } from "@/components/billing/StartProButton";
 import { MarketingHeader } from "@/components/marketing/MarketingHeader";
+import { publicPageMetadata } from "@/lib/seo";
 import {
   IOS_APP_STORE_URL,
   PRO_MONTHLY_PRICE_DISPLAY,
@@ -9,11 +10,12 @@ import {
   isProPricePlaceholder,
 } from "@/lib/site-config";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = publicPageMetadata({
   title: "Pricing — LineRoom",
   description:
     "Free songwriting feedback, or unlimited critiques with LineRoom Pro. See plans and pricing.",
-};
+  path: "/pricing",
+});
 
 const freePoints = [
   "3 AI critiques, no account needed",
