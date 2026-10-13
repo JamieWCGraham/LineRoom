@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type Stripe from "stripe";
 import type { SubscriptionStatus } from "@/types/database";
 import { billingLog } from "@/lib/billing/logger";
+import { track } from "@/lib/analytics";
 
 // ── Helpers ─────────────────────────────────────────────────
 
@@ -119,7 +120,7 @@ export async function upsertSubscriptionFromStripe(
 
   const { data: prior } = await admin
     .from("subscriptions")
-    .select("created_at, email")
+    .select("created_at, email, status")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -169,6 +170,13 @@ export async function upsertSubscriptionFromStripe(
     cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
     resolvedVia: source,
   });
+
+  const priorStatus = prior?.status ?? null;
+  const nowPaid = status === "active" || status === "trialing";
+  const wasPaid = priorStatus === "active" || priorStatus === "trialing";
+  if (nowPaid && !wasPaid) {
+    await track("pro_purchased", { plan: "pro" });
+  }
 
   return { success: true, userId, status, source };
 }

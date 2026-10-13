@@ -1,6 +1,7 @@
 import { AppBrandHero } from "@/components/app-brand";
 import { SignupForm } from "@/components/auth/signup-form";
 import { OAuthSignInLinks } from "@/components/auth/oauth-sign-in-links";
+import { TrackOnMount } from "@/components/marketing/TrackOnMount";
 import { oauthSignInUiEnabled } from "@/lib/auth/oauth";
 
 type Props = {
@@ -12,6 +13,7 @@ export default async function SignupPage({ searchParams }: Props) {
   return (
     <div className="w-full max-w-md">
       <AppBrandHero />
+      <TrackOnMount event="signup_started" props={{ source: "signup" }} />
 
       <div className="rounded-2xl border border-zinc-800/90 bg-zinc-900/40 p-6 shadow-xl shadow-black/30 backdrop-blur-sm">
         <h2 className="text-center text-lg font-semibold text-zinc-100">

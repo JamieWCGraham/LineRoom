@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { track } from "@/lib/analytics";
 import { billingClientPlatformHeaders } from "@/lib/platform/capacitor-client";
 
 /**
@@ -18,6 +19,7 @@ export function StartProButton({
   const [error, setError] = useState<string | null>(null);
 
   async function start() {
+    track("checkout_started", { plan: "pro", source });
     setError(null);
     setBusy(true);
     try {

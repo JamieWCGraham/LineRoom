@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ensureProfile } from "@/lib/auth/profile";
 import { getAuthUser } from "@/lib/auth/guards";
 import { authConfirmUrl } from "@/lib/auth/oauth";
+import { track } from "@/lib/analytics";
 
 export type AuthFormState = {
   fieldErrors?: {
@@ -82,6 +83,7 @@ export async function signup(
     if (error) return { message: error.message };
     if (data.user) {
       await ensureProfile(supabase, data.user);
+      await track("signup_completed", { plan: "free", source: "signup" });
       // Immediate session when email confirmation is disabled.
       if (!data.user.is_anonymous) {
         redirect("/");
@@ -102,9 +104,11 @@ export async function signup(
 
   if (data.user && data.session) {
     await ensureProfile(supabase, data.user);
+    await track("signup_completed", { plan: "free", source: "signup" });
     redirect("/");
   }
 
+  await track("signup_completed", { plan: "free", source: "signup" });
   return {
     message:
       "Check your email to confirm your account, then sign in.",

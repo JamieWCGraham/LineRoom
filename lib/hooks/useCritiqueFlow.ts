@@ -8,6 +8,7 @@ import {
   updateSongVersionState,
 } from "@/lib/songs/actions";
 import { buildAutosavePayloadString } from "@/lib/songs/persist";
+import { track } from "@/lib/analytics";
 import type {
   ChatMessage,
   CritiqueMeta,
@@ -157,6 +158,9 @@ export function useCritiqueFlow(args: UseCritiqueFlowArgs) {
         };
         if (data.access) setCritiqueAccess(data.access);
         if (res.status === 402 && data.code === "PAYWALL_REQUIRED") {
+          if (data.access?.isAnonymous) {
+            track("trial_limit_reached", { plan: "free", source: "lineroom" });
+          }
           setCritiqueError(null);
           setPaywallOpen(true);
           return null;
@@ -171,6 +175,10 @@ export function useCritiqueFlow(args: UseCritiqueFlowArgs) {
           setCritiqueError("Missing critique in response.");
           return null;
         }
+
+        track("critique_generated", {
+          plan: data.access?.hasActiveSubscription ? "pro" : "free",
+        });
 
         const existingCritique = args.critique;
         const nextCritique = data.critique;
@@ -251,6 +259,9 @@ export function useCritiqueFlow(args: UseCritiqueFlowArgs) {
   const requestCritique = useCallback(
     async (opts?: { regenerate?: boolean }) => {
       if (critiqueAccess && !critiqueAccess.canGenerateCritique) {
+        if (critiqueAccess.isAnonymous) {
+          track("trial_limit_reached", { plan: "free", source: "lineroom" });
+        }
         setPaywallOpen(true);
         return null;
       }

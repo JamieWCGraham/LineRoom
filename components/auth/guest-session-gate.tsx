@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { ensureCurrentUserProfile } from "@/lib/auth/actions";
 import { createClient } from "@/lib/supabase/client";
+import { track } from "@/lib/analytics";
 
 type Props = {
   children: ReactNode;
@@ -42,6 +43,13 @@ export function GuestSessionGate({ children }: Props) {
         const profileResult = await ensureCurrentUserProfile();
         if (!profileResult.ok && !cancelled) {
           console.warn("[guest] ensureCurrentUserProfile", profileResult.error);
+        }
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user?.is_anonymous) {
+          track("trial_started", { plan: "free", source: "lineroom" });
         }
 
         if (!cancelled) setReady(true);

@@ -10,6 +10,7 @@ import {
   isIosCapacitorApp,
   useIosCapacitorAppLayout,
 } from "@/lib/platform/capacitor-client";
+import { track } from "@/lib/analytics";
 
 type Props = {
   initialAccess: CritiqueAccessState;
@@ -49,6 +50,7 @@ export function BillingSection({ initialAccess }: Props) {
     }
     setMessage(null);
     setCheckoutBusy(true);
+    track("checkout_started", { plan: "pro", source: "account" });
     try {
       const res = await fetch("/api/billing/create-checkout-session", {
         method: "POST",

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { StartProButton } from "@/components/billing/StartProButton";
 import { MarketingHeader } from "@/components/marketing/MarketingHeader";
+import { TrackOnMount } from "@/components/marketing/TrackOnMount";
 import { publicPageMetadata } from "@/lib/seo";
 import {
   IOS_APP_STORE_URL,
@@ -36,6 +37,7 @@ export default function PricingPage() {
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
       <MarketingHeader />
+      <TrackOnMount event="pricing_viewed" props={{ source: "pricing_page" }} />
       <header className="mt-10 max-w-2xl">
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-50 sm:text-4xl">
           Pricing
