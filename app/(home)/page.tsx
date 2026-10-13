@@ -86,6 +86,13 @@ export default async function HomePage({ searchParams }: Props) {
                   Try without signing up
                 </Link>
                 <Link
+                  href="/pricing"
+                  prefetch
+                  className="rounded-xl border border-zinc-700 px-6 py-3 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-900"
+                >
+                  Pricing
+                </Link>
+                <Link
                   href="/signup"
                   prefetch
                   className="rounded-xl border border-zinc-700 px-6 py-3 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-900"
