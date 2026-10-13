@@ -215,10 +215,3 @@ export function DashboardChrome({
   );
 }
 
-export function DashboardFooter() {
-  return (
-    <footer className="mt-12 hidden pb-4 text-center text-xs text-zinc-600 md:block">
-      © 2026 LineRoom. All rights reserved.
-    </footer>
-  );
-}

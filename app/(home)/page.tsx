@@ -1,9 +1,6 @@
 import Link from "next/link";
 import { AppBrandLogo } from "@/components/app-brand";
-import {
-  DashboardChrome,
-  DashboardFooter,
-} from "@/components/dashboard/dashboard-chrome";
+import { DashboardChrome } from "@/components/dashboard/dashboard-chrome";
 import { DashboardPieces } from "@/components/dashboard/dashboard-pieces-async";
 import {
   PrefetchDashboardRoutes,
@@ -186,7 +183,6 @@ export default async function HomePage({ searchParams }: Props) {
         createError={q.createError === "1"}
       />
       <DashboardPieces songs={songs} email={email} showEvalsNav={showEvalsNav} />
-      <DashboardFooter />
     </div>
   );
 }

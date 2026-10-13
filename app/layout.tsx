@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { APP_TAGLINE } from "@/components/app-brand";
+import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { ChunkLoadRecovery } from "@/components/navigation/ChunkLoadRecovery";
 import { InstantRouteShell } from "@/components/navigation/instant-route-shell";
 import { getAppBuildId } from "@/lib/navigation/appBuildId";
@@ -28,10 +29,11 @@ export default function RootLayout({
 
   return (
     <html lang="en" className={inter.variable}>
-      <body className="min-h-screen font-sans antialiased">
+      <body className="flex min-h-dvh flex-col font-sans antialiased">
         <ChunkLoadRecovery initialBuildId={buildId} />
         <InstantRouteShell />
-        {children}
+        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+        <SiteFooter />
       </body>
     </html>
   );
