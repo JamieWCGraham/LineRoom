@@ -47,6 +47,9 @@ export default async function HomePage({ searchParams }: Props) {
               <p className="mt-5 max-w-2xl text-base leading-relaxed text-zinc-300 sm:text-lg">
                 Draft, revise, and strengthen your lyrics with real-time, line-by-line feedback.
               </p>
+              <p className="mt-3 max-w-2xl text-base leading-relaxed text-zinc-300 sm:text-lg">
+                AI-powered line-by-line feedback, tuned to the artists and genre you provide. Your words stay yours.
+              </p>
               <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">
                 Highlighted feedback shows what&apos;s working, what&apos;s developing, and
                 what to strengthen.
