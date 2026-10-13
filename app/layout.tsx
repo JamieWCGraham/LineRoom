@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { APP_TAGLINE } from "@/components/app-brand";
 import { ChunkLoadRecovery } from "@/components/navigation/ChunkLoadRecovery";
 import { InstantRouteShell } from "@/components/navigation/instant-route-shell";
@@ -32,6 +33,7 @@ export default function RootLayout({
         <ChunkLoadRecovery initialBuildId={buildId} />
         <InstantRouteShell />
         {children}
+        <Analytics />
       </body>
     </html>
   );
