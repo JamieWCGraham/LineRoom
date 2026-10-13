@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AppBrandLogo } from "@/components/app-brand";
+import { MarketingHeader } from "@/components/marketing/MarketingHeader";
 import { DashboardChrome } from "@/components/dashboard/dashboard-chrome";
 import { DashboardPieces } from "@/components/dashboard/dashboard-pieces-async";
 import {
@@ -34,30 +34,7 @@ export default async function HomePage({ searchParams }: Props) {
           aria-hidden
         />
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-14 px-4 py-16 sm:px-6 lg:py-24">
-          <header className="flex items-center justify-between">
-            <div className="flex items-center gap-2 sm:gap-2.5">
-              <AppBrandLogo size={48} className="h-10 w-10 sm:h-11 sm:w-11" priority />
-              <p className="bg-gradient-to-b from-zinc-50 to-zinc-400 bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl">
-                LineRoom
-              </p>
-            </div>
-            <div className="hidden gap-3 sm:flex">
-              <Link
-                href="/login"
-                prefetch
-                className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-900/80"
-              >
-                Login
-              </Link>
-              <Link
-                href="/signup"
-                prefetch
-                className="rounded-lg bg-zinc-100 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-white"
-              >
-                Sign up
-              </Link>
-            </div>
-          </header>
+          <MarketingHeader hideNavOnMobile />
 
           <section className="grid grid-cols-1 gap-8 rounded-3xl border border-zinc-800/80 bg-zinc-900/50 p-8 shadow-2xl shadow-black/30 backdrop-blur md:grid-cols-[1.2fr_0.8fr] md:gap-x-10 md:gap-y-10 md:p-12">
             <div className="order-1 min-w-0 md:order-none md:col-start-1 md:row-start-1 md:self-start">
@@ -126,21 +103,37 @@ export default async function HomePage({ searchParams }: Props) {
             </div>
           </section>
 
-          <div className="flex gap-3 sm:hidden">
-            <Link
-              href="/lineroom"
-              prefetch
-              className="flex-1 rounded-lg bg-zinc-100 px-4 py-2 text-center text-sm font-semibold text-zinc-950 transition hover:bg-white"
-            >
-              Try free
-            </Link>
-            <Link
-              href="/login"
-              prefetch
-              className="flex-1 rounded-lg border border-zinc-700 px-4 py-2 text-center text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-900/80"
-            >
-              Login
-            </Link>
+          <div className="flex flex-col gap-3 sm:hidden">
+            <div className="flex gap-4 px-1">
+              <Link
+                href="/pricing"
+                className="inline-flex min-h-11 items-center text-sm font-medium text-zinc-300"
+              >
+                Pricing
+              </Link>
+              <Link
+                href="/features"
+                className="inline-flex min-h-11 items-center text-sm font-medium text-zinc-300"
+              >
+                Features
+              </Link>
+            </div>
+            <div className="flex gap-3">
+              <Link
+                href="/lineroom"
+                prefetch
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-zinc-100 px-4 py-2 text-center text-sm font-semibold text-zinc-950 transition hover:bg-white"
+              >
+                Try free
+              </Link>
+              <Link
+                href="/login"
+                prefetch
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-zinc-700 px-4 py-2 text-center text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-900/80"
+              >
+                Login
+              </Link>
+            </div>
           </div>
         </div>
       </main>

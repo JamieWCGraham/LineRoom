@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { StartProButton } from "@/components/billing/StartProButton";
+import { MarketingHeader } from "@/components/marketing/MarketingHeader";
 import {
   IOS_APP_STORE_URL,
   PRO_MONTHLY_PRICE_DISPLAY,
@@ -31,8 +32,9 @@ export default function PricingPage() {
   const pricePlaceholder = isProPricePlaceholder();
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
-      <header className="max-w-2xl">
+    <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+      <MarketingHeader />
+      <header className="mt-10 max-w-2xl">
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-50 sm:text-4xl">
           Pricing
         </h1>
