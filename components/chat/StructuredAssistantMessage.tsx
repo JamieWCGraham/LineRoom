@@ -21,7 +21,12 @@ export function StructuredAssistantMessage({ structured }: Props) {
   };
 
   const opts = structured.options ?? [];
-  const isFindRhymes = structured.mode === "find_rhymes";
+  const isWordGrid =
+    structured.mode === "find_rhymes" || structured.mode === "diagnose";
+  const wordGridLabel =
+    structured.mode === "diagnose" ? "Thesaurus options" : "Rhyme suggestions";
+  const wordCopyKind =
+    structured.mode === "diagnose" ? "synonym" : "rhyme";
 
   return (
     <div className="space-y-3 text-sm leading-relaxed text-zinc-300">
@@ -35,10 +40,10 @@ export function StructuredAssistantMessage({ structured }: Props) {
         </ul>
       : null}
 
-      {opts.length > 0 && isFindRhymes ?
+      {opts.length > 0 && isWordGrid ?
         <div
           className="grid grid-cols-2 gap-2 sm:grid-cols-3"
-          aria-label="Rhyme suggestions"
+          aria-label={wordGridLabel}
         >
           {opts.map((opt, i) => {
             const label = opt.trim() || `Option ${i + 1}`;
@@ -47,7 +52,7 @@ export function StructuredAssistantMessage({ structured }: Props) {
                 key={i}
                 type="button"
                 title={`Copy “${label}”`}
-                aria-label={`Copy rhyme: ${label}`}
+                aria-label={`Copy ${wordCopyKind}: ${label}`}
                 onClick={() => void copyOption(opt, i)}
                 className="min-h-[2.75rem] rounded-lg border border-zinc-700/80 bg-zinc-900/55 px-2 py-2 text-center text-sm font-medium text-zinc-100 transition hover:border-emerald-800/45 hover:bg-emerald-950/25 hover:text-emerald-50 active:bg-zinc-800/80"
               >
@@ -61,7 +66,7 @@ export function StructuredAssistantMessage({ structured }: Props) {
         </div>
       : null}
 
-      {opts.length > 0 && !isFindRhymes ?
+      {opts.length > 0 && !isWordGrid ?
         <ol className="list-decimal space-y-3 pl-4 marker:text-zinc-500">
           {opts.map((opt, i) => {
             const rec =

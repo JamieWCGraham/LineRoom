@@ -180,7 +180,8 @@ export const chatRequestSchema = z.object({
   messages: z.array(chatMessageSchema).max(80),
   critique: critiqueResultSchema.optional(),
   critiqueMeta: critiqueMetaSchema.optional(),
-  chatAction: chatActionPayloadSchema.optional(),
+  /** Required: Workshop is single-call tools only (rhyme / suggestion / thesaurus). */
+  chatAction: chatActionPayloadSchema,
 });
 
 export const saveSongVersionPayloadSchema = z.object({

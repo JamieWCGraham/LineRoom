@@ -5,10 +5,7 @@ import {
 } from "@/lib/langfuse-server";
 import { buildLangfuseTraceUser } from "@/lib/langfuse/traceUser";
 import { createBaseOpenAI, getFastChatModel } from "@/lib/openai";
-import {
-  buildChatActionSystemPrompt,
-  buildLyricChatSystemPrompt,
-} from "@/lib/prompts";
+import { buildChatActionSystemPrompt } from "@/lib/prompts";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/auth/guards";
 import { isAnonymousUser } from "@/lib/auth/guest";
@@ -152,146 +149,84 @@ export async function POST(req: Request) {
     .maybeSingle();
   const traceUser = buildLangfuseTraceUser(user, profile);
 
-  const effectiveCritique = critique ?? chatAction?.critique;
+  const effectiveCritique = critique ?? chatAction.critique;
   const critiqueBlock = formatCritiqueForChat(
     effectiveCritique,
     critiqueMeta,
     pieceTitle,
   );
 
-  if (chatAction) {
-    const payload: ChatActionPayload = {
-      ...chatAction,
-      draft: fullText,
-      critique: effectiveCritique,
-    };
-    const scopeErr = validateChatActionPayload(payload);
-    if (scopeErr) {
-      return NextResponse.json({ error: scopeErr }, { status: 400 });
-    }
-
-    try {
-      return await runWithLangfuseTrace(
-        {
-          traceName: "LineRoom",
-          rootObservationName: "lineroom-chat-action",
-          tags: ["lineroom", "chat", "action"],
-          traceUser,
-          langfuseConfig: {
-            traceName: "LineRoom",
-            generationName: "lyric-chat-action",
-            tags: ["lineroom", "chat", "action"],
-          },
-        },
-        async ({ createTracedOpenAI, setTraceIO }) => {
-          const openai = createTracedOpenAI(createBaseOpenAI());
-          const system = buildChatActionSystemPrompt(payload, critiqueBlock);
-          const completion = await openai.chat.completions.create({
-            model: getFastChatModel(),
-            response_format: { type: "json_object" },
-            messages: [
-              { role: "system", content: system },
-              { role: "user", content: chatAction.userMessage },
-            ],
-          });
-          const raw = completion.choices[0]?.message?.content?.trim();
-          if (!raw) {
-            return NextResponse.json(
-              { error: "Empty model response" },
-              { status: 502 },
-            );
-          }
-          let json: unknown;
-          try {
-            json = parseModelJsonObject(raw);
-          } catch {
-            return NextResponse.json(
-              { error: "Model returned invalid JSON" },
-              { status: 502 },
-            );
-          }
-          const shaped = chatActionResponseSchema.safeParse(json);
-          if (!shaped.success) {
-            return NextResponse.json(
-              { error: "Model JSON did not match the expected shape" },
-              { status: 502 },
-            );
-          }
-          const structured: ChatActionResponse = {
-            ...shaped.data,
-            mode: payload.action,
-            scope: payload.scope,
-          };
-          setTraceIO({
-            input: { chatAction: payload, userMessage: chatAction.userMessage },
-            output: structured,
-          });
-          return NextResponse.json(structured, {
-            headers: {
-              "Cache-Control": "no-store",
-              "X-Chat-Mode": "fast",
-              "X-Chat-Response-Kind": "action",
-            },
-          });
-        },
-      );
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Unknown error";
-      if (message === "OPENAI_API_KEY is not set") {
-        return NextResponse.json(
-          { error: "Server is not configured with OPENAI_API_KEY" },
-          { status: 503 },
-        );
-      }
-      console.error("[chat-action]", message);
-      return NextResponse.json({ error: "Workshop failed" }, { status: 500 });
-    }
+  const payload: ChatActionPayload = {
+    ...chatAction,
+    draft: fullText,
+    critique: effectiveCritique,
+  };
+  const scopeErr = validateChatActionPayload(payload);
+  if (scopeErr) {
+    return NextResponse.json({ error: scopeErr }, { status: 400 });
   }
-
-  const openaiMessages = [
-    {
-      role: "system" as const,
-      content: buildLyricChatSystemPrompt(fullText, critiqueBlock),
-    },
-    ...messages.map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    })),
-  ];
 
   try {
     return await runWithLangfuseTrace(
       {
         traceName: "LineRoom",
-        rootObservationName: "lineroom-chat",
-        tags: ["lineroom", "chat"],
+        rootObservationName: "lineroom-chat-action",
+        tags: ["lineroom", "chat", "action"],
         traceUser,
         langfuseConfig: {
           traceName: "LineRoom",
-          generationName: "lyric-chat",
-          tags: ["lineroom", "chat"],
+          generationName: "lyric-chat-action",
+          tags: ["lineroom", "chat", "action"],
         },
       },
       async ({ createTracedOpenAI, setTraceIO }) => {
         const openai = createTracedOpenAI(createBaseOpenAI());
+        const system = buildChatActionSystemPrompt(payload, critiqueBlock);
         const completion = await openai.chat.completions.create({
           model: getFastChatModel(),
-          messages: openaiMessages,
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: chatAction.userMessage },
+          ],
         });
-        const reply = completion.choices[0]?.message?.content?.trim();
-        if (!reply) {
-          return NextResponse.json({ error: "Empty model response" }, { status: 502 });
+        const raw = completion.choices[0]?.message?.content?.trim();
+        if (!raw) {
+          return NextResponse.json(
+            { error: "Empty model response" },
+            { status: 502 },
+          );
         }
+        let json: unknown;
+        try {
+          json = parseModelJsonObject(raw);
+        } catch {
+          return NextResponse.json(
+            { error: "Model returned invalid JSON" },
+            { status: 502 },
+          );
+        }
+        const shaped = chatActionResponseSchema.safeParse(json);
+        if (!shaped.success) {
+          return NextResponse.json(
+            { error: "Model JSON did not match the expected shape" },
+            { status: 502 },
+          );
+        }
+        const structured: ChatActionResponse = {
+          ...shaped.data,
+          mode: payload.action,
+          scope: payload.scope,
+        };
         setTraceIO({
-          input: { messages: openaiMessages },
-          output: { reply },
+          input: { chatAction: payload, userMessage: chatAction.userMessage },
+          output: structured,
         });
-
-        return new Response(reply, {
+        return NextResponse.json(structured, {
           headers: {
-            "Content-Type": "text/plain; charset=utf-8",
             "Cache-Control": "no-store",
             "X-Chat-Mode": "fast",
+            "X-Chat-Response-Kind": "action",
           },
         });
       },
@@ -304,7 +239,7 @@ export async function POST(req: Request) {
         { status: 503 },
       );
     }
-    console.error("[chat]", message);
+    console.error("[chat-action]", message);
     return NextResponse.json({ error: "Workshop failed" }, { status: 500 });
   }
 }

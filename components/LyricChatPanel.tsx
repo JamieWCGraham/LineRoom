@@ -6,43 +6,64 @@ import ReactMarkdown from "react-markdown";
 import { StructuredAssistantMessage } from "@/components/chat/StructuredAssistantMessage";
 import { useMobileToolbarInset } from "@/lib/hooks/useMobileToolbarInset";
 import { buildChatActionPayload } from "@/lib/chat/buildChatActionPayload";
-import { getSectionForLine } from "@/lib/chat/sectionFromDraft";
-import {
-  extractRhymeAnchorWord,
-  prefillChatAction,
-} from "@/lib/chat/prefillChatAction";
 import type { ChatMessage, CritiqueMeta, CritiqueResult } from "@/lib/types";
 import { chatActionResponseSchema } from "@/lib/validators";
-import type {
-  ChatAction,
-  ChatScope,
-} from "@/types/chat";
+import type { ChatAction } from "@/types/chat";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 
-const CHAT_ACTIONS: {
+const WORKSHOP_MODES: {
   id: ChatAction;
   title: string;
-  example: string;
+  blurb: string;
+  placeholder: string;
+  /** Soft cap so users can’t paste whole drafts. */
+  maxChars: number;
 }[] = [
   {
     id: "find_rhymes",
     title: "Rhyme",
-    example: "e.g. Words that rhyme with your ending sound (shown in a grid)",
+    blurb: "Words that rhyme with a target sound",
+    placeholder: "Input your word here",
+    maxChars: 48,
   },
   {
     id: "suggest_rewrites",
-    title: "Suggestions",
-    example:
-      "e.g. Suggest rewrites or alternatives to this line improving prosody while retaining meaning",
+    title: "Suggestion",
+    blurb: "Alternatives for one line",
+    placeholder: "Input your line here",
+    maxChars: 160,
   },
   {
     id: "diagnose",
     title: "Thesaurus",
-    example:
-      "e.g. Give me other words that mean something similar to this word",
+    blurb: "Synonyms and near-synonyms",
+    placeholder: "Input your word here",
+    maxChars: 48,
   },
 ];
+
+function modeMeta(action: ChatAction) {
+  return WORKSHOP_MODES.find((m) => m.id === action)!;
+}
+
+function normalizeWorkshopInput(action: ChatAction, raw: string): string {
+  const singleLine = raw.replace(/\r\n/g, "\n").split("\n")[0] ?? "";
+  const trimmed = singleLine.trim();
+  const { maxChars } = modeMeta(action);
+  return trimmed.slice(0, maxChars);
+}
+
+function buildUserMessage(action: ChatAction, target: string): string {
+  switch (action) {
+    case "find_rhymes":
+      return `Find words that rhyme with "${target}".`;
+    case "diagnose":
+      return `Give me other words that mean something similar to "${target}".`;
+    case "suggest_rewrites":
+      return `Suggest rewrites for this line, improving prosody while retaining meaning:\n${target}`;
+  }
+}
 
 type Props = {
   fullText: string;
@@ -53,7 +74,7 @@ type Props = {
   /** When null (before the first critique), workshop still works; structured critique context is omitted. */
   critique: CritiqueResult | null;
   critiqueMeta: CritiqueMeta;
-  /** Guest try: Workshop is account-only — show signup CTA instead of chat. */
+  /** Guest try: Workshop is account-only — show signup CTA instead of tools. */
   lockedForGuests?: boolean;
 };
 
@@ -100,11 +121,7 @@ export function LyricChatPanel({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [modeBanner, setModeBanner] = useState<string | null>(null);
-  const [selectedChatAction, setSelectedChatAction] = useState<ChatAction | null>(
-    null,
-  );
-  const chatScope: ChatScope = "full_draft";
+  const [selectedMode, setSelectedMode] = useState<ChatAction | null>(null);
 
   const mobileHeaderRef = useRef<HTMLDivElement>(null);
   const mobileComposerRef = useRef<HTMLDivElement>(null);
@@ -117,9 +134,16 @@ export function LyricChatPanel({
     const el = composerInputRef.current;
     if (!el) return;
     el.style.height = "0px";
-    const nextHeight = Math.min(el.scrollHeight, 240);
+    const nextHeight = Math.min(el.scrollHeight, 120);
     el.style.height = `${Math.max(nextHeight, 44)}px`;
-  }, [input]);
+  }, [input, selectedMode]);
+
+  useEffect(() => {
+    if (!selectedMode) return;
+    const el = composerInputRef.current;
+    if (!el) return;
+    el.focus();
+  }, [selectedMode]);
 
   useEffect(() => {
     const el = messagesScrollRef.current;
@@ -127,53 +151,37 @@ export function LyricChatPanel({
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, loading, mobileComposerInsetPx]);
 
-  function applyActionPrefill(action: ChatAction) {
-    setSelectedChatAction(action);
-    const sectionType = getSectionForLine(fullText, 0).type;
-    const rhymeTargetWord =
-      action === "find_rhymes" ? extractRhymeAnchorWord(fullText) : undefined;
-    setInput(
-      prefillChatAction(action, chatScope, sectionType, {
-        pins: [],
-        rhymeTargetWord,
-      }),
-    );
+  function selectMode(action: ChatAction) {
+    setSelectedMode(action);
+    setInput("");
+    setError(null);
   }
 
   async function send() {
-    const trimmed = input.trim();
-    if (!trimmed || loading) return;
+    if (!selectedMode || loading) return;
+    const target = normalizeWorkshopInput(selectedMode, input);
+    if (!target) return;
 
     setError(null);
+    const userContent = buildUserMessage(selectedMode, target);
     const nextHistory: ChatMessage[] = [
       ...messages,
-      { role: "user", content: trimmed },
+      { role: "user", content: userContent },
     ];
     onMessagesChange(nextHistory);
     setInput("");
     setLoading(true);
-    setModeBanner(null);
 
-    const chatActionPayload = selectedChatAction ?
-      buildChatActionPayload({
-        action: selectedChatAction,
-        scope: chatScope,
-        draft: fullText,
-        critique: critique ?? undefined,
-        userMessage: trimmed,
-      })
-    : undefined;
-
-    const useAction = Boolean(chatActionPayload);
+    const chatActionPayload = buildChatActionPayload({
+      action: selectedMode,
+      scope: "selection",
+      draft: fullText,
+      critique: critique ?? undefined,
+      selections: [{ startLine: 0, endLine: 0, text: target }],
+      userMessage: userContent,
+    });
 
     try {
-      if (!useAction) {
-        onMessagesChange([
-          ...nextHistory,
-          { role: "assistant", content: "" },
-        ]);
-      }
-
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -183,72 +191,41 @@ export function LyricChatPanel({
           messages: nextHistory,
           ...(critique ? { critique } : {}),
           critiqueMeta,
-          ...(chatActionPayload ? { chatAction: chatActionPayload } : {}),
+          chatAction: chatActionPayload,
         }),
       });
-
-      const mode = res.headers.get("X-Chat-Mode");
-      const reasonTrace = res.headers.get("X-Reasoning-Trace");
-      if (mode === "deep") {
-        setModeBanner(
-          reasonTrace ?
-            `Deep reasoning mode: ${reasonTrace}`
-          : "Deep reasoning mode enabled for this message.",
-        );
-      }
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setError(
-          typeof data.error === "string" ? data.error : "Message failed.",
+          typeof data.error === "string" ? data.error : "Request failed.",
         );
         onMessagesChange(messages);
         return;
       }
 
-      if (useAction && res.headers.get("X-Chat-Response-Kind") === "action") {
-        const raw: unknown = await res.json();
-        const parsed = chatActionResponseSchema.safeParse(raw);
-        if (!parsed.success) {
-          setError("Assistant returned an unexpected format.");
-          onMessagesChange(messages);
-          return;
-        }
-        const structured = parsed.data;
-        onMessagesChange([
-          ...nextHistory,
-          {
-            role: "assistant",
-            content: structured.summary,
-            structured,
-          },
-        ]);
-        setSelectedChatAction(null);
+      if (res.headers.get("X-Chat-Response-Kind") !== "action") {
+        setError("Unexpected response from workshop.");
+        onMessagesChange(messages);
         return;
       }
 
-      if (!res.body) {
-        setError("Missing response stream.");
+      const raw: unknown = await res.json();
+      const parsed = chatActionResponseSchema.safeParse(raw);
+      if (!parsed.success) {
+        setError("Assistant returned an unexpected format.");
         onMessagesChange(messages);
         return;
       }
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let reply = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        reply += decoder.decode(value, { stream: true });
-        onMessagesChange([
-          ...nextHistory,
-          { role: "assistant", content: reply },
-        ]);
-      }
-      reply += decoder.decode();
-      if (!reply.trim()) {
-        setError("Empty reply.");
-        onMessagesChange(messages);
-      }
+      const structured = parsed.data;
+      onMessagesChange([
+        ...nextHistory,
+        {
+          role: "assistant",
+          content: structured.summary,
+          structured,
+        },
+      ]);
     } catch {
       setError("Network error.");
       onMessagesChange(messages);
@@ -279,8 +256,8 @@ export function LyricChatPanel({
               Workshop is for signed-up users
             </p>
             <p className="text-sm leading-relaxed text-zinc-400">
-              Create an account to chat through rhymes, thesaurus actions, and line-level
-              notes on your draft.
+              Create an account to use Rhyme, Suggestion, and Thesaurus on a word
+              or line at a time.
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3">
@@ -302,6 +279,13 @@ export function LyricChatPanel({
     );
   }
 
+  const active = selectedMode ? modeMeta(selectedMode) : null;
+  const canSend = Boolean(
+    selectedMode &&
+      normalizeWorkshopInput(selectedMode, input) &&
+      !loading,
+  );
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/30 max-lg:rounded-none max-lg:border-x-0">
       <div
@@ -318,8 +302,8 @@ export function LyricChatPanel({
               if (!messages.length || loading) return;
               onClearMessages();
               setError(null);
-              setModeBanner(null);
-              setSelectedChatAction(null);
+              setSelectedMode(null);
+              setInput("");
             }}
             disabled={loading || messages.length === 0}
             className="rounded-md border border-zinc-500/90 bg-zinc-800/85 px-2.5 py-1 text-[11px] font-semibold text-zinc-50 transition hover:border-zinc-300 hover:bg-zinc-700/90 disabled:cursor-not-allowed disabled:opacity-40"
@@ -339,31 +323,26 @@ export function LyricChatPanel({
         ref={messagesScrollRef}
         className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-none px-3 pt-3 [touch-action:pan-y] lg:pb-3 max-lg:pb-0"
       >
-        {modeBanner ? (
-          <div className="rounded-lg border border-zinc-800 bg-zinc-950/50 px-2.5 py-2 text-[11px] text-zinc-400">
-            {modeBanner}
-          </div>
-        ) : null}
-        {messages.length === 0 && !loading ?
+        {!selectedMode && messages.length === 0 && !loading ?
           <div className="flex min-h-full flex-col px-0.5 pt-2">
             <div className="flex flex-1 items-center">
               <div className="mx-auto flex w-full max-w-sm flex-col gap-2">
                 <p className="text-center text-xs text-zinc-300">
-                  Start with a quick action or type your own message below.
+                  Choose a tool. One word or one line per request, not a full rewrite.
                 </p>
-                {CHAT_ACTIONS.map((a) => (
+                {WORKSHOP_MODES.map((a) => (
                   <button
                     key={a.id}
                     type="button"
                     disabled={loading}
-                    onClick={() => applyActionPrefill(a.id)}
+                    onClick={() => selectMode(a.id)}
                     className="rounded-lg border border-zinc-700/80 bg-zinc-900/50 px-3 py-2.5 text-left transition hover:border-emerald-800/50 hover:bg-emerald-950/15 disabled:opacity-40"
                   >
                     <span className="block text-sm font-medium text-zinc-100">
                       {a.title}
                     </span>
                     <span className="mt-0.5 block text-[11px] leading-snug text-zinc-500">
-                      {a.example}
+                      {a.blurb}
                     </span>
                   </button>
                 ))}
@@ -371,13 +350,20 @@ export function LyricChatPanel({
             </div>
           </div>
         : null}
+
+        {(selectedMode || messages.length > 0) && messages.length === 0 && !loading ?
+          <p className="px-0.5 pt-1 text-center text-xs text-zinc-500">
+            Results show up here after you send.
+          </p>
+        : null}
+
         {messages.map((m, i) => (
           <div
             key={i}
             className={
-              m.role === "user"
-                ? "ml-6 rounded-lg border border-emerald-900/35 bg-emerald-950/20 px-3 py-2 text-sm text-zinc-100"
-                : "mr-4 rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-sm leading-relaxed text-zinc-300"
+              m.role === "user" ?
+                "ml-6 rounded-lg border border-emerald-900/35 bg-emerald-950/20 px-3 py-2 text-sm text-zinc-100"
+              : "mr-4 rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-sm leading-relaxed text-zinc-300"
             }
           >
             <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-zinc-500">
@@ -394,11 +380,11 @@ export function LyricChatPanel({
             : <p className="whitespace-pre-wrap">{m.content}</p>}
           </div>
         ))}
-        {loading ? (
+        {loading ?
           <div className="mr-4 rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-sm text-zinc-500">
             Thinking…
           </div>
-        ) : null}
+        : null}
         <div
           className="shrink-0 lg:hidden"
           style={{ height: mobileComposerInsetPx }}
@@ -406,45 +392,84 @@ export function LyricChatPanel({
         />
       </div>
 
-      <div
-        ref={mobileComposerRef}
-        className="shrink-0 border-t border-zinc-800/80 px-3 py-2 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-[calc(4.25rem+env(safe-area-inset-bottom))] max-lg:z-[50] max-lg:border-zinc-800/80 max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:py-2 max-lg:shadow-[0_-12px_32px_rgba(0,0,0,0.45)] max-lg:backdrop-blur-md lg:relative lg:bottom-auto lg:z-auto lg:bg-transparent lg:shadow-none"
-      >
-        {error ? (
-          <div
-            className="mb-2 rounded-lg border border-rose-900/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200"
-            role="alert"
-          >
-            {error}
+      {selectedMode || messages.length > 0 ?
+        <div
+          ref={mobileComposerRef}
+          className="shrink-0 border-t border-zinc-800/80 px-3 py-2 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-[calc(4.25rem+env(safe-area-inset-bottom))] max-lg:z-[50] max-lg:border-zinc-800/80 max-lg:bg-zinc-950/95 max-lg:px-4 max-lg:py-2 max-lg:shadow-[0_-12px_32px_rgba(0,0,0,0.45)] max-lg:backdrop-blur-md lg:relative lg:bottom-auto lg:z-auto lg:bg-transparent lg:shadow-none"
+        >
+          <div className="mb-2 flex gap-1.5">
+            {WORKSHOP_MODES.map((a) => {
+              const on = selectedMode === a.id;
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  disabled={loading}
+                  onClick={() => selectMode(a.id)}
+                  className={
+                    on ?
+                      "min-w-0 flex-1 rounded-md bg-emerald-800/90 px-2 py-1.5 text-[11px] font-semibold text-zinc-50"
+                    : "min-w-0 flex-1 rounded-md border border-zinc-700/90 bg-zinc-900/70 px-2 py-1.5 text-[11px] font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
+                  }
+                >
+                  {a.title}
+                </button>
+              );
+            })}
           </div>
-        ) : null}
-        <div className="flex gap-2">
-          <textarea
-            ref={composerInputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void send();
-              }
-            }}
-            rows={1}
-            disabled={loading}
-            className="h-11 max-h-60 flex-1 resize-none overflow-y-auto rounded-lg border border-zinc-600 bg-zinc-800/85 p-3 text-sm text-zinc-50 placeholder:text-zinc-400 focus:border-emerald-500/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/25 disabled:opacity-50"
-            style={{ colorScheme: "dark" }}
-            placeholder="Message…"
-          />
-          <button
-            type="button"
-            onClick={() => void send()}
-            disabled={loading || !input.trim()}
-            className="h-11 shrink-0 self-end rounded-lg bg-emerald-700/90 px-4 text-sm font-medium text-zinc-950 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Send
-          </button>
+
+          {error ?
+            <div
+              className="mb-2 rounded-lg border border-rose-900/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-200"
+              role="alert"
+            >
+              {error}
+            </div>
+          : null}
+
+          {active ?
+            <div className="flex gap-2">
+              <textarea
+                ref={composerInputRef}
+                value={input}
+                onChange={(e) =>
+                  setInput(
+                    e.target.value
+                      .replace(/\r\n/g, "\n")
+                      .split("\n")[0]
+                      ?.slice(0, active.maxChars) ?? "",
+                  )
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void send();
+                  }
+                }}
+                rows={1}
+                disabled={loading}
+                maxLength={active.maxChars}
+                className="h-11 max-h-[7.5rem] flex-1 resize-none overflow-y-auto rounded-lg border border-zinc-600 bg-zinc-800/85 p-3 text-sm text-zinc-50 placeholder:text-zinc-400 focus:border-emerald-500/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/25 disabled:opacity-50"
+                style={{ colorScheme: "dark" }}
+                placeholder={active.placeholder}
+                aria-label={active.placeholder}
+              />
+              <button
+                type="button"
+                onClick={() => void send()}
+                disabled={!canSend}
+                className="h-11 shrink-0 self-end rounded-lg bg-emerald-700/90 px-4 text-sm font-medium text-zinc-950 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Send
+              </button>
+            </div>
+          : (
+            <p className="px-0.5 py-2 text-center text-[11px] text-zinc-500">
+              Select Rhyme, Suggestion, or Thesaurus to continue.
+            </p>
+          )}
         </div>
-      </div>
+      : null}
     </div>
   );
 }

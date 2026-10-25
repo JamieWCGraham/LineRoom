@@ -20,8 +20,8 @@ const sections = [
     body: "Tell LineRoom your closest artists and genre so feedback fits the song you're actually writing.",
   },
   {
-    title: "Workshop chat",
-    body: "Once you create an account, talk through rhymes, thesaurus options, and line-level notes.",
+    title: "Workshop tools",
+    body: "Once you create an account, use Rhyme, Suggestion, and Thesaurus — one word or one line at a time.",
   },
   {
     title: "Editor built for lyrics",

@@ -26,7 +26,7 @@ const freePoints = [
 
 const proPoints = [
   "Unlimited AI critiques",
-  "Workshop chat: rhymes, thesaurus, line-level notes",
+  "Workshop tools: rhyme, suggestion, thesaurus (one word or line at a time)",
   "Save pieces in the cloud, sync across devices",
   "Priority generation speed",
 ];

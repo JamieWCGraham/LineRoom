@@ -70,19 +70,19 @@ ${critiqueBlock.trim()}
   const actionRules =
     payload.action === "diagnose" ?
       `Action: THESAURUS (synonyms / near-synonyms)
-Infer the target word or phrase from the user's message and the scoped lyrics. Return 12-22 synonym or near-synonym options in "options" (single words or very short phrases; include shades of meaning where helpful). Include a brief "summary" naming the head word you are expanding. Omit "diagnosis" or use [].`
+The scoped text / user message is the target word or short phrase only. Return 12-22 synonym or near-synonym options in "options" (single words or very short phrases; include shades of meaning where helpful). Include a brief "summary" naming the head word you are expanding. Omit "diagnosis" or use []. Do not rewrite lyrics or expand into full lines.`
     : payload.action === "suggest_rewrites" ?
       `Action: SUGGEST REWRITES / ALTERNATIVES
-Return exactly 3 full rewrite candidates in "options" that improve prosody and flow while preserving meaning and voice. Match approximate length of the scoped text. Optional: 1-2 short "diagnosis" points. You may set "recommendedOption" to 0, 1, or 2 if one is clearly strongest.`
+The scoped text is a single line. Return exactly 3 full rewrite candidates in "options" that improve prosody and flow while preserving meaning and voice. Match approximate length of that one line. Optional: 1-2 short "diagnosis" points. You may set "recommendedOption" to 0, 1, or 2 if one is clearly strongest. Never rewrite a whole verse, song, or multi-line paste — only the single scoped line.`
     : `Action: RHYME
-Infer the target word or ending sound from the user's message and the scoped lyrics. Return 14-24 rhyme suggestions in "options" (single words or very short phrases; include slant/near rhymes). Include a brief "summary" on the rhyme sound you're using. Omit "diagnosis" or use [].`;
+The scoped text / user message is the target word or ending sound only. Return 14-24 rhyme suggestions in "options" (single words or very short phrases; include slant/near rhymes). Include a brief "summary" on the rhyme sound you're using. Omit "diagnosis" or use []. Do not rewrite lyrics.`;
 
-  return `You are a songwriting collaborator. The user chose a scoped chat action in their writing tool.
+  return `You are a songwriting collaborator. The user ran a single workshop tool (not an open-ended chat).
 
 Global rules:
 - Be concise and practical.
-- Do not rewrite more text than the scoped lyrics below.
-- Preserve voice and tone unless the user explicitly asks otherwise.
+- Only operate on the scoped text below — never rewrite the full draft.
+- Preserve voice and tone.
 - Prefer local edits over broad rewrites.
 ${multiExcerpt ? "- The user attached multiple excerpts; treat them as related context without pretending they are one continuous block.\n" : ""}${critiqueSection}
 

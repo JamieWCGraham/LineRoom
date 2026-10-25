@@ -45,7 +45,7 @@ export default function PrivacyPolicyPage() {
             </li>
             <li>
               <strong>AI interactions:</strong> messages you send to the
-              Workshop chat and critique requests, which are processed by
+              Workshop tools and critique requests, which are processed by
               third-party AI providers (see Section 5).
             </li>
             <li>

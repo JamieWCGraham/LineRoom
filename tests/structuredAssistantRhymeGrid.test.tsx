@@ -23,7 +23,26 @@ describe("StructuredAssistantMessage", () => {
     expect(screen.getByRole("button", { name: /rhyme: hat/i })).toBeInTheDocument();
   });
 
-  it("keeps numbered list for non-rhyme structured options", () => {
+  it("renders thesaurus options in a word grid", () => {
+    render(
+      <StructuredAssistantMessage
+        structured={{
+          mode: "diagnose",
+          scope: "selection",
+          summary: "Near “bright”",
+          options: ["vivid", "lucid"],
+        }}
+      />,
+    );
+
+    const list = screen.getByLabelText(/thesaurus options/i);
+    expect(list.className).toContain("grid");
+    expect(
+      screen.getByRole("button", { name: /synonym: vivid/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps numbered list for suggestion rewrites", () => {
     const { container } = render(
       <StructuredAssistantMessage
         structured={{

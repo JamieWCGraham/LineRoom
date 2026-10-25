@@ -105,13 +105,76 @@ describe("POST /api/chat", () => {
     expect(body.error).toMatch(/signed-up users/i);
   });
 
-  it("passes Langfuse traceUser for signed-in chat", async () => {
+  it("passes Langfuse traceUser for signed-in workshop action", async () => {
     mockGetAuthUser.mockResolvedValue({
       id: "user-1",
       email: "jamie@example.com",
       is_anonymous: false,
       app_metadata: {},
       user_metadata: { full_name: "Jamie" },
+    } as User);
+
+    const create = vi.fn(async () => ({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              mode: "find_rhymes",
+              scope: "selection",
+              summary: "Rhymes for flat",
+              options: ["hat", "mat"],
+            }),
+          },
+        },
+      ],
+    }));
+    const { createBaseOpenAI } = await import("@/lib/openai");
+    vi.mocked(createBaseOpenAI).mockReturnValue({
+      chat: { completions: { create } },
+    } as never);
+
+    const res = await POST(
+      new Request("http://localhost/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullText: "hello lyrics",
+          pieceTitle: "Song",
+          messages: [
+            { role: "user", content: 'Find words that rhyme with "flat".' },
+          ],
+          chatAction: {
+            action: "find_rhymes",
+            scope: "selection",
+            userMessage: 'Find words that rhyme with "flat".',
+            draft: "hello lyrics",
+            selections: [{ startLine: 0, endLine: 0, text: "flat" }],
+          },
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockRunWithLangfuseTrace).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tags: ["lineroom", "chat", "action"],
+        traceUser: expect.objectContaining({
+          userId: "user-1",
+          email: "jamie@example.com",
+          displayName: "Jamie",
+        }),
+      }),
+      expect.any(Function),
+    );
+  });
+
+  it("rejects freeform chat without a workshop action", async () => {
+    mockGetAuthUser.mockResolvedValue({
+      id: "user-1",
+      email: "jamie@example.com",
+      is_anonymous: false,
+      app_metadata: {},
+      user_metadata: {},
     } as User);
 
     const res = await POST(
@@ -121,22 +184,11 @@ describe("POST /api/chat", () => {
         body: JSON.stringify({
           fullText: "hello lyrics",
           pieceTitle: "Song",
-          messages: [{ role: "user", content: "hi" }],
+          messages: [{ role: "user", content: "rewrite my whole song" }],
         }),
       }),
     );
 
-    expect(res.status).toBe(200);
-    expect(mockRunWithLangfuseTrace).toHaveBeenCalledWith(
-      expect.objectContaining({
-        tags: ["lineroom", "chat"],
-        traceUser: expect.objectContaining({
-          userId: "user-1",
-          email: "jamie@example.com",
-          displayName: "Jamie",
-        }),
-      }),
-      expect.any(Function),
-    );
+    expect(res.status).toBe(400);
   });
 });
