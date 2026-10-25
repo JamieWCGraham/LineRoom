@@ -8,13 +8,13 @@ export function SiteFooter() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="mt-auto border-t border-zinc-800/80 bg-zinc-950 px-4 py-8 text-sm">
-      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-8 sm:grid-cols-3">
+    <footer className="mt-auto border-t border-zinc-800/80 bg-zinc-950 px-4 py-6 text-sm sm:px-6 sm:py-8">
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3 sm:gap-8">
         <nav aria-label="Product">
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
             Product
           </p>
-          <ul className="mt-2 space-y-1">
+          <ul className="mt-2 space-y-0.5 sm:space-y-1">
             <li>
               <Link href="/pricing" className={linkClass}>
                 Pricing
@@ -36,7 +36,7 @@ export function SiteFooter() {
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
             Legal
           </p>
-          <ul className="mt-2 space-y-1">
+          <ul className="mt-2 space-y-0.5 sm:space-y-1">
             <li>
               <Link href="/terms" className={linkClass}>
                 Terms of Use
@@ -49,11 +49,16 @@ export function SiteFooter() {
             </li>
           </ul>
         </nav>
-        <div>
+        <nav aria-label="Contact" className="col-span-2 sm:col-span-1">
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
             Contact
           </p>
-          <ul className="mt-2 space-y-1">
+          <ul className="mt-2 flex flex-col gap-0.5 sm:space-y-1 sm:gap-0">
+            <li>
+              <Link href="/contact" className={linkClass}>
+                Contact us
+              </Link>
+            </li>
             <li>
               <a
                 href={`mailto:${SUPPORT_EMAIL}?subject=LineRoom%20support`}
@@ -75,9 +80,9 @@ export function SiteFooter() {
               </li>
             : null}
           </ul>
-        </div>
+        </nav>
       </div>
-      <p className="mx-auto mt-8 w-full max-w-6xl text-xs text-zinc-500">
+      <p className="mx-auto mt-6 w-full max-w-6xl text-xs text-zinc-500 sm:mt-8">
         © {year} LineRoom. All rights reserved.
       </p>
     </footer>

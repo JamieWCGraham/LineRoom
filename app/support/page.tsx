@@ -108,6 +108,10 @@ export default function SupportPage() {
           Home
         </Link>
         {" · "}
+        <Link href="/contact" className="text-emerald-500/90 underline">
+          Contact
+        </Link>
+        {" · "}
         <Link href="/privacy" className="text-emerald-500/90 underline">
           Privacy Policy
         </Link>

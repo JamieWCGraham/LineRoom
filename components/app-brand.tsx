@@ -31,16 +31,16 @@ export function AppBrandLogo({
 
 export function AppBrandHero() {
   return (
-    <header className="mb-10 text-center">
+    <header className="mb-6 text-center sm:mb-10">
       <div className="flex items-center justify-center gap-2.5 sm:gap-3">
-        <AppBrandLogo size={48} className="h-10 w-10 sm:h-11 sm:w-11" priority />
-        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
+        <AppBrandLogo size={48} className="h-9 w-9 sm:h-11 sm:w-11" priority />
+        <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
           <span className="bg-gradient-to-b from-zinc-50 to-zinc-400 bg-clip-text text-transparent">
             LineRoom
           </span>
         </h1>
       </div>
-      <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-zinc-500">
+      <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-zinc-500 sm:mt-4">
         {APP_TAGLINE}
       </p>
     </header>

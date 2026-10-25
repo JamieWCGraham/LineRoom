@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { APPLE_STANDARD_EULA_URL } from "@/lib/legal/urls";
+import { PRIVACY_EMAIL } from "@/lib/site-config";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — LineRoom",
@@ -175,10 +176,10 @@ export default function PrivacyPolicyPage() {
           <p className="mt-2">
             For questions about this privacy policy or your data, contact us at{" "}
             <a
-              href="mailto:privacy@line-room.com"
+              href={`mailto:${PRIVACY_EMAIL}`}
               className="text-emerald-500/90 underline"
             >
-              privacy@line-room.com
+              {PRIVACY_EMAIL}
             </a>
             .
           </p>
@@ -188,6 +189,10 @@ export default function PrivacyPolicyPage() {
       <p className="mt-12 text-sm text-zinc-500">
         <Link href="/" className="text-emerald-500/90 underline">
           Home
+        </Link>
+        {" · "}
+        <Link href="/contact" className="text-emerald-500/90 underline">
+          Contact
         </Link>
         {" · "}
         <Link href="/terms" className="text-emerald-500/90 underline">

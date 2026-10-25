@@ -60,11 +60,11 @@ export default async function LoginPage({ searchParams }: Props) {
         </p>
       ) : null}
 
-      <div className="rounded-2xl border border-zinc-800/90 bg-zinc-900/40 p-6 shadow-xl shadow-black/30 backdrop-blur-sm">
+      <div className="rounded-2xl border border-zinc-800/90 bg-zinc-900/40 p-5 shadow-xl shadow-black/30 backdrop-blur-sm sm:p-6">
         <h2 className="text-center text-lg font-semibold text-zinc-100">
           Sign in
         </h2>
-        <p className="mb-6 mt-1 text-center text-xs text-zinc-500">
+        <p className="mb-5 mt-1 text-center text-xs leading-relaxed text-zinc-500 sm:mb-6">
           Access your saved pieces and the LineRoom editor.
         </p>
         {oauthSignInUiEnabled ? (

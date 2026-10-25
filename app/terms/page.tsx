@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { APPLE_STANDARD_EULA_URL } from "@/lib/legal/urls";
+import { SUPPORT_EMAIL } from "@/lib/site-config";
 
 export const metadata: Metadata = {
   title: "Terms of Service — LineRoom",
@@ -171,10 +172,10 @@ export default function TermsOfServicePage() {
           <p className="mt-2">
             For questions about these terms, contact us at{" "}
             <a
-              href="mailto:support@line-room.com"
+              href={`mailto:${SUPPORT_EMAIL}`}
               className="text-emerald-500/90 underline"
             >
-              support@line-room.com
+              {SUPPORT_EMAIL}
             </a>
             .
           </p>
@@ -184,6 +185,10 @@ export default function TermsOfServicePage() {
       <p className="mt-12 text-sm text-zinc-500">
         <Link href="/" className="text-emerald-500/90 underline">
           Home
+        </Link>
+        {" · "}
+        <Link href="/contact" className="text-emerald-500/90 underline">
+          Contact
         </Link>
         {" · "}
         <Link href="/privacy" className="text-emerald-500/90 underline">
