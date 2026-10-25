@@ -103,7 +103,7 @@ export default async function HomePage({ searchParams }: Props) {
                   Never lose your best lines while rewriting.
                 </li>
                 <li className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
-                  See exactly which lines are working - and which aren&apos;t.
+                  See exactly which lines are working, and which aren&apos;t.
                 </li>
                 <li className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
                   Pick up your song anywhere without breaking your flow.
@@ -115,16 +115,16 @@ export default async function HomePage({ searchParams }: Props) {
           <Testimonials />
 
           <div className="flex flex-col gap-3 sm:hidden">
-            <div className="flex gap-4 px-1">
+            <div className="flex gap-3">
               <Link
                 href="/pricing"
-                className="inline-flex min-h-11 items-center text-sm font-medium text-zinc-300"
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-950/50 px-4 py-2 text-center text-sm font-medium text-zinc-400 transition hover:border-zinc-600 hover:bg-zinc-900/70 hover:text-zinc-200"
               >
                 Pricing
               </Link>
               <Link
                 href="/features"
-                className="inline-flex min-h-11 items-center text-sm font-medium text-zinc-300"
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-950/50 px-4 py-2 text-center text-sm font-medium text-zinc-400 transition hover:border-zinc-600 hover:bg-zinc-900/70 hover:text-zinc-200"
               >
                 Features
               </Link>

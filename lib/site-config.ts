@@ -6,8 +6,7 @@
 export const SITE_URL = "https://line-room.com";
 export const SUPPORT_EMAIL = "support@line-room.com";
 
-// TODO (Jamie): fill in before launch — do not guess.
-export const PRO_MONTHLY_PRICE_DISPLAY = "$X"; // e.g. "$12" — must match Stripe
+export const PRO_MONTHLY_PRICE_DISPLAY = "$20"; // must match Stripe
 export const PRO_MONTHLY_PRICE_NOTE = ""; // e.g. "USD, billed monthly" — if applicable
 
 // TODO (Jamie): fill in, or leave "" and iOS links stay hidden.

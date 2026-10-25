@@ -45,10 +45,10 @@ export function LandingLyricPreview({ embedded = false }: Props) {
           aria-label="Example line feedback"
         >
           <span className="font-semibold text-violet-200">Suggestion</span>
-          <span className="text-zinc-300"> — </span>
+          <span className="text-zinc-300">: </span>
           <span className="text-zinc-200">
-            The feeling lands, but the image stays generic. Name one concrete detail—
-            a gesture, object, or place—so listeners see the scene.
+            The feeling lands, but the image stays generic. Name one concrete detail:
+            a gesture, object, or place, so listeners see the scene.
           </span>
         </div>
       </div>

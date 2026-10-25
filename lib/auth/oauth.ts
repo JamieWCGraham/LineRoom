@@ -15,8 +15,7 @@ export function oauthCallbackUrl(): string {
 export const OAUTH_NEXT_COOKIE = "lr_oauth_next";
 
 /**
- * Google button on login & signup always renders. The provider still has to be
- * enabled in Supabase or the start route returns an error.
+ * Google button on login & signup.
  * Set NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED=true after Google is configured in Supabase.
  */
 export const oauthGoogleEnabled =

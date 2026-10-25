@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppBrandHero } from "@/components/app-brand";
 import { LoginForm } from "@/components/auth/login-form";
 import { OAuthSignInLinks } from "@/components/auth/oauth-sign-in-links";
+import { oauthSignInUiEnabled } from "@/lib/auth/oauth";
 
 type Props = {
   searchParams: Promise<{
@@ -66,17 +67,21 @@ export default async function LoginPage({ searchParams }: Props) {
         <p className="mb-6 mt-1 text-center text-xs text-zinc-500">
           Access your saved pieces and the LineRoom editor.
         </p>
-        <OAuthSignInLinks nextPath={q.next} />
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center" aria-hidden>
-            <span className="w-full border-t border-zinc-800" />
+        {oauthSignInUiEnabled ? (
+          <div className="hidden md:block">
+            <OAuthSignInLinks nextPath={q.next} />
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center" aria-hidden>
+                <span className="w-full border-t border-zinc-800" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-zinc-900/40 px-2 text-zinc-500">
+                  Or use email
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="bg-zinc-900 px-2 text-zinc-500">
-              Or use email
-            </span>
-          </div>
-        </div>
+        ) : null}
         <LoginForm />
       </div>
     </div>

@@ -20,13 +20,13 @@ export const metadata: Metadata = publicPageMetadata({
 
 const freePoints = [
   "3 AI critiques, no account needed",
-  "Lyrics editor with DRAFT / BRAINSTORM modes",
+  "Lyrics editor with draft, brainstorm modes",
   "Voice-memo recording",
 ];
 
 const proPoints = [
   "Unlimited AI critiques",
-  "Workshop chat — rhymes, thesaurus, line-level notes",
+  "Workshop chat: rhymes, thesaurus, line-level notes",
   "Save pieces in the cloud, sync across devices",
   "Priority generation speed",
 ];
