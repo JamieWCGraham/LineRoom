@@ -87,6 +87,22 @@ export default async function HomePage({ searchParams }: Props) {
                     Download on the App Store
                   </a>
                 : null}
+                <div className="grid grid-cols-2 gap-2.5 sm:hidden">
+                  <Link
+                    href="/signup"
+                    prefetch
+                    className="inline-flex min-h-12 items-center justify-center rounded-xl border border-zinc-700 px-4 py-3 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-900"
+                  >
+                    Sign up
+                  </Link>
+                  <Link
+                    href="/login"
+                    prefetch
+                    className="inline-flex min-h-12 items-center justify-center rounded-xl border border-zinc-700 px-4 py-3 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-900"
+                  >
+                    Log in
+                  </Link>
+                </div>
               </div>
             </div>
 
