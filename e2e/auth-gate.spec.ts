@@ -77,7 +77,7 @@ test.describe("unauthenticated", () => {
     }
   });
 
-  test("login page hides OAuth on mobile viewport", async ({ page }) => {
+  test("login page shows OAuth on mobile viewport", async ({ page }) => {
     test.skip(
       process.env.NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED !== "true" &&
         process.env.NEXT_PUBLIC_OAUTH_APPLE_ENABLED !== "true",
@@ -87,12 +87,16 @@ test.describe("unauthenticated", () => {
     await page.goto("/login");
     await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
     await expect(page.getByLabel("Email")).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: /Continue with Google/i }),
-    ).toBeHidden();
-    await expect(
-      page.getByRole("link", { name: /Continue with Apple/i }),
-    ).toBeHidden();
+    if (process.env.NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED === "true") {
+      await expect(
+        page.getByRole("link", { name: /Continue with Google/i }),
+      ).toBeVisible();
+    }
+    if (process.env.NEXT_PUBLIC_OAUTH_APPLE_ENABLED === "true") {
+      await expect(
+        page.getByRole("link", { name: /Continue with Apple/i }),
+      ).toBeVisible();
+    }
   });
 
   test("oauth start redirects toward Google via Supabase", async ({

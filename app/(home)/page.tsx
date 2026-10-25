@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { MarketingHeader } from "@/components/marketing/MarketingHeader";
 import { DashboardChrome } from "@/components/dashboard/dashboard-chrome";
 import { DashboardPieces } from "@/components/dashboard/dashboard-pieces-async";
@@ -13,6 +15,7 @@ import { resolveDisplayName } from "@/lib/auth/display-name";
 import { ensureProfile, normalizeAuthUserToProfile } from "@/lib/auth/profile";
 import { getAuthUser } from "@/lib/auth/guards";
 import { hasEvalsAccess } from "@/lib/evals/access";
+import { userAgentHasLineroomIosShellToken } from "@/lib/platform/lineroom-native-shell";
 import {
   computeDashboardStats,
   loadDashboardSongs,
@@ -33,6 +36,11 @@ export default async function HomePage({ searchParams }: Props) {
   const user = await getAuthUser(supabase);
   const showLanding = !user || Boolean(user.is_anonymous);
   if (showLanding) {
+    // Installed Capacitor app: skip marketing hero → go straight to login.
+    const h = await headers();
+    if (userAgentHasLineroomIosShellToken(h.get("user-agent"))) {
+      redirect("/login");
+    }
     return (
       <main className="relative isolate flex min-h-0 flex-1 flex-col">
         <PrefetchPublicLandingAuth />
@@ -79,22 +87,6 @@ export default async function HomePage({ searchParams }: Props) {
                     Download on the App Store
                   </a>
                 : null}
-                <div className="grid grid-cols-2 gap-2.5 sm:contents">
-                  <Link
-                    href="/signup"
-                    prefetch
-                    className="inline-flex min-h-12 items-center justify-center rounded-xl border border-zinc-700 px-6 py-3 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-900 sm:min-h-0"
-                  >
-                    Sign up
-                  </Link>
-                  <Link
-                    href="/login"
-                    prefetch
-                    className="inline-flex min-h-12 items-center justify-center rounded-xl border border-zinc-700 px-6 py-3 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-900 sm:min-h-0"
-                  >
-                    Log in
-                  </Link>
-                </div>
               </div>
             </div>
 

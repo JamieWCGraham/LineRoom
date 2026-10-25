@@ -23,7 +23,7 @@ export default async function SignupPage({ searchParams }: Props) {
           Save pieces in the cloud and pick up where you left off.
         </p>
         {oauthSignInUiEnabled ? (
-          <div className="hidden md:block">
+          <div>
             <OAuthSignInLinks nextPath={q.next} />
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center" aria-hidden>
