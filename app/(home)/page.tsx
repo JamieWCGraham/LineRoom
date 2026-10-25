@@ -17,6 +17,7 @@ import {
   computeDashboardStats,
   loadDashboardSongs,
 } from "@/lib/songs/dashboardSongs";
+import { IOS_APP_STORE_URL } from "@/lib/site-config";
 import { createClient } from "@/lib/supabase/server";
 
 type Props = {
@@ -68,13 +69,16 @@ export default async function HomePage({ searchParams }: Props) {
                 >
                   Try without signing up
                 </Link>
-                <Link
-                  href="/pricing"
-                  prefetch
-                  className="rounded-xl border border-zinc-700 px-6 py-3 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-900"
-                >
-                  Pricing
-                </Link>
+                {IOS_APP_STORE_URL ?
+                  <a
+                    href={IOS_APP_STORE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-xl border border-zinc-700 px-6 py-3 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-900"
+                  >
+                    Download on the App Store
+                  </a>
+                : null}
                 <Link
                   href="/signup"
                   prefetch
@@ -145,6 +149,16 @@ export default async function HomePage({ searchParams }: Props) {
                 Login
               </Link>
             </div>
+            {IOS_APP_STORE_URL ?
+              <a
+                href={IOS_APP_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-zinc-700 px-4 py-2 text-center text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-900/80"
+              >
+                Download on the App Store
+              </a>
+            : null}
           </div>
         </div>
       </main>

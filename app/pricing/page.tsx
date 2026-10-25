@@ -119,9 +119,11 @@ export default function PricingPage() {
                 Yes — LineRoom is also on iOS, where Pro is billed through the App Store.{" "}
                 <a
                   href={IOS_APP_STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-zinc-200 underline underline-offset-2"
                 >
-                  Get the iOS app
+                  Download on the App Store
                 </a>
                 .
               </dd>

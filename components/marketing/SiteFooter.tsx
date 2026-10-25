@@ -64,8 +64,13 @@ export function SiteFooter() {
             </li>
             {IOS_APP_STORE_URL ?
               <li>
-                <a href={IOS_APP_STORE_URL} className={linkClass}>
-                  iOS app
+                <a
+                  href={IOS_APP_STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={linkClass}
+                >
+                  Download on the App Store
                 </a>
               </li>
             : null}

@@ -21,7 +21,7 @@ const sections = [
   },
   {
     title: "Workshop tools",
-    body: "Once you create an account, use Rhyme, Suggestion, and Thesaurus — one word or one line at a time.",
+    body: "Once you create an account, use Rhyme, Suggestion, and Thesaurus, one word or one line at a time.",
   },
   {
     title: "Editor built for lyrics",

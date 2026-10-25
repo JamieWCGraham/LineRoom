@@ -5,12 +5,13 @@
 
 export const SITE_URL = "https://line-room.com";
 export const SUPPORT_EMAIL = "support@line-room.com";
+export const PRIVACY_EMAIL = "privacy@line-room.com";
 
 export const PRO_MONTHLY_PRICE_DISPLAY = "$20"; // must match Stripe
 export const PRO_MONTHLY_PRICE_NOTE = ""; // e.g. "USD, billed monthly" — if applicable
 
-// TODO (Jamie): fill in, or leave "" and iOS links stay hidden.
-export const IOS_APP_STORE_URL = "";
+export const IOS_APP_STORE_URL =
+  "https://apps.apple.com/ca/app/lineroom/id6765731560";
 
 // TODO (Jamie): fill in once chosen. Domain/key comes from env only.
 export const ANALYTICS_PROVIDER: "plausible" | "posthog" | "none" =
