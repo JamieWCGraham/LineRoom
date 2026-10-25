@@ -24,6 +24,19 @@ You’re already most of the way there for **iOS**. `LineRoom` is set up as a **
      - **Dev**: `npm run cap:sync` then `npm run cap:open`
    - This updates and opens the Xcode project.
 
+### Native OAuth (Google / Apple in the iOS app)
+
+OAuth in the Capacitor shell must **not** full-page-redirect through Safari. The app uses `@capgo/capacitor-inappbrowser` (`openSecureWindow` → `ASWebAuthenticationSession`) and returns via the custom scheme `lineroom://auth/callback`.
+
+**One-time Supabase setup** (Dashboard → Authentication → URL Configuration → Redirect URLs):
+
+- Keep `https://line-room.com/auth/callback` (web).
+- Add `lineroom://auth/callback` (iOS app).
+
+**Native project:** `Info.plist` registers `CFBundleURLSchemes` → `lineroom`. After changing the scheme or installing the InAppBrowser plugin, run `npm run cap:sync` (or `cap:sync:ios:production`) and rebuild in Xcode.
+
+Flow: tap Continue with Google/Apple → server `/auth/oauth?native=1` sets PKCE cookies and returns the IdP URL as JSON → system auth sheet → app loads `/auth/callback?code=…` in the WebView.
+
 ### Redirect host inventory (`CAPACITOR_ALLOW_NAVIGATION`)
 
 Keep this comma-separated list in sync with **Supabase Auth redirect allowlists** and any hosts your flows open in the WebView. Include at least:
@@ -36,6 +49,8 @@ Keep this comma-separated list in sync with **Supabase Auth redirect allowlists*
 Example:
 
 `CAPACITOR_ALLOW_NAVIGATION=line-room.com,*.supabase.co,*.stripe.com,accounts.google.com,appleid.apple.com`
+
+Note: IdP hosts in `allowNavigation` are a fallback; the primary mobile OAuth path uses the auth sheet above, not in-WebView IdP navigation.
 
 ### Apple IAP & server env (Vercel / hosting)
 
@@ -108,5 +123,6 @@ The Account page includes **Delete account** (email confirmation). `POST /api/ac
 
 - **IAP products**: Create the auto-renewable subscription in App Store Connect and set `NEXT_PUBLIC_IOS_IAP_PRODUCT_ID` before shipping; then archive with a synced iOS project.
 - **Stripe in the iOS app**: Do not re-enable Stripe checkout for Pro in the shell without a legal/App Review plan — the app and API are intentionally split (IAP on iOS, Stripe in browser).
-- **Redirect / cookies**: Supabase Site URL, redirect allowlist, and `server.url` must share one canonical HTTPS origin.
+- **Redirect / cookies**: Supabase Site URL, redirect allowlist, and `server.url` must share one canonical HTTPS origin. Also allow `lineroom://auth/callback` for native OAuth.
+- **OAuth leaves the app / stays in Safari**: confirm `lineroom://auth/callback` is in the Supabase redirect allowlist and the binary was rebuilt after `cap sync` (InAppBrowser + URL scheme).
 - **Node version for Capacitor CLI**: the repo allows Node `>=20`, but Capacitor 8 CLI is happiest on Node 22+ for `cap sync`.

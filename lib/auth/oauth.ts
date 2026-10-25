@@ -11,6 +11,18 @@ export function oauthCallbackUrl(): string {
   return `${getSiteUrl()}/auth/callback`;
 }
 
+/**
+ * Custom URL scheme for Capacitor iOS ASWebAuthenticationSession return.
+ * Must be registered in Info.plist CFBundleURLSchemes and in Supabase
+ * Authentication → URL Configuration redirect allowlist.
+ */
+export const NATIVE_OAUTH_SCHEME = "lineroom";
+
+/** Deep-link callback caught by ASWebAuthenticationSession (not Safari). */
+export function nativeOAuthCallbackUrl(): string {
+  return `${NATIVE_OAUTH_SCHEME}://auth/callback`;
+}
+
 /** Short-lived cookie set when starting OAuth; read after callback (keeps Supabase redirect allowlist to one URL). */
 export const OAUTH_NEXT_COOKIE = "lr_oauth_next";
 
@@ -77,18 +89,23 @@ export function parseOAuthProvider(
 export function oauthStartHref(
   provider: OAuthProviderId,
   next: string = "/",
+  opts?: { native?: boolean },
 ): string {
   const safe = sanitizeAuthNext(next);
   const p = new URLSearchParams({ provider });
   if (safe !== "/") p.set("next", safe);
+  if (opts?.native) p.set("native", "1");
   return `/auth/oauth?${p.toString()}`;
 }
 
-export function buildOAuthSignInOptions(provider: OAuthProviderId) {
+export function buildOAuthSignInOptions(
+  provider: OAuthProviderId,
+  opts?: { native?: boolean },
+) {
   return {
     provider,
     options: {
-      redirectTo: oauthCallbackUrl(),
+      redirectTo: opts?.native ? nativeOAuthCallbackUrl() : oauthCallbackUrl(),
     },
   } as const;
 }

@@ -1,9 +1,15 @@
+"use client";
+
+import { useState } from "react";
 import {
   oauthAppleEnabled,
   oauthGoogleEnabled,
   oauthStartHref,
   sanitizeAuthNext,
+  type OAuthProviderId,
 } from "@/lib/auth/oauth";
+import { runNativeOAuth } from "@/lib/auth/native-oauth";
+import { isIosCapacitorApp } from "@/lib/platform/capacitor-client";
 
 const btnBase =
   "flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 disabled:pointer-events-none disabled:opacity-50";
@@ -23,6 +29,27 @@ export function OAuthSignInLinks({ nextPath }: Props) {
   const next = pickNext(nextPath);
   const googleHref = oauthStartHref("google", next);
   const appleHref = oauthStartHref("apple", next);
+  const [busy, setBusy] = useState<OAuthProviderId | null>(null);
+
+  async function onNativeClick(
+    e: React.MouseEvent<HTMLAnchorElement>,
+    provider: OAuthProviderId,
+  ) {
+    if (!isIosCapacitorApp()) return;
+    e.preventDefault();
+    if (busy) return;
+    setBusy(provider);
+    try {
+      const result = await runNativeOAuth(provider, next);
+      if (!result.ok && !result.canceled) {
+        window.location.assign("/login?error=oauth_callback");
+      }
+    } catch {
+      window.location.assign("/login?error=oauth_callback");
+    } finally {
+      setBusy(null);
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -30,19 +57,23 @@ export function OAuthSignInLinks({ nextPath }: Props) {
         {oauthGoogleEnabled ? (
           <a
             href={googleHref}
+            aria-busy={busy === "google"}
             className={`${btnBase} border-zinc-600 bg-zinc-800 text-zinc-100 hover:bg-zinc-700`}
+            onClick={(e) => void onNativeClick(e, "google")}
           >
             <GoogleGlyph className="h-[18px] w-[18px] shrink-0" aria-hidden />
-            Continue with Google
+            {busy === "google" ? "Connecting…" : "Continue with Google"}
           </a>
         ) : null}
         {oauthAppleEnabled ? (
           <a
             href={appleHref}
+            aria-busy={busy === "apple"}
             className={`${btnBase} border-zinc-800 bg-zinc-950 text-zinc-100 hover:bg-zinc-900`}
+            onClick={(e) => void onNativeClick(e, "apple")}
           >
             <AppleGlyph className="h-[18px] w-[18px] shrink-0" aria-hidden />
-            Continue with Apple
+            {busy === "apple" ? "Connecting…" : "Continue with Apple"}
           </a>
         ) : null}
       </div>

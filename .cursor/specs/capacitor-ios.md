@@ -102,7 +102,7 @@ LineRoom is a **full-stack Next.js app**: `middleware.ts` (Supabase session refr
 
 | Risk | Mitigation |
 |------|------------|
-| OAuth opens Safari and doesn’t return to app | Universal Links or custom URL scheme + Supabase redirect allowlist |
+| OAuth opens Safari and doesn’t return to app | ASWebAuthenticationSession via `@capgo/capacitor-inappbrowser` + `lineroom://auth/callback` in Supabase redirect allowlist (see MOBILE_DEPLOYMENT.md) |
 | Cookies not persisted in WebView | Same-site/secure flags; same origin as configured `server.url` |
 | App Review / IAP for subscriptions | Product/legal plan; possibly “reader” or web-only account model |
 | `localhost` in env on device | Never point `server.url` at dev machine without tunnel and cleartext rules |

@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
+  NATIVE_OAUTH_SCHEME,
   OAUTH_NEXT_COOKIE,
   authConfirmUrl,
   buildOAuthSignInOptions,
+  nativeOAuthCallbackUrl,
   oauthCallbackUrl,
   oauthStartHref,
   parseOAuthProvider,
@@ -49,6 +51,15 @@ describe("OAuth helpers", () => {
     );
   });
 
+  it("exposes native Capacitor callback scheme", () => {
+    expect(NATIVE_OAUTH_SCHEME).toBe("lineroom");
+    expect(nativeOAuthCallbackUrl()).toBe("lineroom://auth/callback");
+    const native = buildOAuthSignInOptions("google", { native: true });
+    expect(native.options.redirectTo).toBe("lineroom://auth/callback");
+    const apple = buildOAuthSignInOptions("apple", { native: true });
+    expect(apple.options.redirectTo).toBe("lineroom://auth/callback");
+  });
+
   it("parses allowed providers only", () => {
     expect(parseOAuthProvider("google")).toBe("google");
     expect(parseOAuthProvider("apple")).toBe("apple");
@@ -67,6 +78,12 @@ describe("OAuth helpers", () => {
     expect(oauthStartHref("google", "/")).toBe("/auth/oauth?provider=google");
     expect(oauthStartHref("apple", "/account")).toBe(
       "/auth/oauth?provider=apple&next=%2Faccount",
+    );
+    expect(oauthStartHref("google", "/", { native: true })).toBe(
+      "/auth/oauth?provider=google&native=1",
+    );
+    expect(oauthStartHref("apple", "/account", { native: true })).toBe(
+      "/auth/oauth?provider=apple&next=%2Faccount&native=1",
     );
   });
 
