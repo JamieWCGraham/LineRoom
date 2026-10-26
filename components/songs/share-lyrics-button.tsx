@@ -9,6 +9,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import posthog from "posthog-js";
 import { createPortal } from "react-dom";
 import {
   publishSongLyrics,
@@ -124,6 +125,10 @@ export function ShareLyricsButton(props: {
         setError(formatPublishError(result.message));
         return;
       }
+      posthog.capture("lyrics_published", {
+        publish_action: isPublished ? "update" : "create",
+        version_number: props.activeVersionNumber,
+      });
       setShareToken(result.shareToken);
       setPublishedFromVersionId(props.activeVersionId);
       setPublishedFromVersionNumber(props.activeVersionNumber);
@@ -141,6 +146,7 @@ export function ShareLyricsButton(props: {
     props.activeVersionNumber,
     props.draftText,
     props.songId,
+    isPublished,
   ]);
 
   const handleUnpublish = useCallback(() => {
@@ -151,6 +157,7 @@ export function ShareLyricsButton(props: {
         setError(formatPublishError(result.message));
         return;
       }
+      posthog.capture("lyrics_unpublished");
       setShareToken(null);
       setPublishedFromVersionId(null);
       setPublishedFromVersionNumber(null);

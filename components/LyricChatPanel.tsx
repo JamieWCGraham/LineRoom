@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import posthog from "posthog-js";
 import ReactMarkdown from "react-markdown";
 import { StructuredAssistantMessage } from "@/components/chat/StructuredAssistantMessage";
 import { useMobileToolbarInset } from "@/lib/hooks/useMobileToolbarInset";
@@ -218,6 +219,9 @@ export function LyricChatPanel({
         return;
       }
       const structured = parsed.data;
+      posthog.capture("workshop_request_completed", {
+        workshop_tool: selectedMode,
+      });
       onMessagesChange([
         ...nextHistory,
         {

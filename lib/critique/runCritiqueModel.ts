@@ -6,8 +6,10 @@ import {
 import {
   createCritiqueGatewayOpenAI,
   getCritiqueGatewayModelId,
+  getCritiqueGatewayProvider,
 } from "@/lib/aiGatewayCritique";
 import { getCritiqueLlmProvider } from "@/lib/critique/critiqueLlmProvider";
+import { createAiObservabilityContext } from "@/lib/openai";
 import {
   getCritiqueNetworkRetryDelayMs,
   isRetriableOpenAICritiqueError,
@@ -186,6 +188,10 @@ export async function runCritiqueModel(
   const generationName = options?.generationName ?? "lyric-critique";
   const provider = getCritiqueLlmProvider();
   const gatewayModelId = getCritiqueGatewayModelId();
+  const aiObservabilityContext = createAiObservabilityContext({
+    distinctId: options?.traceUser?.userId,
+    provider: getCritiqueGatewayProvider(gatewayModelId),
+  });
 
   const critique = await runWithLangfuseTrace(
     {
@@ -212,6 +218,7 @@ export async function runCritiqueModel(
         extraSystemHints: string[] = [],
       ): Promise<CritiqueResult> => {
         const completion = await openai.chat.completions.create({
+          ...aiObservabilityContext,
           model: gatewayModelId,
           ...(gatewayModelSupportsOpenAiJsonObjectMode(gatewayModelId) ?
             { response_format: { type: "json_object" as const } }

@@ -11,6 +11,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import posthog from "posthog-js";
 import { createPortal } from "react-dom";
 import type { DraftRecordingMeta } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
@@ -512,6 +513,10 @@ export const DraftRecordingsPanel = forwardRef<
           durationSec: Math.max(0, durationSec),
         };
         onRecordingsChange([next, ...recordings]);
+        posthog.capture("voice_memo_saved", {
+          storage_mode: "local",
+          duration_seconds: next.durationSec,
+        });
         discardPending();
         return;
       }
@@ -567,6 +572,10 @@ export const DraftRecordingsPanel = forwardRef<
           });
         if (!upErr) {
           onRecordingsChange([signData.recording, ...recordings]);
+          posthog.capture("voice_memo_saved", {
+            storage_mode: "cloud",
+            duration_seconds: signData.recording.durationSec,
+          });
           void fetchSignedUrl(signData.recording.objectPath);
           break;
         }

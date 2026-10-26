@@ -4,7 +4,12 @@ import {
   scheduleLangfuseFlush,
 } from "@/lib/langfuse-server";
 import { buildLangfuseTraceUser } from "@/lib/langfuse/traceUser";
-import { createBaseOpenAI, getFastChatModel } from "@/lib/openai";
+import { posthogLog, schedulePostHogLogFlush } from "@/lib/posthog-logs";
+import {
+  createAiObservabilityContext,
+  createBaseOpenAI,
+  getFastChatModel,
+} from "@/lib/openai";
 import { buildChatActionSystemPrompt } from "@/lib/prompts";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/auth/guards";
@@ -141,6 +146,7 @@ export async function POST(req: Request) {
   }
 
   scheduleLangfuseFlush();
+  schedulePostHogLogFlush();
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -181,8 +187,13 @@ export async function POST(req: Request) {
       },
       async ({ createTracedOpenAI, setTraceIO }) => {
         const openai = createTracedOpenAI(createBaseOpenAI());
+        const aiObservabilityContext = createAiObservabilityContext({
+          distinctId: user.id,
+          provider: "openai",
+        });
         const system = buildChatActionSystemPrompt(payload, critiqueBlock);
         const completion = await openai.chat.completions.create({
+          ...aiObservabilityContext,
           model: getFastChatModel(),
           response_format: { type: "json_object" },
           messages: [
@@ -221,6 +232,11 @@ export async function POST(req: Request) {
         setTraceIO({
           input: { chatAction: payload, userMessage: chatAction.userMessage },
           output: structured,
+        });
+        posthogLog.info("Workshop AI action completed", {
+          route: "/api/chat",
+          action: payload.action,
+          scope: payload.scope,
         });
         return NextResponse.json(structured, {
           headers: {

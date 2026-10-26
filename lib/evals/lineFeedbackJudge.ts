@@ -3,7 +3,9 @@ import { runWithLangfuseTrace, scheduleLangfuseFlush } from "@/lib/langfuse-serv
 import {
   createCritiqueGatewayOpenAI,
   getCritiqueGatewayModelId,
+  getCritiqueGatewayProvider,
 } from "@/lib/aiGatewayCritique";
+import { createAiObservabilityContext } from "@/lib/openai";
 import type { LineFeedbackItem } from "@/lib/types";
 import type { GroundTruthLineFeedback } from "./lineFeedbackGroundTruth";
 import { groundTruthLineFeedbackSchema } from "./lineFeedbackGroundTruth";
@@ -85,6 +87,9 @@ export async function generateBaselineGroundTruthLineFeedback(input: {
   scheduleLangfuseFlush();
   const openai = createCritiqueGatewayOpenAI();
   const model = getCritiqueGatewayModelId();
+  const aiObservabilityContext = createAiObservabilityContext({
+    provider: getCritiqueGatewayProvider(model),
+  });
   const userPayload = {
     title: input.title,
     artist: input.artist,
@@ -107,6 +112,7 @@ export async function generateBaselineGroundTruthLineFeedback(input: {
     async ({ createTracedOpenAI, setTraceIO }) => {
       const traced = createTracedOpenAI(openai);
       const completion = await traced.chat.completions.create({
+        ...aiObservabilityContext,
         model,
         ...(gatewayModelSupportsOpenAiJsonObjectMode(model) ?
           { response_format: { type: "json_object" as const } }
@@ -135,6 +141,9 @@ export async function judgeLineFeedbackQuality(input: {
   scheduleLangfuseFlush();
   const openai = createCritiqueGatewayOpenAI();
   const model = getCritiqueGatewayModelId();
+  const aiObservabilityContext = createAiObservabilityContext({
+    provider: getCritiqueGatewayProvider(model),
+  });
   const payload = {
     lyrics: input.lyrics,
     reference: input.reference,
@@ -155,6 +164,7 @@ export async function judgeLineFeedbackQuality(input: {
     async ({ createTracedOpenAI, setTraceIO }) => {
       const traced = createTracedOpenAI(openai);
       const completion = await traced.chat.completions.create({
+        ...aiObservabilityContext,
         model,
         ...(gatewayModelSupportsOpenAiJsonObjectMode(model) ?
           { response_format: { type: "json_object" as const } }

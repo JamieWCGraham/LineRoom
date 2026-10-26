@@ -3,7 +3,9 @@ import { runWithLangfuseTrace, scheduleLangfuseFlush } from "@/lib/langfuse-serv
 import {
   createCritiqueGatewayOpenAI,
   getCritiqueGatewayModelId,
+  getCritiqueGatewayProvider,
 } from "@/lib/aiGatewayCritique";
+import { createAiObservabilityContext } from "@/lib/openai";
 import type { GroundTruthStrengthsWeaknesses } from "./strengthWeaknessGroundTruth";
 
 const BASELINE_SW_SYSTEM = `You are an expert lyric critic annotating reference "top strengths" and "top weaknesses" for an evaluation set.
@@ -64,6 +66,9 @@ export async function generateBaselineGroundTruthStrengthsWeaknesses(input: {
   scheduleLangfuseFlush();
   const openai = createCritiqueGatewayOpenAI();
   const model = getCritiqueGatewayModelId();
+  const aiObservabilityContext = createAiObservabilityContext({
+    provider: getCritiqueGatewayProvider(model),
+  });
   const userPayload = {
     title: input.title,
     artist: input.artist,
@@ -86,6 +91,7 @@ export async function generateBaselineGroundTruthStrengthsWeaknesses(input: {
     async ({ createTracedOpenAI, setTraceIO }) => {
       const traced = createTracedOpenAI(openai);
       const completion = await traced.chat.completions.create({
+        ...aiObservabilityContext,
         model,
         ...(gatewayModelSupportsOpenAiJsonObjectMode(model) ?
           { response_format: { type: "json_object" as const } }
@@ -115,6 +121,9 @@ export async function judgeStrengthWeaknessQuality(input: {
   scheduleLangfuseFlush();
   const openai = createCritiqueGatewayOpenAI();
   const model = getCritiqueGatewayModelId();
+  const aiObservabilityContext = createAiObservabilityContext({
+    provider: getCritiqueGatewayProvider(model),
+  });
   const payload = {
     lyrics: input.lyrics,
     referenceStrengths: input.reference.overallStrengths,
@@ -137,6 +146,7 @@ export async function judgeStrengthWeaknessQuality(input: {
     async ({ createTracedOpenAI, setTraceIO }) => {
       const traced = createTracedOpenAI(openai);
       const completion = await traced.chat.completions.create({
+        ...aiObservabilityContext,
         model,
         ...(gatewayModelSupportsOpenAiJsonObjectMode(model) ?
           { response_format: { type: "json_object" as const } }

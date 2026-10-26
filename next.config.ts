@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
     "@opentelemetry/api-logs",
     "@opentelemetry/context-async-hooks",
     "@opentelemetry/core",
+    "@opentelemetry/exporter-logs-otlp-http",
     "@opentelemetry/exporter-trace-otlp-http",
     "@opentelemetry/otlp-exporter-base",
     "@opentelemetry/otlp-transformer",

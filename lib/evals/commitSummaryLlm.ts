@@ -1,7 +1,12 @@
 import {
   createCritiqueGatewayOpenAI,
   getCritiqueGatewayModelId,
+  getCritiqueGatewayProvider,
 } from "@/lib/aiGatewayCritique";
+import {
+  createAiObservabilityContext,
+  schedulePostHogAiFlush,
+} from "@/lib/openai";
 
 function sanitizeForLlmRequest(text: string): string {
   return text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, "");
@@ -28,8 +33,12 @@ export async function summarizeCommitForDisplay(
   summary: string;
   model: string;
 }> {
+  schedulePostHogAiFlush();
   const client = createCritiqueGatewayOpenAI();
   const model = getCommitSummaryModelId();
+  const aiObservabilityContext = createAiObservabilityContext({
+    provider: getCritiqueGatewayProvider(model),
+  });
   const q = options?.userQuestions?.trim() ?? "";
   const userContent = sanitizeForLlmRequest(commitContext).slice(0, 120_000);
   const userBlocks = [
@@ -59,6 +68,7 @@ export async function summarizeCommitForDisplay(
   }
 
   const completion = await client.chat.completions.create({
+    ...aiObservabilityContext,
     model,
     temperature: 0.25,
     max_tokens: q ? 700 : 450,

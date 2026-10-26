@@ -5,6 +5,7 @@ import { startActiveObservation } from "@langfuse/tracing";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import OpenAI from "openai";
 import { after } from "next/server";
+import { schedulePostHogAiFlush } from "@/lib/openai";
 
 let tracerProvider: NodeTracerProvider | null = null;
 let spanProcessor: LangfuseSpanProcessor | null = null;
@@ -41,6 +42,7 @@ export async function flushLangfuse(): Promise<void> {
  * Ensures buffered spans are sent after the response (required for Vercel / serverless).
  */
 export function scheduleLangfuseFlush(): void {
+  schedulePostHogAiFlush();
   if (!isLangfuseEnabled()) {
     return;
   }

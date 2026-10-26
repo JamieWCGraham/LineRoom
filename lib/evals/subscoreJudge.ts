@@ -3,7 +3,9 @@ import { runWithLangfuseTrace, scheduleLangfuseFlush } from "@/lib/langfuse-serv
 import {
   createCritiqueGatewayOpenAI,
   getCritiqueGatewayModelId,
+  getCritiqueGatewayProvider,
 } from "@/lib/aiGatewayCritique";
+import { createAiObservabilityContext } from "@/lib/openai";
 import type { LyricSubscoresJson } from "./subscoreCalibration";
 import { lyricSubscoresJsonSchema } from "./subscoreCalibration";
 
@@ -59,6 +61,9 @@ export async function generateBaselineGroundTruthSubscores(input: {
   scheduleLangfuseFlush();
   const openai = createCritiqueGatewayOpenAI();
   const model = getCritiqueGatewayModelId();
+  const aiObservabilityContext = createAiObservabilityContext({
+    provider: getCritiqueGatewayProvider(model),
+  });
   const userPayload = {
     title: input.title,
     artist: input.artist,
@@ -81,6 +86,7 @@ export async function generateBaselineGroundTruthSubscores(input: {
     async ({ createTracedOpenAI, setTraceIO }) => {
       const traced = createTracedOpenAI(openai);
       const completion = await traced.chat.completions.create({
+        ...aiObservabilityContext,
         model,
         ...(gatewayModelSupportsOpenAiJsonObjectMode(model) ?
           { response_format: { type: "json_object" as const } }
@@ -110,6 +116,9 @@ export async function judgeSubscoreExplanationAlignment(input: {
   scheduleLangfuseFlush();
   const openai = createCritiqueGatewayOpenAI();
   const model = getCritiqueGatewayModelId();
+  const aiObservabilityContext = createAiObservabilityContext({
+    provider: getCritiqueGatewayProvider(model),
+  });
   return runWithLangfuseTrace(
     {
       traceName: "LineRoom",
@@ -125,6 +134,7 @@ export async function judgeSubscoreExplanationAlignment(input: {
       const traced = createTracedOpenAI(openai);
       const payload = input;
       const completion = await traced.chat.completions.create({
+        ...aiObservabilityContext,
         model,
         ...(gatewayModelSupportsOpenAiJsonObjectMode(model) ?
           { response_format: { type: "json_object" as const } }

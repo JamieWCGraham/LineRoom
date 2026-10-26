@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { getCritiqueLlmProvider } from "@/lib/critique/critiqueLlmProvider";
+import { createOpenAIClient } from "@/lib/openai";
 
 /** Vercel AI Gateway OpenAI-compat base URL (see https://vercel.com/docs/ai-gateway/openai-compat). */
 export function getAiGatewayBaseUrl(): string {
@@ -26,7 +27,7 @@ export function getAiGatewayApiKey(): string {
  * OpenAI client configured for Vercel AI Gateway (used for generate critique only).
  */
 export function createCritiqueGatewayOpenAI(): OpenAI {
-  return new OpenAI({
+  return createOpenAIClient({
     apiKey: getAiGatewayApiKey(),
     baseURL: getAiGatewayBaseUrl(),
   });
@@ -41,6 +42,10 @@ export function createCritiqueGatewayOpenAI(): OpenAI {
  *    - `openai` (default) → `openai/gpt-5-mini` (override with CRITIQUE_OPENAI_GATEWAY_MODEL)
  *    - `gemini` / `google` → `google/gemini-3.1-pro-preview` (override with CRITIQUE_GEMINI_GATEWAY_MODEL)
  */
+export function getCritiqueGatewayProvider(modelId: string): string {
+  return modelId.trim().split("/", 1)[0] || "openai";
+}
+
 export function getCritiqueGatewayModelId(): string {
   const explicit = process.env.CRITIQUE_GATEWAY_MODEL?.trim();
   if (explicit) return explicit;

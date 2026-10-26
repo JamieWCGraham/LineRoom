@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { usePostHog } from "posthog-js/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CritiqueAccessState } from "@/lib/billing/types";
 import {
@@ -56,6 +57,7 @@ export function shouldBumpVersionAfterCritique(
 
 export function useCritiqueFlow(args: UseCritiqueFlowArgs) {
   const router = useRouter();
+  const posthog = usePostHog();
   const [critiqueLoading, setCritiqueLoading] = useState(false);
   const [critiqueError, setCritiqueError] = useState<string | null>(null);
   const [critiqueAccess, setCritiqueAccess] = useState<CritiqueAccessState | null>(
@@ -176,12 +178,23 @@ export function useCritiqueFlow(args: UseCritiqueFlowArgs) {
           return null;
         }
 
-        track("critique_generated", {
-          plan: data.access?.hasActiveSubscription ? "pro" : "free",
-        });
-
         const existingCritique = args.critique;
         const nextCritique = data.critique;
+        const plan = data.access?.hasActiveSubscription ? "pro" : "free";
+
+        track("critique_generated", { plan });
+
+        posthog.capture("critique generated", {
+          input_length: args.fullText.length,
+          output_length: JSON.stringify(nextCritique).length,
+          genre: args.meta.genre,
+          regenerate,
+          is_song: args.isSong,
+          overall_rating_band: nextCritique.overallRatingBand,
+          line_feedback_count: nextCritique.lineFeedback.length,
+          plan,
+        });
+
         args.setCritique(nextCritique);
 
         if (args.isSong && args.songId && args.activeVersionId) {
@@ -253,7 +266,7 @@ export function useCritiqueFlow(args: UseCritiqueFlowArgs) {
         }
       }
     },
-    [args, router],
+    [args, posthog, router],
   );
 
   const requestCritique = useCallback(

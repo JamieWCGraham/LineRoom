@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
-import { AnalyticsScripts } from "@/components/marketing/AnalyticsScripts";
+import { PostHogProvider } from "@/components/posthog-provider";
 import { ChunkLoadRecovery } from "@/components/navigation/ChunkLoadRecovery";
 import { InstantRouteShell } from "@/components/navigation/instant-route-shell";
 import { getAppBuildId } from "@/lib/navigation/appBuildId";
@@ -28,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <body className="flex min-h-dvh flex-col font-sans antialiased">
-        <AnalyticsScripts />
+        <PostHogProvider />
         <ChunkLoadRecovery initialBuildId={buildId} />
         <InstantRouteShell />
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>

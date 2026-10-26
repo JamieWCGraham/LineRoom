@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import posthog from "posthog-js";
 import type { CritiqueAccessState } from "@/lib/billing/types";
 import { IosAppStoreManageSubscription } from "@/components/billing/IosAppStoreManageSubscription";
 import { IosProSubscription } from "@/components/billing/IosProSubscription";
@@ -108,6 +109,7 @@ export function BillingSection({ initialAccess }: Props) {
         setMessage(data.error ?? "Could not cancel subscription.");
         return;
       }
+      posthog.capture("subscription_canceled");
       setMessage(data.message ?? "Subscription canceled.");
       setConfirmingCancel(false);
       await refetch();

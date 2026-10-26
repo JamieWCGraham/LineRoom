@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import posthog from "posthog-js";
 import { createSongAndInitialVersion } from "@/lib/songs/actions";
 
 type Variant = "default" | "fab";
@@ -19,6 +20,7 @@ export function NewPieceButton({ variant = "default" }: { variant?: Variant }) {
         setError(result.message);
         return;
       }
+      posthog.capture("piece_created", { creation_surface: variant });
       router.push(`/song/${result.songId}`);
     });
   };

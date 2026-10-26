@@ -15,6 +15,7 @@ import {
 } from "@/lib/critique/draftCritiqueGate";
 import { runCritiqueModel } from "@/lib/critique/runCritiqueModel";
 import { buildLangfuseTraceUser } from "@/lib/langfuse/traceUser";
+import { posthogLog, schedulePostHogLogFlush } from "@/lib/posthog-logs";
 import type { CritiqueResult } from "@/lib/types";
 import { critiqueRequestSchema } from "@/lib/validators";
 import { createClient } from "@/lib/supabase/server";
@@ -184,6 +185,12 @@ export async function POST(req: Request) {
     }
 
     const accessAfter = await getCritiqueAccessForUser(supabase, user);
+    schedulePostHogLogFlush();
+    posthogLog.info("Lyric critique completed", {
+      route: "/api/critique",
+      gate_result: gateContext.kind,
+      quota_reserved: slotReserved,
+    });
     return NextResponse.json({ critique, access: accessAfter });
   } finally {
     if (slotReserved && !success) {

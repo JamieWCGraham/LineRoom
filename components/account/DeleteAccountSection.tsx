@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import posthog from "posthog-js";
 import { createClient } from "@/lib/supabase/client";
 
 type Props = {
@@ -49,6 +50,7 @@ export function DeleteAccountSection({ userEmail }: Props) {
           setMessage(data.error ?? "Could not delete account.");
           return;
         }
+        posthog.capture("account_deleted");
         const supabase = createClient();
         await supabase.auth.signOut();
         router.replace("/");
